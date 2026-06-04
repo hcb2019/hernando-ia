@@ -1,38 +1,41 @@
 import Link from "next/link";
 import type { BlogPost } from "@/lib/blog";
+import { t, formatDate, type Lang } from "@/lib/translations";
 
 interface BlogCardProps {
   post: BlogPost;
   index?: number;
+  lang?: Lang;
 }
 
-export default function BlogCard({ post }: BlogCardProps) {
+export default function BlogCard({ post, lang = "pt" }: BlogCardProps) {
   const { title, slug, date, excerpt, tags, readingTime, sponsored, premium } = post;
 
-  const formattedDate = new Date(date).toLocaleDateString("pt-BR", {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-  });
+  const formattedDate = formatDate(date, lang);
+  const langParam = lang !== "pt" ? `?lang=${lang}` : "";
 
   return (
     <article className="group card-invert transition-colors duration-300 border border-[--border] h-full">
-      <Link href={`/blog/${slug}`} className="block p-6 h-full">
+      <Link href={`/blog/${slug}${langParam}`} className="block p-6 h-full">
         {/* Meta row */}
         <div className="flex items-center gap-3 text-xs text-[--muted-foreground] mb-3 card-invert-muted">
           <time dateTime={date}>{formattedDate}</time>
           <span className="text-[--border]">-</span>
-          <span>{readingTime} min leitura</span>
+          <span>{readingTime} {t("min_read", lang)}</span>
           {sponsored && (
             <>
               <span className="text-[--border]">-</span>
-              <span className="text-[--accent] font-medium text-[10px] uppercase tracking-wider">Patrocinado</span>
+              <span className="text-[--accent] font-medium text-[10px] uppercase tracking-wider">
+                {t("sponsored_label", lang)}
+              </span>
             </>
           )}
           {premium && (
             <>
               <span className="text-[--border]">-</span>
-              <span className="text-[--accent] font-bold text-[10px] uppercase tracking-wider">Premium</span>
+              <span className="text-[--accent] font-bold text-[10px] uppercase tracking-wider">
+                {t("premium_label", lang)}
+              </span>
             </>
           )}
         </div>
@@ -63,7 +66,7 @@ export default function BlogCard({ post }: BlogCardProps) {
 
         {/* Read more */}
         <div className="flex items-center gap-1 text-xs font-bold uppercase tracking-tighter text-[--muted-foreground] group-hover:text-[--accent-foreground] transition-colors">
-          LER MAIS →
+          {t("card_read_more", lang)}
         </div>
       </Link>
     </article>

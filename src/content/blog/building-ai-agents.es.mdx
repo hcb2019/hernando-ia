@@ -1,0 +1,45 @@
+---
+title: "Construyendo Agentes de IA Que Realmente Funcionan"
+date: 2025-11-15
+excerpt: "Lecciones aprendidas al poner agentes de IA en producción — lo que funciona, lo que falla y cómo construir sistemas agénticos confiables."
+tags: [IA, Agentes, Ingeniería, Producción]
+readingTime: 8
+---
+
+## El Hype de los Agentes Es Real
+
+Todo el mundo está construyendo agentes de IA. ¿Pero poner uno que realmente funcione en producción? Esa es una historia completamente diferente.
+
+Después de pasar los últimos 18 meses construyendo e implementando agentes de IA a escala, aprendí que la distancia entre una demo genial y un sistema de producción confiable es enorme. Esto es lo que aprendí.
+
+## Por Qué la Mayoría de los Agentes Falla
+
+El principal motivo por el que los agentes fallan en producción no es el modelo — es la arquitectura alrededor del modelo.
+
+Necesitas:
+
+- **Llamadas de herramienta confiables** — El agente necesita saber cuándo usar qué herramienta y manejar fallos con elegancia
+- **Gestión de contexto** — Conversaciones largas explotan el uso de tokens y degradan el rendimiento
+- **Observabilidad** — Si no puedes ver lo que el agente está pensando, no puedes depurar
+- **Guardrails** — Los agentes van a alucinar. Planifica para eso.
+
+## La Arquitectura Que Funciona
+
+Después de muchas iteraciones, esta es la arquitectura que entrega resultados consistentemente:
+
+```
+Usuario → Agente Enrutador → Agente Especializado → Capa de Herramientas → Respuesta
+```
+
+El enrutador descubre la intención. Agentes especializados manejan dominios específicos. Las herramientas son la interfaz con el mundo real.
+
+## Aprendizajes Clave
+
+1. **Empieza simple** — Un solo agente bien prompteado vence a un sistema multi-agente complejo 9 de 10 veces
+2. **Registra todo** — Cada pensamiento, cada llamada de herramienta, cada decisión
+3. **Falla con elegancia** — Los agentes van a equivocarse. Diseña tu UX para manejarlo
+4. **Mide lo que importa** — Tasa de finalización de tareas, no solo calidad de respuesta
+
+## Lo Que Viene
+
+El panorama de agentes está evolucionando rápido. Estamos viendo mejor planificación, ventanas de contexto más largas y uso de herramientas más confiable. El futuro es agéntico — pero necesitamos construirlo con responsabilidad.

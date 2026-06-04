@@ -1,5 +1,7 @@
 import { getBlogPost, getBlogPosts } from "@/lib/blog";
+import { t, formatDate, type Lang, LANGUAGES } from "@/lib/translations";
 import { notFound } from "next/navigation";
+import { Suspense } from "react";
 import Link from "next/link";
 import NewsletterForm from "@/components/blog/newsletter-form";
 import LanguageToggle from "@/components/blog/language-toggle";
@@ -7,11 +9,22 @@ import type { Metadata } from "next";
 
 interface PageProps {
   params: Promise<{ slug: string }>;
+  searchParams: Promise<{ lang?: string }>;
 }
 
-export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
+function parseLang(raw: string | string[] | undefined): Lang {
+  if (typeof raw === "string") {
+    const found = LANGUAGES.find((l) => l.code === raw);
+    if (found) return found.code;
+  }
+  return "pt";
+}
+
+export async function generateMetadata({ params, searchParams }: PageProps): Promise<Metadata> {
   const { slug } = await params;
-  const post = getBlogPost(slug);
+  const sp = await searchParams;
+  const lang = parseLang(sp.lang);
+  const post = getBlogPost(slug, lang);
   if (!post) return { title: "Post não encontrado | Hernando.ia" };
 
   return {
@@ -32,17 +45,16 @@ export function generateStaticParams() {
   return posts.map((post) => ({ slug: post.slug }));
 }
 
-export default async function BlogPostPage({ params }: PageProps) {
+export default async function BlogPostPage({ params, searchParams }: PageProps) {
   const { slug } = await params;
-  const post = getBlogPost(slug);
+  const sp = await searchParams;
+  const lang = parseLang(sp.lang);
+
+  const post = getBlogPost(slug, lang);
 
   if (!post) notFound();
 
-  const formattedDate = new Date(post.date).toLocaleDateString("pt-BR", {
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-  });
+  const formattedDate = formatDate(post.date, lang);
 
   return (
     <div className="min-h-screen bg-[#08081a]">
@@ -53,12 +65,14 @@ export default async function BlogPostPage({ params }: PageProps) {
         {/* Top bar: back + language toggle */}
         <div className="flex items-center justify-between mb-10">
           <Link
-            href="/blog"
+            href={`/blog${lang !== "pt" ? `?lang=${lang}` : ""}`}
             className="inline-flex items-center gap-2 text-sm text-white/40 hover:text-accent transition-colors"
           >
-            ← Voltar ao blog
+            {t("back_to_blog", lang)}
           </Link>
-          <LanguageToggle />
+          <Suspense fallback={null}>
+            <LanguageToggle currentLang={lang} />
+          </Suspense>
         </div>
 
         {/* Header */}
@@ -84,17 +98,21 @@ export default async function BlogPostPage({ params }: PageProps) {
           <div className="flex items-center gap-3 text-sm text-white/40">
             <time dateTime={post.date}>{formattedDate}</time>
             <span className="text-white/20">·</span>
-            <span>{post.readingTime} min de leitura</span>
+            <span>{post.readingTime} {t("min_read", lang)}</span>
             {post.sponsored && (
               <>
                 <span className="text-white/20">·</span>
-                <span className="text-accent/70 font-medium">Patrocinado</span>
+                <span className="text-accent/70 font-medium">
+                  {t("sponsored_label", lang)}
+                </span>
               </>
             )}
             {post.premium && (
               <>
                 <span className="text-white/20">·</span>
-                <span className="text-accent font-medium">Premium</span>
+                <span className="text-accent font-medium">
+                  {t("premium_label", lang)}
+                </span>
               </>
             )}
           </div>
@@ -104,13 +122,13 @@ export default async function BlogPostPage({ params }: PageProps) {
         {post.premium && (
           <div className="glass p-6 mb-10 glow-border text-center">
             <p className="text-lg font-semibold text-accent mb-2">
-              Conteúdo Premium
+              {t("premium_title", lang)}
             </p>
             <p className="text-white/50 text-sm mb-4">
-              Este é um artigo premium. Assine para desbloquear o conteúdo completo.
+              {t("premium_body", lang)}
             </p>
             <button className="px-5 py-2 rounded-lg bg-accent text-[#08081a] font-semibold text-sm hover:bg-accent/90 transition-colors">
-              Desbloquear com Assinatura
+              {t("premium_button", lang)}
             </button>
           </div>
         )}
@@ -127,12 +145,12 @@ export default async function BlogPostPage({ params }: PageProps) {
         {post.sponsored && (
           <div className="mt-12 glass p-4 text-center">
             <p className="text-xs text-white/30">
-              Este post contém conteúdo patrocinado ou afiliado.{" "}
+              {t("sponsor_disclosure", lang)}{" "}
               <a
                 href="/sponsorship"
                 className="text-accent/50 hover:text-accent transition-colors"
               >
-                Saiba mais sobre nossa política de patrocínio.
+                {t("sponsor_policy", lang)}
               </a>
             </p>
           </div>
@@ -140,10 +158,11 @@ export default async function BlogPostPage({ params }: PageProps) {
 
         {/* Newsletter CTA */}
         <div className="mt-16 glass p-8 text-center glow-border">
-          <h2 className="text-xl font-bold mb-2">Gostou deste artigo?</h2>
+          <h2 className="text-xl font-bold mb-2">
+            {t("liked_article", lang)}
+          </h2>
           <p className="text-white/50 text-sm mb-5">
-            Assine a newsletter para receber mais insights de engenharia de IA
-            direto no seu email.
+            {t("liked_sub", lang)}
           </p>
           <NewsletterForm />
         </div>

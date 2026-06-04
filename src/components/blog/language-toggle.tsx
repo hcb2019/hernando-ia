@@ -1,26 +1,36 @@
 "use client";
 
-import { useState } from "react";
+import { useRouter, usePathname, useSearchParams } from "next/navigation";
+import { LANGUAGES, type Lang } from "@/lib/translations";
 
-const languages = [
-  { code: "pt", label: "PT" },
-  { code: "en", label: "EN" },
-  { code: "es", label: "ES" },
-] as const;
+interface LanguageToggleProps {
+  currentLang: Lang;
+}
 
-type Lang = (typeof languages)[number]["code"];
+export default function LanguageToggle({ currentLang }: LanguageToggleProps) {
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
 
-export default function LanguageToggle() {
-  const [active, setActive] = useState<Lang>("pt");
+  function switchLang(lang: Lang) {
+    const params = new URLSearchParams(searchParams.toString());
+    if (lang === "pt") {
+      params.delete("lang"); // PT is default, no need for ?lang=pt
+    } else {
+      params.set("lang", lang);
+    }
+    const query = params.toString();
+    router.push(query ? `${pathname}?${query}` : pathname);
+  }
 
   return (
     <div className="flex items-center gap-1">
-      {languages.map((lang) => (
+      {LANGUAGES.map((lang) => (
         <button
           key={lang.code}
-          onClick={() => setActive(lang.code)}
+          onClick={() => switchLang(lang.code)}
           className={`text-xs px-2 py-1 rounded font-medium transition-colors ${
-            active === lang.code
+            currentLang === lang.code
               ? "bg-[--accent] text-[#09090B]"
               : "text-[--muted] hover:text-[--foreground]"
           }`}
