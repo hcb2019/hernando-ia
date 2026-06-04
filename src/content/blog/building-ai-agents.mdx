@@ -1,0 +1,45 @@
+---
+title: "Construindo Agentes de IA Que Realmente Funcionam"
+date: 2025-11-15
+excerpt: "Lições aprendidas ao colocar agentes de IA em produção — o que funciona, o que quebra e como construir sistemas agenticos confiáveis."
+tags: [IA, Agentes, Engenharia, Produção]
+readingTime: 8
+---
+
+## O Hype dos Agentes É Real
+
+Todo mundo está construindo agentes de IA. Mas colocar um que realmente funciona em produção? Essa é uma história completamente diferente.
+
+Depois de passar os últimos 18 meses construindo e implantando agentes de IA em escala, aprendi que a distância entre uma demo legal e um sistema de produção confiável é enorme. Aqui está o que eu aprendi.
+
+## Por Que a Maioria dos Agentes Falha
+
+O principal motivo pelo qual agentes falham em produção não é o modelo — é a arquitetura ao redor do modelo.
+
+Você precisa de:
+
+- **Chamadas de ferramenta confiáveis** — O agente precisa saber quando usar qual ferramenta e lidar com falhas com elegância
+- **Gestão de contexto** — Conversas longas explodem o uso de tokens e degradam a performance
+- **Observabilidade** — Se você não consegue ver o que o agente está pensando, não consegue depurar
+- **Guardrails** — Agentes vão alucinar. Planeje para isso.
+
+## A Arquitetura Que Funciona
+
+Depois de muitas iterações, aqui está a arquitetura que entrega resultado consistentemente:
+
+```
+Usuário → Agente Roteador → Agente Especializado → Camada de Ferramentas → Resposta
+```
+
+O roteador descobre a intenção. Agentes especializados lidam com domínios específicos. Ferramentas são a interface com o mundo real.
+
+## Principais Aprendizados
+
+1. **Comece simples** — Um único agente bem promptado vence um sistema multi-agente complexo 9 de 10 vezes
+2. **Registre tudo** — Cada pensamento, cada chamada de ferramenta, cada decisão
+3. **Falhe com elegância** — Agentes vão errar. Projete sua UX para lidar com isso
+4. **Meça o que importa** — Taxa de conclusão de tarefas, não apenas qualidade de resposta
+
+## O Que Vem Por Aí
+
+O cenário de agentes está evoluindo rápido. Estamos vendo melhor planejamento, janelas de contexto mais longas e uso de ferramentas mais confiável. O futuro é agentico — mas precisamos construí-lo com responsabilidade.

@@ -1,0 +1,83 @@
+{
+  "updated_at": "2026-06-04T18:48:18.090975+00:00",
+  "github": {
+    "user": {
+      "login": "hcb2019",
+      "name": "Hernando Candido Begnami",
+      "avatar_url": "https://avatars.githubusercontent.com/u/223763838?v=4",
+      "html_url": "https://github.com/hcb2019",
+      "bio": null,
+      "location": null,
+      "public_repos": 1,
+      "followers": 0,
+      "following": 0
+    },
+    "repos": [
+      {
+        "name": "Ufokko",
+        "full_name": "hcb2019/Ufokko",
+        "html_url": "https://github.com/hcb2019/Ufokko",
+        "description": "Marketplace que conecta clientes a videomakers profissionais. Sistema completo com pagamento escrow, chat real-time, avaliacoes e geolocalizacao.",
+        "language": "JavaScript",
+        "stargazers_count": 0,
+        "forks_count": 0,
+        "updated_at": "2026-06-04T18:20:25Z"
+      },
+      {
+        "name": "arenabite",
+        "full_name": "hcb2019/arenabite",
+        "html_url": "https://github.com/hcb2019/arenabite",
+        "description": "Nutricao tatica com IA para atletas. Scanner de refeicoes por foto, timeline nutricional preditiva e planos personalizados.",
+        "language": "TypeScript",
+        "stargazers_count": 0,
+        "forks_count": 0,
+        "updated_at": "2026-06-04T18:13:28Z"
+      },
+      {
+        "name": "popularizei",
+        "full_name": "hcb2019/popularizei",
+        "html_url": "https://github.com/hcb2019/popularizei",
+        "description": "Plataforma IA para crescer no Instagram. Analise de perfil, scripts palavra por palavra com gatilhos mentais e jornada Fear-to-Fame.",
+        "language": "TypeScript",
+        "stargazers_count": 0,
+        "forks_count": 0,
+        "updated_at": "2026-06-04T18:13:29Z"
+      },
+      {
+        "name": "nutri-talita",
+        "full_name": "hcb2019/nutri-talita",
+        "html_url": "https://github.com/hcb2019/nutri-talita",
+        "description": "Site profissional de nutricao com Sanity CMS e Next.js. Conteudo gerenciado, design responsivo e otimizado para SEO.",
+        "language": "TypeScript",
+        "stargazers_count": 0,
+        "forks_count": 0,
+        "updated_at": "2026-06-04T18:13:30Z"
+      },
+      {
+        "name": "videomakers-app-antigo",
+        "full_name": "hcb2019/videomakers-app-antigo",
+        "html_url": "https://github.com/hcb2019/videomakers-app-antigo",
+        "description": "App mobile React Native para marketplace de videomakers. Versao legada do Ufokko - Expo + Firebase + React Navigation.",
+        "language": "JavaScript",
+        "stargazers_count": 0,
+        "forks_count": 0,
+        "updated_at": "2026-06-04T18:13:31Z"
+      }
+    ],
+    "stats": {
+      "repos": 5,
+      "stars": 0,
+      "followers": 0,
+      "forks": 0
+    },
+    "events": [],
+    "updated_at": "2026-06-04T18:48:18.090975+00:00"
+  },
+  "instagram": {
+    "followers": 1191,
+    "posts": 113,
+    "account_type": "MEDIA_CREATOR",
+    "reach_30d": 446520,
+    "updated_at": "2026-06-04T18:48:18.090975+00:00"
+  }
+}
