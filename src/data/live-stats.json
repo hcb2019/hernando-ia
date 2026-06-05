@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-06-05T00:04:03.804330+00:00",
+  "updated_at": "2026-06-05T12:00:41.711320+00:00",
   "github": {
     "user": {
       "login": "hcb2019",
@@ -21,7 +21,7 @@
         "language": "TypeScript",
         "stargazers_count": 0,
         "forks_count": 0,
-        "updated_at": "2026-06-04T23:45:08Z"
+        "updated_at": "2026-06-05T01:25:36Z"
       },
       {
         "name": "Ufokko",
@@ -81,13 +81,13 @@
       "forks": 0
     },
     "events": [],
-    "updated_at": "2026-06-05T00:04:03.804330+00:00"
+    "updated_at": "2026-06-05T12:00:41.711320+00:00"
   },
   "instagram": {
-    "followers": 1193,
+    "followers": 1201,
     "posts": 113,
     "account_type": "MEDIA_CREATOR",
-    "reach_30d": 448147,
-    "updated_at": "2026-06-05T00:04:03.804330+00:00"
+    "reach_30d": 453914,
+    "updated_at": "2026-06-05T12:00:41.711320+00:00"
   }
 }
