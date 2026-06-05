@@ -20,7 +20,10 @@ interface SubscriberStore {
 
 // ── Storage ────────────────────────────────────────────────────────
 
-const DATA_DIR = join(process.cwd(), "data");
+// On Vercel/cloud, use /tmp which is writable. On local/dev, use data/ dir.
+const DATA_DIR = process.env.VERCEL
+  ? "/tmp"
+  : join(process.cwd(), "data");
 const SUBSCRIBERS_FILE = join(DATA_DIR, "subscribers.json");
 
 function ensureDataDir(): void {
