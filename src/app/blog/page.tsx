@@ -3,6 +3,7 @@ import { t, formatDate, LANGUAGES, type Lang } from "@/lib/translations";
 import { generatePageMeta } from "@/lib/seo";
 import BlogCard from "@/components/blog/blog-card";
 import NewsletterForm from "@/components/blog/newsletter-form";
+import SubscribeBanner from "@/components/blog/subscribe-banner";
 import LanguageToggle from "@/components/blog/language-toggle";
 import { Suspense } from "react";
 import type { Metadata } from "next";
@@ -46,7 +47,12 @@ export default async function BlogPage({ searchParams }: BlogPageProps) {
           </Suspense>
         </div>
 
-        {/* Header */}
+        {/* Subscription status banner */}
+          <Suspense fallback={null}>
+            <SubscribeBanner />
+          </Suspense>
+
+          {/* Header */}
         <div className="text-center mb-16">
           <h1 className="text-5xl sm:text-6xl font-bold glow-text mb-4">
             {t("blog_title", lang)}
