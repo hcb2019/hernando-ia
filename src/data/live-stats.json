@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-06-04T18:48:18.090975+00:00",
+  "updated_at": "2026-06-05T00:04:03.804330+00:00",
   "github": {
     "user": {
       "login": "hcb2019",
@@ -8,11 +8,21 @@
       "html_url": "https://github.com/hcb2019",
       "bio": null,
       "location": null,
-      "public_repos": 1,
+      "public_repos": 2,
       "followers": 0,
       "following": 0
     },
     "repos": [
+      {
+        "name": "hernando-ia",
+        "full_name": "hcb2019/hernando-ia",
+        "html_url": "https://github.com/hcb2019/hernando-ia",
+        "description": "Site pessoal de Hernando — AI Engineer & Entrepreneur. Portfolio, blog e cerebro digital. Next.js + Tailwind v4 + Kinetic Typography.",
+        "language": "TypeScript",
+        "stargazers_count": 0,
+        "forks_count": 0,
+        "updated_at": "2026-06-04T23:45:08Z"
+      },
       {
         "name": "Ufokko",
         "full_name": "hcb2019/Ufokko",
@@ -65,19 +75,19 @@
       }
     ],
     "stats": {
-      "repos": 5,
+      "repos": 6,
       "stars": 0,
       "followers": 0,
       "forks": 0
     },
     "events": [],
-    "updated_at": "2026-06-04T18:48:18.090975+00:00"
+    "updated_at": "2026-06-05T00:04:03.804330+00:00"
   },
   "instagram": {
-    "followers": 1191,
+    "followers": 1193,
     "posts": 113,
     "account_type": "MEDIA_CREATOR",
-    "reach_30d": 446520,
-    "updated_at": "2026-06-04T18:48:18.090975+00:00"
+    "reach_30d": 448147,
+    "updated_at": "2026-06-05T00:04:03.804330+00:00"
   }
 }

@@ -1,20 +1,18 @@
 import { getBlogPosts, getAllTags } from "@/lib/blog";
 import { t, formatDate, LANGUAGES, type Lang } from "@/lib/translations";
+import { generatePageMeta } from "@/lib/seo";
 import BlogCard from "@/components/blog/blog-card";
 import NewsletterForm from "@/components/blog/newsletter-form";
 import LanguageToggle from "@/components/blog/language-toggle";
 import { Suspense } from "react";
 import type { Metadata } from "next";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = generatePageMeta({
   title: "Blog | Hernando.ia",
   description:
     "Reflexões sobre engenharia de IA, startups e construção do futuro. Tutoriais, insights e bastidores de produtos reais.",
-  openGraph: {
-    title: "Blog | Hernando.ia",
-    description: "Insights de engenharia de IA, tutoriais e histórias de produtos.",
-  },
-};
+  path: "/blog",
+});
 
 function parseLang(raw: string | string[] | undefined): Lang {
   if (typeof raw === "string") {

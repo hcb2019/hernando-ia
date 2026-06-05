@@ -1,5 +1,6 @@
 import { getBlogPost, getBlogPosts } from "@/lib/blog";
 import { t, formatDate, type Lang, LANGUAGES } from "@/lib/translations";
+import { generateBlogPostMeta, JSONLD } from "@/lib/seo";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import Link from "next/link";
@@ -27,17 +28,7 @@ export async function generateMetadata({ params, searchParams }: PageProps): Pro
   const post = getBlogPost(slug, lang);
   if (!post) return { title: "Post não encontrado | Hernando.ia" };
 
-  return {
-    title: `${post.title} | Hernando.ia`,
-    description: post.excerpt,
-    openGraph: {
-      title: post.title,
-      description: post.excerpt,
-      type: "article",
-      publishedTime: post.date,
-      tags: post.tags,
-    },
-  };
+  return generateBlogPostMeta(post, lang);
 }
 
 export function generateStaticParams() {
@@ -55,9 +46,25 @@ export default async function BlogPostPage({ params, searchParams }: PageProps) 
   if (!post) notFound();
 
   const formattedDate = formatDate(post.date, lang);
+  const articleJSONLD = JSONLD.article(post, lang);
+  const breadcrumbJSONLD = JSONLD.breadcrumbList([
+    { name: "Home", url: "https://hernandoia.com" },
+    { name: t("blog_title", lang), url: "https://hernandoia.com/blog" },
+    { name: post.title, url: `https://hernandoia.com/blog/${slug}` },
+  ]);
 
   return (
     <div className="min-h-screen bg-[#08081a]">
+      {/* JSON-LD Structured Data */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(articleJSONLD) }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJSONLD) }}
+      />
+
       {/* Grid background */}
       <div className="fixed inset-0 grid-bg opacity-[0.03] pointer-events-none" />
 
@@ -214,7 +221,7 @@ function renderMarkdown(md: string): string {
   // Images
   html = html.replace(
     /!\[([^\]]*)\]\(([^)]+)\)/g,
-    '<img src="$2" alt="$1" class="rounded-lg my-8 max-w-full" />'
+    '<img src="$2" alt="$1" class="rounded-lg my-8 max-w-full" loading="lazy" />'
   );
 
   // Horizontal rules

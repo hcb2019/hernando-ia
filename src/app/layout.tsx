@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Space_Grotesk, Inter, Geist_Mono } from "next/font/google";
 import ClientProviders from "@/components/providers/client-providers";
+import { SITE, JSONLD } from "@/lib/seo";
 import "./globals.css";
 
 const spaceGrotesk = Space_Grotesk({
@@ -18,25 +19,59 @@ const inter = Inter({
 const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "Hernando.ia | AI Engineer & Entrepreneur",
-  description:
-    "Portfolio, blog e cerebro digital de Hernando — engenheiro de IA, empreendedor e criador. Conhecimento especifico, alavancagem e responsabilidade.",
+  title: {
+    default: "Hernando.ia | AI Engineer & Entrepreneur",
+    template: `%s | ${SITE.name}`,
+  },
+  description: SITE.description,
+  metadataBase: new URL(SITE.url),
+  alternates: {
+    canonical: SITE.url,
+    languages: {
+      pt: SITE.url,
+      en: `${SITE.url}?lang=en`,
+      es: `${SITE.url}?lang=es`,
+    },
+  },
+  authors: [{ name: SITE.author.name, url: SITE.author.url }],
+  creator: SITE.author.name,
+  publisher: SITE.author.name,
+  keywords: [...SITE.keywords],
+  category: "Technology",
   openGraph: {
-    title: "Hernando.ia",
-    description: "AI Engineer & Entrepreneur — Cerebro Digital",
-    url: "https://hernando.ia",
-    siteName: "Hernando.ia",
+    title: "Hernando.ia | AI Engineer & Entrepreneur",
+    description: SITE.description,
+    url: SITE.url,
+    siteName: SITE.name,
     locale: "pt_BR",
     type: "website",
+    images: [
+      {
+        url: `${SITE.url}${SITE.ogImage}`,
+        width: 1200,
+        height: 630,
+        alt: "Hernando.ia — AI Engineer & Entrepreneur",
+      },
+    ],
   },
   twitter: {
     card: "summary_large_image",
     title: "Hernando.ia",
-    description: "AI Engineer & Entrepreneur — Cerebro Digital",
+    description: SITE.description,
+    images: [`${SITE.url}${SITE.ogImage}`],
+    creator: SITE.twitterHandle,
+    site: SITE.twitterHandle,
   },
   robots: {
     index: true,
     follow: true,
+    "max-image-preview": "large",
+    "max-snippet": -1,
+    "max-video-preview": -1,
+  },
+  // Google Search Console verification (placeholder — replace with real code)
+  verification: {
+    // google: "YOUR_GOOGLE_VERIFICATION_CODE",
   },
 };
 
@@ -48,6 +83,20 @@ export default function RootLayout({
       lang="pt-BR"
       className={`${spaceGrotesk.variable} ${inter.variable} ${geistMono.variable} h-full antialiased dark`}
     >
+      <head>
+        {/* JSON-LD Structured Data */}
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(JSONLD.website()) }}
+        />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(JSONLD.person()) }}
+        />
+        {/* Preconnect to critical origins */}
+        <link rel="preconnect" href="https://avatars.githubusercontent.com" />
+        <link rel="dns-prefetch" href="https://github.com" />
+      </head>
       <body className="min-h-full flex flex-col bg-[--background] text-[--foreground] relative">
         {/* Noise texture overlay */}
         <svg className="noise-overlay" aria-hidden="true" width="100%" height="100%">
@@ -58,7 +107,7 @@ export default function RootLayout({
           <rect width="100%" height="100%" filter="url(#noise)" />
         </svg>
         <ClientProviders>
-        {children}
+          {children}
         </ClientProviders>
       </body>
     </html>
