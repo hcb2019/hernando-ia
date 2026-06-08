@@ -69,9 +69,8 @@ export const metadata: Metadata = {
     "max-snippet": -1,
     "max-video-preview": -1,
   },
-  // Google Search Console verification (placeholder — replace with real code)
   verification: {
-    // google: "YOUR_GOOGLE_VERIFICATION_CODE",
+    google: "opKznzS2KsfYJVDfnvOS_EvEgY8XDlltdnhPopVFNzQ",
   },
 };
 
