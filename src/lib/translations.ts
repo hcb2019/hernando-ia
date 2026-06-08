@@ -60,6 +60,11 @@ const dict: TranslationDict = {
     en: "← Back to blog",
     es: "← Volver al blog",
   },
+  related_posts: {
+    pt: "Leia também",
+    en: "Read also",
+    es: "Lee también",
+  },
   min_read: {
     pt: "min de leitura",
     en: "min read",

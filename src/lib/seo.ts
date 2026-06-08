@@ -152,10 +152,14 @@ export function generateBlogPostMeta(
   const langSuffix = lang !== "pt" ? `?lang=${lang}` : "";
   const fullPath = `${path}${langSuffix}`;
 
+  // Dynamic OG image per post
+  const ogImageUrl = `/api/og?title=${encodeURIComponent(post.title)}&date=${encodeURIComponent(post.date)}&tags=${encodeURIComponent(post.tags.slice(0, 4).join(","))}`;
+
   return generatePageMeta({
     title: post.title,
     description: post.excerpt,
     path: fullPath,
+    ogImage: ogImageUrl,
     type: "article",
     publishedTime: post.date,
     tags: post.tags,

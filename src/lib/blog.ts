@@ -234,3 +234,32 @@ export function getAllTags(lang: Lang = 'pt'): { tag: string; count: number }[] 
 export function getBlogPostsByTag(tag: string): BlogPost[] {
   return getBlogPosts().filter((post) => post.tags.includes(tag))
 }
+
+/**
+ * Returns related posts based on shared tags, excluding the current post.
+ * Falls back to recent posts if no tag overlap.
+ */
+export function getRelatedPosts(
+  currentSlug: string,
+  currentTags: string[],
+  limit = 3
+): BlogPost[] {
+  const allPosts = getBlogPosts().filter((p) => p.slug !== currentSlug)
+
+  if (allPosts.length === 0) return []
+
+  // Score by shared tags
+  const scored = allPosts.map((post) => {
+    const shared = post.tags.filter((t) => currentTags.includes(t)).length
+    return { post, shared }
+  })
+
+  scored.sort((a, b) => b.shared - a.shared)
+
+  const related = scored.filter((s) => s.shared > 0).map((s) => s.post)
+
+  // Fallback: recent posts if no tag overlap
+  if (related.length === 0) return allPosts.slice(0, limit)
+
+  return related.slice(0, limit)
+}

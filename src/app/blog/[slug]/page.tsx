@@ -1,4 +1,4 @@
-import { getBlogPost, getBlogPosts } from "@/lib/blog";
+import { getBlogPost, getBlogPosts, getRelatedPosts } from "@/lib/blog";
 import { t, formatDate, type Lang, LANGUAGES } from "@/lib/translations";
 import { generateBlogPostMeta, JSONLD } from "@/lib/seo";
 import { notFound } from "next/navigation";
@@ -52,6 +52,8 @@ export default async function BlogPostPage({ params, searchParams }: PageProps) 
     { name: t("blog_title", lang), url: "https://hernandoia.com/blog" },
     { name: post.title, url: `https://hernandoia.com/blog/${slug}` },
   ]);
+  const relatedPosts = getRelatedPosts(slug, post.tags, 3);
+  const allPosts = getBlogPosts(lang).filter(p => p.slug !== slug);
 
   return (
     <div className="min-h-screen bg-[#08081a]">
@@ -70,13 +72,22 @@ export default async function BlogPostPage({ params, searchParams }: PageProps) 
 
       <main className="relative max-w-3xl mx-auto px-4 sm:px-8 py-24">
         {/* Top bar: back + language toggle */}
-        <div className="flex items-center justify-between mb-10">
-          <Link
-            href={`/blog${lang !== "pt" ? `?lang=${lang}` : ""}`}
-            className="inline-flex items-center gap-2 text-sm text-white/40 hover:text-accent transition-colors"
-          >
-            {t("back_to_blog", lang)}
-          </Link>
+        <div className="flex items-center justify-between mb-6">
+          {/* Breadcrumb */}
+          <nav aria-label="Breadcrumb" className="flex items-center gap-2 text-xs text-white/30">
+            <Link href="/" className="hover:text-accent transition-colors">
+              Home
+            </Link>
+            <span className="text-white/10">/</span>
+            <Link
+              href={`/blog${lang !== "pt" ? `?lang=${lang}` : ""}`}
+              className="hover:text-accent transition-colors"
+            >
+              Blog
+            </Link>
+            <span className="text-white/10">/</span>
+            <span className="text-white/50 line-clamp-1 max-w-[200px]">{post.title}</span>
+          </nav>
           <Suspense fallback={null}>
             <LanguageToggle currentLang={lang} />
           </Suspense>
@@ -147,6 +158,30 @@ export default async function BlogPostPage({ params, searchParams }: PageProps) 
             dangerouslySetInnerHTML={{ __html: renderMarkdown(post.content) }}
           />
         </article>
+
+        {/* Related Posts */}
+        {(relatedPosts.length > 0 || allPosts.length > 0) && (
+          <section className="mt-16 border-t border-border pt-12">
+            <h2 className="text-xl font-bold mb-8">
+              {t("related_posts", lang) || "Leia também"}
+            </h2>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              {(relatedPosts.length > 0 ? relatedPosts : allPosts.slice(0, 3)).map((related) => (
+                <Link
+                  key={related.slug}
+                  href={`/blog/${related.slug}${lang !== "pt" ? `?lang=${lang}` : ""}`}
+                  className="block p-4 border border-border hover:border-accent/30 transition-colors group"
+                >
+                  <p className="text-xs text-white/30 mb-1">{related.date}</p>
+                  <h3 className="text-sm font-semibold text-white/70 group-hover:text-accent transition-colors line-clamp-2 mb-2">
+                    {related.title}
+                  </h3>
+                  <p className="text-xs text-white/40 line-clamp-2">{related.excerpt}</p>
+                </Link>
+              ))}
+            </div>
+          </section>
+        )}
 
         {/* Sponsor disclosure */}
         {post.sponsored && (
