@@ -46,6 +46,19 @@ export default function sitemap(): MetadataRoute.Sitemap {
         },
       },
     },
+    {
+      url: `${SITE.url}/produtos/claude-code-skills`,
+      lastModified: new Date(),
+      changeFrequency: "weekly",
+      priority: 0.9,
+      alternates: {
+        languages: {
+          pt: `${SITE.url}/produtos/claude-code-skills`,
+          en: `${SITE.url}/produtos/claude-code-skills?lang=en`,
+          es: `${SITE.url}/produtos/claude-code-skills?lang=es`,
+        },
+      },
+    },
     ...blogEntries,
   ];
 }

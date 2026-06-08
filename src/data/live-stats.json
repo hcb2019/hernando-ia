@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-06-06T12:00:13.066721+00:00",
+  "updated_at": "2026-06-08T18:01:01.542043+00:00",
   "github": {
     "user": {
       "login": "hcb2019",
@@ -18,10 +18,10 @@
         "full_name": "hcb2019/hernando-ia",
         "html_url": "https://github.com/hcb2019/hernando-ia",
         "description": "Site pessoal de Hernando — AI Engineer & Entrepreneur. Portfolio, blog e cerebro digital. Next.js + Tailwind v4 + Kinetic Typography.",
-        "language": "MDX",
+        "language": "TypeScript",
         "stargazers_count": 0,
         "forks_count": 0,
-        "updated_at": "2026-06-06T09:31:12Z"
+        "updated_at": "2026-06-08T17:30:57Z"
       },
       {
         "name": "Ufokko",
@@ -81,13 +81,13 @@
       "forks": 0
     },
     "events": [],
-    "updated_at": "2026-06-06T12:00:13.066721+00:00"
+    "updated_at": "2026-06-08T18:01:01.542043+00:00"
   },
   "instagram": {
-    "followers": 1207,
-    "posts": 113,
+    "followers": 1249,
+    "posts": 114,
     "account_type": "MEDIA_CREATOR",
-    "reach_30d": 458179,
-    "updated_at": "2026-06-06T12:00:13.066721+00:00"
+    "reach_30d": 464111,
+    "updated_at": "2026-06-08T18:01:01.542043+00:00"
   }
 }

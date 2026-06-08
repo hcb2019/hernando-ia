@@ -208,6 +208,32 @@ export default async function BlogPostPage({ params, searchParams }: PageProps) 
           </p>
           <NewsletterForm />
         </div>
+
+        {/* Product CTA */}
+        <section className="mt-12 border-2 border-accent/20 bg-accent/5 p-8 text-center">
+          <span className="text-xs uppercase tracking-[0.15em] text-accent font-medium">
+            FERRAMENTA EXCLUSIVA
+          </span>
+          <h2 className="text-2xl font-bold mt-3 mb-3">
+            Quer um Claude Code que pensa como engenheiro de elite?
+          </h2>
+          <p className="text-white/60 text-sm max-w-xl mx-auto mb-6">
+            Transforme seu agente de IA em um dev sênior com 20 skills profissionais em português — debugging, TDD, arquitetura, code review e muito mais.
+          </p>
+          <div className="flex items-center justify-center gap-4 flex-wrap">
+            <span className="text-3xl font-bold text-accent">R$97</span>
+            <span className="text-sm text-white/40 line-through">R$147</span>
+            <span className="text-xs bg-accent/20 text-accent px-2 py-1 rounded font-medium">
+              LANÇAMENTO
+            </span>
+          </div>
+          <Link
+            href="/produtos/claude-code-skills"
+            className="inline-flex items-center gap-2 mt-4 bg-accent text-[#08081a] font-bold uppercase tracking-tighter px-8 py-3 text-sm hover:bg-accent/90 transition-colors"
+          >
+            CONHECER O PACOTE →
+          </Link>
+        </section>
       </main>
     </div>
   );
