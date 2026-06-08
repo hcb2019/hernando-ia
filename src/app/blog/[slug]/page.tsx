@@ -221,17 +221,22 @@ export default async function BlogPostPage({ params, searchParams }: PageProps) 
             Transforme seu agente de IA em um dev sênior com 20 skills profissionais em português — debugging, TDD, arquitetura, code review e muito mais.
           </p>
           <div className="flex items-center justify-center gap-4 flex-wrap">
-            <span className="text-3xl font-bold text-accent">R$97</span>
+            <span className="text-3xl font-bold text-accent">GRÁTIS</span>
             <span className="text-sm text-white/40 line-through">R$147</span>
             <span className="text-xs bg-accent/20 text-accent px-2 py-1 rounded font-medium">
-              LANÇAMENTO
+              OPEN SOURCE
             </span>
+          </div>
+          <div className="flex items-center justify-center gap-2 mt-4">
+            <code className="bg-black/30 border border-white/10 rounded px-3 py-1.5 text-xs text-accent font-mono">
+              npx @hernandoia/claude-code-skills
+            </code>
           </div>
           <Link
             href="/produtos/claude-code-skills"
-            className="inline-flex items-center gap-2 mt-4 bg-accent text-[#08081a] font-bold uppercase tracking-tighter px-8 py-3 text-sm hover:bg-accent/90 transition-colors"
+            className="inline-flex items-center gap-2 mt-3 bg-accent/10 border border-accent/30 text-accent font-bold uppercase tracking-tighter px-6 py-2 text-xs hover:bg-accent/20 transition-colors"
           >
-            CONHECER O PACOTE →
+            VER DETALHES →
           </Link>
         </section>
       </main>

@@ -199,21 +199,20 @@ export default function ClaudeCodeSkillsPage() {
 
             {/* Price + CTA */}
             <div className="flex flex-col items-center gap-6">
-              {/* Pricing */}
+              {/* Pricing — GRÁTIS */}
               <div className="flex flex-col items-center gap-2">
                 <div className="flex items-baseline gap-2">
-                  <span className="text-lg text-[--muted-foreground] line-through">R$147</span>
-                  <span className="text-5xl sm:text-6xl font-bold glow-text">R$97</span>
+                  <span className="text-2xl text-[--muted-foreground] line-through">R$147</span>
+                  <span className="text-5xl sm:text-6xl font-bold text-[--accent] glow-text">GRÁTIS</span>
                 </div>
                 <span className="text-sm text-[--muted-foreground]">
-                  ou 12x de{" "}
-                  <span className="font-semibold text-[--foreground]">R$9,78</span>
+                  Código aberto (MIT) • Instalação em 1 comando
                 </span>
 
-                {/* Early bird badge */}
+                {/* Open source badge */}
                 <div className="mt-2 inline-flex items-center gap-1.5 px-3 py-1 rounded bg-[--accent]/10 border border-[--accent]/20">
                   <span className="text-xs font-bold uppercase tracking-[0.1em] text-[--accent]">
-                    🚀 LANÇAMENTO — R$97 (primeiros 100)
+                    🎉 OPEN SOURCE — 20 skills profissionais
                   </span>
                 </div>
               </div>
@@ -226,7 +225,7 @@ export default function ClaudeCodeSkillsPage() {
 
               {/* Social proof */}
               <p className="text-xs text-[--muted-foreground]/60 mt-2">
-                🔒 Compra segura • Acesso imediato • 7 dias de garantia
+                ⭐ GitHub • 📖 Código aberto • 🇧🇷 100% PT-BR • 🔄 Atualizações gratuitas
               </p>
             </div>
           </div>
@@ -436,7 +435,7 @@ export default function ClaudeCodeSkillsPage() {
             {/* Urgency badge */}
             <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-[--accent]/40 bg-[--accent]/10 mb-8">
               <span className="text-xs uppercase tracking-[0.15em] text-[--accent] font-bold">
-                ⏳ PREÇO DE LANÇAMENTO
+                🎁 OPEN SOURCE — GRATUITO
               </span>
             </div>
 
@@ -452,28 +451,24 @@ export default function ClaudeCodeSkillsPage() {
               sozinho já vale o pacote.
             </p>
 
-            {/* Price */}
+            {/* Price — GRÁTIS */}
             <div className="flex flex-col items-center gap-3 mb-8">
               <div className="flex items-baseline gap-3">
                 <span className="text-xl text-[--muted-foreground] line-through">
                   R$147
                 </span>
-                <span className="text-6xl sm:text-7xl font-bold glow-text">
-                  R$97
+                <span className="text-6xl sm:text-7xl font-bold text-[--accent] glow-text">
+                  GRÁTIS
                 </span>
               </div>
               <span className="text-sm text-[--muted-foreground]">
-                ou 12x de{" "}
-                <span className="font-semibold text-[--foreground]">R$9,78</span>
+                Código aberto (MIT) • 59 arquivos • 20 skills
               </span>
               <div className="mt-2 inline-flex items-center gap-1.5 px-3 py-1 rounded bg-[--accent]/10 border border-[--accent]/20">
                 <span className="text-xs font-bold uppercase tracking-[0.1em] text-[--accent]">
-                  🚀 LANÇAMENTO — R$97 (primeiros 100)
+                  🎉 OPEN SOURCE — COMUNIDADE
                 </span>
               </div>
-              <p className="text-xs text-[--muted-foreground]/60 mt-2">
-                Depois R$147 — aproveite o preço de lançamento
-              </p>
             </div>
 
             {/* Install Command */}
