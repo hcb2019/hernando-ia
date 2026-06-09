@@ -70,6 +70,17 @@ export default function sitemap(): MetadataRoute.Sitemap {
         },
       },
     },
+    {
+      url: `${SITE.url}/servicos`,
+      lastModified: new Date(),
+      changeFrequency: "weekly",
+      priority: 0.9,
+      alternates: {
+        languages: {
+          pt: `${SITE.url}/servicos`,
+        },
+      },
+    },
     ...blogEntries,
   ];
 }

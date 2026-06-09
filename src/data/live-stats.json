@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-06-09T00:06:34.855723+00:00",
+  "updated_at": "2026-06-09T12:00:43.801805+00:00",
   "github": {
     "user": {
       "login": "hcb2019",
@@ -14,6 +14,16 @@
     },
     "repos": [
       {
+        "name": "hernando-ia",
+        "full_name": "hcb2019/hernando-ia",
+        "html_url": "https://github.com/hcb2019/hernando-ia",
+        "description": "Site pessoal de Hernando — AI Engineer & Entrepreneur. Portfolio, blog e cerebro digital. Next.js + Tailwind v4 + Kinetic Typography.",
+        "language": "TypeScript",
+        "stargazers_count": 0,
+        "forks_count": 0,
+        "updated_at": "2026-06-09T09:47:19Z"
+      },
+      {
         "name": "claude-code-skills",
         "full_name": "hcb2019/claude-code-skills",
         "html_url": "https://github.com/hcb2019/claude-code-skills",
@@ -22,16 +32,6 @@
         "stargazers_count": 0,
         "forks_count": 0,
         "updated_at": "2026-06-08T22:53:44Z"
-      },
-      {
-        "name": "hernando-ia",
-        "full_name": "hcb2019/hernando-ia",
-        "html_url": "https://github.com/hcb2019/hernando-ia",
-        "description": "Site pessoal de Hernando — AI Engineer & Entrepreneur. Portfolio, blog e cerebro digital. Next.js + Tailwind v4 + Kinetic Typography.",
-        "language": "TypeScript",
-        "stargazers_count": 0,
-        "forks_count": 0,
-        "updated_at": "2026-06-08T22:39:20Z"
       },
       {
         "name": "Ufokko",
@@ -91,13 +91,13 @@
       "forks": 0
     },
     "events": [],
-    "updated_at": "2026-06-09T00:06:34.855723+00:00"
+    "updated_at": "2026-06-09T12:00:43.801805+00:00"
   },
   "instagram": {
-    "followers": 1251,
-    "posts": 114,
+    "followers": 1258,
+    "posts": 116,
     "account_type": "MEDIA_CREATOR",
-    "reach_30d": 465141,
-    "updated_at": "2026-06-09T00:06:34.855723+00:00"
+    "reach_30d": 466620,
+    "updated_at": "2026-06-09T12:00:43.801805+00:00"
   }
 }

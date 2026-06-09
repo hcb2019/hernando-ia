@@ -9,6 +9,7 @@ const navLinks = [
   { href: "/blog", label: "BLOG" },
   { href: "/newsletter", label: "NEWSLETTER" },
   { href: "/produtos/claude-code-skills", label: "SKILLS" },
+  { href: "/servicos", label: "SERVIÇOS" },
 ];
 
 export default function Navbar() {
