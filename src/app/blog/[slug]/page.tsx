@@ -264,6 +264,28 @@ export default async function BlogPostPage({ params, searchParams }: PageProps) 
           </p>
         </section>
 
+        {/* Services CTA */}
+        <section className="mt-8 border-2 border-[--yellow]/20 bg-[--yellow]/5 p-8 text-center">
+          <span className="text-xs uppercase tracking-[0.15em] text-[--yellow] font-medium">
+            IMPLEMENTAÇÃO
+          </span>
+          <h2 className="text-2xl font-bold mt-3 mb-3">
+            Quer isso funcionando no SEU projeto?
+          </h2>
+          <p className="text-white/60 text-sm max-w-xl mx-auto mb-5">
+            Eu configuro, automatizo e entrego funcionando. Da instalação do Claude Code até agentes autônomos no seu negócio.
+          </p>
+          <div className="flex items-center justify-center gap-3 flex-wrap">
+            <Link
+              href="/servicos"
+              className="inline-flex items-center gap-2 bg-[--yellow]/10 border border-[--yellow]/30 text-[--yellow] font-bold uppercase tracking-tighter px-6 py-2 text-xs hover:bg-[--yellow]/20 transition-colors"
+            >
+              VER PLANOS →
+            </Link>
+            <span className="text-white/30 text-xs">a partir de R$ 497</span>
+          </div>
+        </section>
+
         {/* Share Section */}
         <section className="mt-12 glass p-6 text-center glow-border">
           <h3 className="text-sm font-semibold text-white/60 mb-3">

@@ -236,7 +236,7 @@ export default function ServicosPage() {
 
                   {/* CTA */}
                   <a
-                    href={`https://wa.me/5521999999999?text=${encodeURIComponent(pkg.whatsappMsg)}`}
+                    href={`https://wa.me/5521920032747?text=${encodeURIComponent(pkg.whatsappMsg)}`}
                     target="_blank"
                     rel="noopener noreferrer"
                     className={`inline-flex items-center justify-center gap-2 w-full font-bold uppercase tracking-tighter px-4 py-2.5 text-xs transition-colors ${
@@ -291,7 +291,7 @@ export default function ServicosPage() {
           </p>
           <div className="flex items-center justify-center gap-4 flex-wrap">
             <a
-              href="https://wa.me/5521999999999?text=Olá!%20Quero%20entender%20qual%20pacote%20faz%20mais%20sentido%20pra%20mim."
+              href="https://wa.me/5521920032747?text=Olá!%20Quero%20entender%20qual%20pacote%20faz%20mais%20sentido%20pra%20mim."
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex items-center gap-2 bg-[--yellow]/10 border border-[--yellow]/30 text-[--yellow] font-bold uppercase tracking-tighter px-6 py-2.5 text-xs hover:bg-[--yellow]/20 transition-colors"
