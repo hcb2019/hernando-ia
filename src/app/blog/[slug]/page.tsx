@@ -109,12 +109,13 @@ export default async function BlogPostPage({ params, searchParams }: PageProps) 
           {post.tags.length > 0 && (
             <div className="flex flex-wrap gap-2 mb-4">
               {post.tags.map((tag) => (
-                <span
+                <Link
                   key={tag}
-                  className="text-xs px-2 py-0.5 rounded-full border border-accent/20 text-accent/70 bg-accent/5"
+                  href={`/blog?tag=${encodeURIComponent(tag)}`}
+                  className="text-xs px-2 py-0.5 rounded-full border border-accent/20 text-accent/70 bg-accent/5 hover:bg-accent/15 hover:border-accent/40 transition-colors"
                 >
                   {tag}
-                </span>
+                </Link>
               ))}
             </div>
           )}

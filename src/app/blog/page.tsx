@@ -1,4 +1,4 @@
-import { getBlogPosts, getAllTags } from "@/lib/blog";
+import { getBlogPosts, getAllTags, getBlogPostsByTag } from "@/lib/blog";
 import { t, formatDate, LANGUAGES, type Lang } from "@/lib/translations";
 import { generatePageMeta } from "@/lib/seo";
 import BlogCard from "@/components/blog/blog-card";
@@ -7,6 +7,7 @@ import SubscribeBanner from "@/components/blog/subscribe-banner";
 import Navbar from "@/components/layout/navbar";
 import LanguageToggle from "@/components/blog/language-toggle";
 import { Suspense } from "react";
+import Link from "next/link";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = generatePageMeta({
@@ -25,14 +26,22 @@ function parseLang(raw: string | string[] | undefined): Lang {
 }
 
 interface BlogPageProps {
-  searchParams: Promise<{ lang?: string }>;
+  searchParams: Promise<{ lang?: string; tag?: string }>;
 }
 
 export default async function BlogPage({ searchParams }: BlogPageProps) {
   const params = await searchParams;
   const lang = parseLang(params.lang);
+  const activeTag = typeof params.tag === "string" ? params.tag : null;
 
-  const posts = getBlogPosts(lang);
+  const allPosts = getBlogPosts(lang);
+  const posts = activeTag ? getBlogPostsByTag(activeTag).filter(p => {
+    // re-apply language filter since getBlogPostsByTag doesn't filter by lang
+    if (lang === "pt") return !p.slug.endsWith(".en") && !p.slug.endsWith(".es");
+    if (lang === "en") return p.slug.endsWith(".en") || (!p.slug.endsWith(".es") && allPosts.some(ap => ap.slug === p.slug + ".en"));
+    if (lang === "es") return p.slug.endsWith(".es");
+    return true;
+  }) : allPosts;
   const tags = getAllTags(lang);
 
   return (
@@ -67,16 +76,52 @@ export default async function BlogPage({ searchParams }: BlogPageProps) {
 
         {/* Tag filters */}
         {tags.length > 0 && (
-          <div className="flex flex-wrap justify-center gap-2 mb-12">
-            {tags.map(({ tag, count }) => (
-              <span
-                key={tag}
-                className="text-xs px-3 py-1 rounded-full border border-accent/20 text-accent/70 bg-accent/5 cursor-pointer hover:bg-accent/10 transition-colors"
-              >
-                {tag} ({count})
-              </span>
-            ))}
+          <div className="flex flex-wrap justify-center gap-2 mb-6">
+            {/* "All" button — clears filter */}
+            <Link
+              href={`/blog${lang !== "pt" ? `?lang=${lang}` : ""}`}
+              className={`text-xs px-3 py-1 rounded-full border transition-colors font-medium ${
+                !activeTag
+                  ? "border-accent bg-accent text-black"
+                  : "border-white/15 text-white/40 hover:border-white/30 hover:text-white/70"
+              }`}
+            >
+              Todos ({allPosts.length})
+            </Link>
+            {tags.map(({ tag, count }) => {
+              const isActive = activeTag === tag;
+              const href = `/blog?tag=${encodeURIComponent(tag)}${lang !== "pt" ? `&lang=${lang}` : ""}`;
+              return (
+                <Link
+                  key={tag}
+                  href={href}
+                  className={`text-xs px-3 py-1 rounded-full border transition-colors font-medium ${
+                    isActive
+                      ? "border-accent bg-accent text-black"
+                      : "border-accent/20 text-accent/70 bg-accent/5 hover:bg-accent/10 hover:border-accent/40"
+                  }`}
+                >
+                  {tag} ({count})
+                  {isActive && <span className="ml-1 opacity-70">×</span>}
+                </Link>
+              );
+            })}
           </div>
+        )}
+
+        {/* Active tag indicator */}
+        {activeTag && (
+          <p className="text-center text-sm text-white/40 mb-8">
+            Mostrando {posts.length} {posts.length === 1 ? "post" : "posts"} com a tag{" "}
+            <strong className="text-accent">{activeTag}</strong>
+            {" — "}
+            <Link
+              href={`/blog${lang !== "pt" ? `?lang=${lang}` : ""}`}
+              className="text-accent/60 hover:text-accent underline underline-offset-4 transition-colors"
+            >
+              limpar filtro
+            </Link>
+          </p>
         )}
 
         {/* Posts grid */}
