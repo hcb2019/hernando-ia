@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-06-08T18:01:01.542043+00:00",
+  "updated_at": "2026-06-09T00:06:34.855723+00:00",
   "github": {
     "user": {
       "login": "hcb2019",
@@ -8,11 +8,21 @@
       "html_url": "https://github.com/hcb2019",
       "bio": null,
       "location": null,
-      "public_repos": 2,
+      "public_repos": 3,
       "followers": 0,
       "following": 0
     },
     "repos": [
+      {
+        "name": "claude-code-skills",
+        "full_name": "hcb2019/claude-code-skills",
+        "html_url": "https://github.com/hcb2019/claude-code-skills",
+        "description": "20 skills profissionais em PT-BR para Claude Code — debugging, TDD, arquitetura, code review. Primeiro pacote brasileiro.",
+        "language": "Python",
+        "stargazers_count": 0,
+        "forks_count": 0,
+        "updated_at": "2026-06-08T22:53:44Z"
+      },
       {
         "name": "hernando-ia",
         "full_name": "hcb2019/hernando-ia",
@@ -21,7 +31,7 @@
         "language": "TypeScript",
         "stargazers_count": 0,
         "forks_count": 0,
-        "updated_at": "2026-06-08T17:30:57Z"
+        "updated_at": "2026-06-08T22:39:20Z"
       },
       {
         "name": "Ufokko",
@@ -75,19 +85,19 @@
       }
     ],
     "stats": {
-      "repos": 6,
+      "repos": 7,
       "stars": 0,
       "followers": 0,
       "forks": 0
     },
     "events": [],
-    "updated_at": "2026-06-08T18:01:01.542043+00:00"
+    "updated_at": "2026-06-09T00:06:34.855723+00:00"
   },
   "instagram": {
-    "followers": 1249,
+    "followers": 1251,
     "posts": 114,
     "account_type": "MEDIA_CREATOR",
-    "reach_30d": 464111,
-    "updated_at": "2026-06-08T18:01:01.542043+00:00"
+    "reach_30d": 465141,
+    "updated_at": "2026-06-09T00:06:34.855723+00:00"
   }
 }

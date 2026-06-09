@@ -1,11 +1,13 @@
 import { getBlogPost, getBlogPosts, getRelatedPosts } from "@/lib/blog";
 import { t, formatDate, type Lang, LANGUAGES } from "@/lib/translations";
 import { generateBlogPostMeta, JSONLD } from "@/lib/seo";
+import { getSubscriberCount } from "@/lib/subscribers";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import Link from "next/link";
 import NewsletterForm from "@/components/blog/newsletter-form";
 import LanguageToggle from "@/components/blog/language-toggle";
+import ShareButton from "@/components/blog/share-button";
 import type { Metadata } from "next";
 
 interface PageProps {
@@ -54,6 +56,11 @@ export default async function BlogPostPage({ params, searchParams }: PageProps) 
   ]);
   const relatedPosts = getRelatedPosts(slug, post.tags, 3);
   const allPosts = getBlogPosts(lang).filter(p => p.slug !== slug);
+
+  const { total: subscriberCount } = getSubscriberCount();
+  const displayCount = subscriberCount >= 1000
+    ? (subscriberCount / 1000).toFixed(1) + "K"
+    : String(subscriberCount);
 
   return (
     <div className="min-h-screen bg-[#08081a]">
@@ -200,12 +207,26 @@ export default async function BlogPostPage({ params, searchParams }: PageProps) 
 
         {/* Newsletter CTA */}
         <div className="mt-16 glass p-8 text-center glow-border">
+          <div className="inline-flex items-center gap-2 mb-4 px-3 py-1 rounded-full border border-border bg-white/[0.03]">
+            <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
+            <span className="text-xs text-white/50">
+              Junte-se a{" "}
+              <strong className="text-white font-bold">{displayCount}</strong> leitores
+            </span>
+          </div>
           <h2 className="text-xl font-bold mb-2">
             {t("liked_article", lang)}
           </h2>
-          <p className="text-white/50 text-sm mb-5">
+          <p className="text-white/50 text-sm mb-4">
             {t("liked_sub", lang)}
           </p>
+          <div className="flex items-center justify-center gap-3 text-xs text-white/40 mb-5">
+            <span>📰 Curadoria semanal</span>
+            <span className="text-white/15">•</span>
+            <span>🧠 Análise sem hype</span>
+            <span className="text-white/15">•</span>
+            <span>🎁 Conteúdo exclusivo</span>
+          </div>
           <NewsletterForm />
         </div>
 
@@ -236,8 +257,21 @@ export default async function BlogPostPage({ params, searchParams }: PageProps) 
             href="/produtos/claude-code-skills"
             className="inline-flex items-center gap-2 mt-3 bg-accent/10 border border-accent/30 text-accent font-bold uppercase tracking-tighter px-6 py-2 text-xs hover:bg-accent/20 transition-colors"
           >
-            VER DETALHES →
+            INSTALAR AGORA →
           </Link>
+          <p className="text-xs text-white/30 mt-2">
+            20 skills. 1 comando. Grátis para sempre.
+          </p>
+        </section>
+
+        {/* Share Section */}
+        <section className="mt-12 glass p-6 text-center glow-border">
+          <h3 className="text-sm font-semibold text-white/60 mb-3">
+            Compartilhe este artigo
+          </h3>
+          <div className="flex items-center justify-center">
+            <ShareButton />
+          </div>
         </section>
       </main>
     </div>

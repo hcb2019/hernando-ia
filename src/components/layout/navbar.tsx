@@ -7,7 +7,8 @@ const navLinks = [
   { href: "/#filosofia", label: "FILOSOFIA" },
   { href: "/#projetos", label: "PROJETOS" },
   { href: "/blog", label: "BLOG" },
-  { href: "/#github", label: "GITHUB" },
+  { href: "/newsletter", label: "NEWSLETTER" },
+  { href: "/produtos/claude-code-skills", label: "SKILLS" },
 ];
 
 export default function Navbar() {
