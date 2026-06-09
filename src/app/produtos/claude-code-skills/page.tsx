@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { SITE, generatePageMeta } from "@/lib/seo";
+import Navbar from "@/components/layout/navbar";
 
 // ── Types ───────────────────────────────────────────────────────────────
 
@@ -168,9 +169,11 @@ export default function ClaudeCodeSkillsPage() {
       <div className="fixed inset-0 grid-bg opacity-[0.03] pointer-events-none" />
       <div className="fixed top-0 left-1/2 -translate-x-1/2 w-[800px] h-[600px] bg-[--accent] opacity-[0.02] blur-[180px] pointer-events-none" />
 
+      <Navbar />
+
       <main className="relative">
         {/* ═══════════ HERO SECTION ═══════════ */}
-        <section className="relative pt-32 pb-20 px-6 sm:px-8">
+        <section className="relative pt-24 pb-20 px-6 sm:px-8">
           <div className="max-w-4xl mx-auto text-center">
             {/* Badge */}
             <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-[--accent]/30 bg-[--accent]/5 mb-8">
