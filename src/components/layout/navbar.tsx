@@ -19,10 +19,18 @@ export default function Navbar() {
         bg-[--background]/70 backdrop-blur-xl border-b border-white/10">
         <Link
           href="/"
-          className="text-lg font-bold uppercase tracking-tighter"
+          className="flex items-center gap-2.5 text-lg font-bold uppercase tracking-tighter shrink-0"
         >
-          <span className="text-[--accent]">HERNANDO</span>
-          <span className="text-[--muted-foreground]">.IA</span>
+          <img
+            src="/logo.png"
+            srcSet="/logo.png 1x, /logo@2x.png 2x"
+            alt="Hernando.ia"
+            className="w-7 h-7 md:w-8 md:h-8"
+          />
+          <span className="hidden md:inline">
+            <span className="text-[--accent]">HERNANDO</span>
+            <span className="text-[--muted-foreground]">.IA</span>
+          </span>
         </Link>
         <div className="hidden md:flex items-center gap-6">
           {navLinks.map((link) => (

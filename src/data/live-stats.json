@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-06-09T12:00:43.801805+00:00",
+  "updated_at": "2026-06-09T18:00:21.014761+00:00",
   "github": {
     "user": {
       "login": "hcb2019",
@@ -21,7 +21,7 @@
         "language": "TypeScript",
         "stargazers_count": 0,
         "forks_count": 0,
-        "updated_at": "2026-06-09T09:47:19Z"
+        "updated_at": "2026-06-09T17:31:10Z"
       },
       {
         "name": "claude-code-skills",
@@ -91,13 +91,13 @@
       "forks": 0
     },
     "events": [],
-    "updated_at": "2026-06-09T12:00:43.801805+00:00"
+    "updated_at": "2026-06-09T18:00:21.014761+00:00"
   },
   "instagram": {
-    "followers": 1258,
+    "followers": 1257,
     "posts": 116,
     "account_type": "MEDIA_CREATOR",
-    "reach_30d": 466620,
-    "updated_at": "2026-06-09T12:00:43.801805+00:00"
+    "reach_30d": 467371,
+    "updated_at": "2026-06-09T18:00:21.014761+00:00"
   }
 }
