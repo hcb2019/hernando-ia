@@ -8,6 +8,7 @@ import Link from "next/link";
 import NewsletterForm from "@/components/blog/newsletter-form";
 import LanguageToggle from "@/components/blog/language-toggle";
 import ShareButton from "@/components/blog/share-button";
+import Navbar from "@/components/layout/navbar";
 import type { Metadata } from "next";
 
 interface PageProps {
@@ -77,23 +78,25 @@ export default async function BlogPostPage({ params, searchParams }: PageProps) 
       {/* Grid background */}
       <div className="fixed inset-0 grid-bg opacity-[0.03] pointer-events-none" />
 
-      <main className="relative max-w-3xl mx-auto px-4 sm:px-8 py-24">
+      <Navbar />
+
+      <main className="relative max-w-3xl mx-auto px-4 sm:px-8 pt-24 pb-24">
         {/* Top bar: back + language toggle */}
         <div className="flex items-center justify-between mb-6">
           {/* Breadcrumb */}
-          <nav aria-label="Breadcrumb" className="flex items-center gap-2 text-xs text-white/30">
-            <Link href="/" className="hover:text-accent transition-colors">
+          <nav aria-label="Breadcrumb" className="flex items-center gap-2 text-xs">
+            <Link href="/" className="text-accent hover:text-white transition-colors font-medium">
               Home
             </Link>
-            <span className="text-white/10">/</span>
+            <span className="text-white/15">/</span>
             <Link
               href={`/blog${lang !== "pt" ? `?lang=${lang}` : ""}`}
-              className="hover:text-accent transition-colors"
+              className="text-accent hover:text-white transition-colors font-medium"
             >
               Blog
             </Link>
-            <span className="text-white/10">/</span>
-            <span className="text-white/50 line-clamp-1 max-w-[200px]">{post.title}</span>
+            <span className="text-white/15">/</span>
+            <span className="text-white/40 line-clamp-1 max-w-[200px]">{post.title}</span>
           </nav>
           <Suspense fallback={null}>
             <LanguageToggle currentLang={lang} />

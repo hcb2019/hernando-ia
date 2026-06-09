@@ -4,6 +4,7 @@ import { generatePageMeta } from "@/lib/seo";
 import BlogCard from "@/components/blog/blog-card";
 import NewsletterForm from "@/components/blog/newsletter-form";
 import SubscribeBanner from "@/components/blog/subscribe-banner";
+import Navbar from "@/components/layout/navbar";
 import LanguageToggle from "@/components/blog/language-toggle";
 import { Suspense } from "react";
 import type { Metadata } from "next";
@@ -39,7 +40,9 @@ export default async function BlogPage({ searchParams }: BlogPageProps) {
       {/* Grid background */}
       <div className="fixed inset-0 grid-bg opacity-[0.03] pointer-events-none" />
 
-      <main className="relative max-w-6xl mx-auto px-4 sm:px-8 lg:px-16 py-24">
+      <Navbar />
+
+      <main className="relative max-w-6xl mx-auto px-4 sm:px-8 lg:px-16 pt-24 pb-24">
         {/* Top bar: language toggle */}
         <div className="flex justify-end mb-6">
           <Suspense fallback={null}>
