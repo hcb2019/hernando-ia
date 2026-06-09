@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Space_Grotesk, Inter, Geist_Mono } from "next/font/google";
 import ClientProviders from "@/components/providers/client-providers";
 import { SITE, JSONLD } from "@/lib/seo";
@@ -8,15 +8,29 @@ const spaceGrotesk = Space_Grotesk({
   variable: "--font-space-grotesk",
   subsets: ["latin"],
   weight: ["300", "400", "500", "600", "700"],
+  display: "swap",
 });
 
 const inter = Inter({
   variable: "--font-inter",
   subsets: ["latin"],
   weight: ["400", "500", "700"],
+  display: "swap",
 });
 
-const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"] });
+const geistMono = Geist_Mono({
+  variable: "--font-geist-mono",
+  subsets: ["latin"],
+  display: "swap",
+});
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+  themeColor: "#09090B",
+};
 
 export const metadata: Metadata = {
   title: {
@@ -124,11 +138,12 @@ export default function RootLayout({
         <link rel="preconnect" href="https://avatars.githubusercontent.com" />
         <link rel="dns-prefetch" href="https://github.com" />
       </head>
-      <body className="min-h-full flex flex-col bg-[--background] text-[--foreground] relative">
-        {/* Noise texture overlay */}
-        <svg className="noise-overlay" aria-hidden="true" width="100%" height="100%">
+      <body className="min-h-full flex flex-col bg-[--background] text-[--foreground] relative overflow-x-hidden">
+        {/* Noise texture — CSS-only on mobile for performance */}
+        <div className="noise-overlay" aria-hidden="true" />
+        <svg className="noise-svg hidden lg:block" aria-hidden="true" width="100%" height="100%">
           <filter id="noise">
-            <feTurbulence type="fractalNoise" baseFrequency="0.8" numOctaves="4" stitchTiles="stitch" />
+            <feTurbulence type="fractalNoise" baseFrequency="0.5" numOctaves="2" stitchTiles="stitch" />
             <feColorMatrix type="saturate" values="0" />
           </filter>
           <rect width="100%" height="100%" filter="url(#noise)" />
