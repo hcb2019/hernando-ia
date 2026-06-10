@@ -1,12 +1,21 @@
 // Only import kv when env vars are present (avoids crash on import)
 let kv: any = null;
-const HAS_KV = !!(process.env.KV_REST_API_URL && process.env.KV_REST_API_TOKEN);
+const KV_AVAILABLE = !!(process.env.KV_REST_API_URL && process.env.KV_REST_API_TOKEN);
+const REDIS_AVAILABLE = !!(process.env.REDIS_REST_URL && process.env.REDIS_REST_TOKEN);
+const HAS_KV = KV_AVAILABLE || REDIS_AVAILABLE;
 const KV_KEY = "subscribers:list";
 
 async function getKv() {
   if (!kv && HAS_KV) {
     const mod = await import("@vercel/kv");
-    kv = mod.kv;
+    if (KV_AVAILABLE) {
+      kv = mod.kv; // uses KV_URL / KV_REST_API_URL / KV_REST_API_TOKEN
+    } else if (REDIS_AVAILABLE) {
+      kv = mod.createClient({
+        url: process.env.REDIS_REST_URL!,
+        token: process.env.REDIS_REST_TOKEN!,
+      });
+    }
   }
   return kv;
 }
