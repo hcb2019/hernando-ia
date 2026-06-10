@@ -11,9 +11,43 @@ export interface Subscriber {
   unsubscribeToken: string;
 }
 
-// ── KV key ─────────────────────────────────────────────────────────
+// ── Storage backend detection ──────────────────────────────────────
 
-const SUBSCRIBERS_KEY = "subscribers:list";
+const HAS_KV = !!(process.env.KV_REST_API_URL && process.env.KV_REST_API_TOKEN);
+const KV_KEY = "subscribers:list";
+
+// ── File-based fallback (wiped on redeploy, but site works) ────────
+
+import { readFileSync, writeFileSync, existsSync, mkdirSync } from "fs";
+import { join } from "path";
+
+const DATA_DIR = process.env.VERCEL
+  ? "/tmp"
+  : join(process.cwd(), "data");
+const SUBSCRIBERS_FILE = join(DATA_DIR, "subscribers.json");
+
+function ensureDataDir(): void {
+  if (!existsSync(DATA_DIR)) {
+    mkdirSync(DATA_DIR, { recursive: true });
+  }
+}
+
+function fileLoadStore(): Subscriber[] {
+  ensureDataDir();
+  if (!existsSync(SUBSCRIBERS_FILE)) return [];
+  try {
+    return JSON.parse(readFileSync(SUBSCRIBERS_FILE, "utf-8"));
+  } catch {
+    return [];
+  }
+}
+
+function fileSaveStore(subscribers: Subscriber[]): void {
+  ensureDataDir();
+  writeFileSync(SUBSCRIBERS_FILE, JSON.stringify(subscribers, null, 2));
+}
+
+// ── Token generator ────────────────────────────────────────────────
 
 function generateToken(): string {
   return Array.from({ length: 32 }, () =>
@@ -21,20 +55,32 @@ function generateToken(): string {
   ).join("");
 }
 
-// ── Public API ─────────────────────────────────────────────────────
+// ── Unified API ────────────────────────────────────────────────────
 
-async function loadStore(): Promise<Subscriber[]> {
+async function kvLoadStore(): Promise<Subscriber[]> {
   try {
-    const data = await kv.get<Subscriber[]>(SUBSCRIBERS_KEY);
-    return data || [];
+    return (await kv.get<Subscriber[]>(KV_KEY)) || [];
   } catch (e) {
-    console.error("KV load error:", e);
+    console.error("KV load error, falling back to empty:", e);
     return [];
   }
 }
 
+async function kvSaveStore(subscribers: Subscriber[]): Promise<void> {
+  await kv.set(KV_KEY, subscribers);
+}
+
+async function loadStore(): Promise<Subscriber[]> {
+  if (HAS_KV) return kvLoadStore();
+  return fileLoadStore();
+}
+
 async function saveStore(subscribers: Subscriber[]): Promise<void> {
-  await kv.set(SUBSCRIBERS_KEY, subscribers);
+  if (HAS_KV) {
+    await kvSaveStore(subscribers);
+  } else {
+    fileSaveStore(subscribers);
+  }
 }
 
 export async function subscribe(
@@ -42,10 +88,8 @@ export async function subscribe(
 ): Promise<{ subscriber: Subscriber; isNew: boolean }> {
   const subscribers = await loadStore();
 
-  // Check if already subscribed
   const existing = subscribers.find((s) => s.email === email);
   if (existing) {
-    // If unconfirmed, auto-confirm now
     if (!existing.confirmed) {
       existing.confirmed = true;
       existing.confirmedAt = new Date().toISOString();
@@ -59,7 +103,7 @@ export async function subscribe(
     confirmed: true,
     subscribedAt: new Date().toISOString(),
     confirmedAt: new Date().toISOString(),
-    confirmationToken: generateToken(), // kept for legacy confirm links
+    confirmationToken: generateToken(),
     unsubscribeToken: generateToken(),
   };
 
