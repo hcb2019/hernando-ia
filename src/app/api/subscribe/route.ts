@@ -11,12 +11,12 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Email inválido" }, { status: 400 });
     }
 
-    // Subscribe (handles duplicates gracefully)
-    const sub = subscribe(email.toLowerCase().trim());
+    // Subscribe (handles duplicates gracefully, auto-confirms)
+    const { subscriber: sub, isNew } = subscribe(email.toLowerCase().trim());
 
-    if (sub.confirmed) {
+    if (!isNew) {
       return NextResponse.json({
-        message: "Você já está inscrito!",
+        message: "Você já está inscrito! Primeira edição quarta-feira 10h. 🚀",
         alreadySubscribed: true,
       });
     }

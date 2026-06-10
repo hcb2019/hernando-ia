@@ -57,7 +57,7 @@ function generateToken(): string {
 
 // ── Public API ─────────────────────────────────────────────────────
 
-export function subscribe(email: string): Subscriber {
+export function subscribe(email: string): { subscriber: Subscriber; isNew: boolean } {
   const store = loadStore();
 
   // Check if already subscribed
@@ -69,7 +69,7 @@ export function subscribe(email: string): Subscriber {
       existing.confirmedAt = new Date().toISOString();
       saveStore(store);
     }
-    return existing; // Already subscribed
+    return { subscriber: existing, isNew: false };
   }
 
   const subscriber: Subscriber = {
@@ -83,7 +83,7 @@ export function subscribe(email: string): Subscriber {
 
   store.subscribers.push(subscriber);
   saveStore(store);
-  return subscriber;
+  return { subscriber, isNew: true };
 }
 
 export function confirmSubscription(token: string): Subscriber | null {
