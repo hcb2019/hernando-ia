@@ -19,8 +19,18 @@ let redis: Redis | null = null;
 function getRedis(): Redis | null {
   if (!REDIS_URL) return null;
   if (!redis) {
-    // @upstash/redis auto-parses redis:// URLs for REST mode
-    redis = new Redis({ url: REDIS_URL } as any);
+    try {
+      // Parse host and token from redis://default:TOKEN@HOST:PORT
+      const u = new URL(REDIS_URL);
+      const token = decodeURIComponent(u.password || "");
+      redis = new Redis({
+        url: `https://${u.hostname}`,
+        token,
+      }) as any;
+    } catch (e) {
+      console.error("Redis init error:", e);
+      return null;
+    }
   }
   return redis;
 }
@@ -72,11 +82,16 @@ async function loadStore(): Promise<Subscriber[]> {
   const r = getRedis();
   if (r) {
     try {
-      const data = await r.get<Subscriber[]>(SUBSCRIBERS_KEY);
+      // Timeout after 3s — fall back to file-based on Redis slowness
+      const data = await Promise.race([
+        r.get<Subscriber[]>(SUBSCRIBERS_KEY),
+        new Promise<null>((_, reject) =>
+          setTimeout(() => reject(new Error("Redis timeout")), 3000)
+        ),
+      ]);
       return data || [];
     } catch (e) {
-      console.error("Redis load error:", e);
-      return [];
+      console.error("Redis load error, falling back to file:", e);
     }
   }
   return fileLoadStore();
@@ -85,10 +100,19 @@ async function loadStore(): Promise<Subscriber[]> {
 async function saveStore(subscribers: Subscriber[]): Promise<void> {
   const r = getRedis();
   if (r) {
-    await r.set(SUBSCRIBERS_KEY, subscribers);
-  } else {
-    fileSaveStore(subscribers);
+    try {
+      await Promise.race([
+        r.set(SUBSCRIBERS_KEY, subscribers),
+        new Promise<null>((_, reject) =>
+          setTimeout(() => reject(new Error("Redis timeout")), 3000)
+        ),
+      ]);
+      return;
+    } catch (e) {
+      console.error("Redis save error, falling back to file:", e);
+    }
   }
+  fileSaveStore(subscribers);
 }
 
 // ── Public API ────────────────────────────────────────────────────
