@@ -1,4 +1,15 @@
-import { kv } from "@vercel/kv";
+// Only import kv when env vars are present (avoids crash on import)
+let kv: any = null;
+const HAS_KV = !!(process.env.KV_REST_API_URL && process.env.KV_REST_API_TOKEN);
+const KV_KEY = "subscribers:list";
+
+async function getKv() {
+  if (!kv && HAS_KV) {
+    const mod = await import("@vercel/kv");
+    kv = mod.kv;
+  }
+  return kv;
+}
 
 // ── Types ──────────────────────────────────────────────────────────
 
@@ -10,11 +21,6 @@ export interface Subscriber {
   confirmationToken: string;
   unsubscribeToken: string;
 }
-
-// ── Storage backend detection ──────────────────────────────────────
-
-const HAS_KV = !!(process.env.KV_REST_API_URL && process.env.KV_REST_API_TOKEN);
-const KV_KEY = "subscribers:list";
 
 // ── File-based fallback (wiped on redeploy, but site works) ────────
 
@@ -59,7 +65,9 @@ function generateToken(): string {
 
 async function kvLoadStore(): Promise<Subscriber[]> {
   try {
-    return (await kv.get<Subscriber[]>(KV_KEY)) || [];
+    const client = await getKv();
+    if (!client) return [];
+    return (await client.get<Subscriber[]>(KV_KEY)) || [];
   } catch (e) {
     console.error("KV load error, falling back to empty:", e);
     return [];
@@ -67,7 +75,8 @@ async function kvLoadStore(): Promise<Subscriber[]> {
 }
 
 async function kvSaveStore(subscribers: Subscriber[]): Promise<void> {
-  await kv.set(KV_KEY, subscribers);
+  const client = await getKv();
+  if (client) await client.set(KV_KEY, subscribers);
 }
 
 async function loadStore(): Promise<Subscriber[]> {
