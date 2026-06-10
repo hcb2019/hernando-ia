@@ -1,24 +1,4 @@
-// Only import kv when env vars are present (avoids crash on import)
-let kv: any = null;
-const KV_AVAILABLE = !!(process.env.KV_REST_API_URL && process.env.KV_REST_API_TOKEN);
-const REDIS_AVAILABLE = !!(process.env.REDIS_REST_URL && process.env.REDIS_REST_TOKEN);
-const HAS_KV = KV_AVAILABLE || REDIS_AVAILABLE;
-const KV_KEY = "subscribers:list";
-
-async function getKv() {
-  if (!kv && HAS_KV) {
-    const mod = await import("@vercel/kv");
-    if (KV_AVAILABLE) {
-      kv = mod.kv; // uses KV_URL / KV_REST_API_URL / KV_REST_API_TOKEN
-    } else if (REDIS_AVAILABLE) {
-      kv = mod.createClient({
-        url: process.env.REDIS_REST_URL!,
-        token: process.env.REDIS_REST_TOKEN!,
-      });
-    }
-  }
-  return kv;
-}
+import { Redis } from "@upstash/redis";
 
 // ── Types ──────────────────────────────────────────────────────────
 
@@ -31,7 +11,28 @@ export interface Subscriber {
   unsubscribeToken: string;
 }
 
-// ── File-based fallback (wiped on redeploy, but site works) ────────
+// ── Redis client ──────────────────────────────────────────────────
+
+const REDIS_URL = process.env.REDIS_URL;
+let redis: Redis | null = null;
+
+function getRedis(): Redis | null {
+  if (!REDIS_URL) return null;
+  if (!redis) {
+    // Parse token from redis://default:TOKEN@HOST:PORT
+    const url = new URL(REDIS_URL);
+    const token = url.password || url.username;
+    redis = new Redis({
+      url: `https://${url.hostname}`,
+      token,
+    });
+  }
+  return redis;
+}
+
+const SUBSCRIBERS_KEY = "subscribers:list";
+
+// ── File-based fallback (when REDIS_URL is missing) ───────────────
 
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from "fs";
 import { join } from "path";
@@ -62,7 +63,7 @@ function fileSaveStore(subscribers: Subscriber[]): void {
   writeFileSync(SUBSCRIBERS_FILE, JSON.stringify(subscribers, null, 2));
 }
 
-// ── Token generator ────────────────────────────────────────────────
+// ── Token generator ───────────────────────────────────────────────
 
 function generateToken(): string {
   return Array.from({ length: 32 }, () =>
@@ -70,36 +71,32 @@ function generateToken(): string {
   ).join("");
 }
 
-// ── Unified API ────────────────────────────────────────────────────
-
-async function kvLoadStore(): Promise<Subscriber[]> {
-  try {
-    const client = await getKv();
-    if (!client) return [];
-    return (await client.get<Subscriber[]>(KV_KEY)) || [];
-  } catch (e) {
-    console.error("KV load error, falling back to empty:", e);
-    return [];
-  }
-}
-
-async function kvSaveStore(subscribers: Subscriber[]): Promise<void> {
-  const client = await getKv();
-  if (client) await client.set(KV_KEY, subscribers);
-}
+// ── Unified load/save ─────────────────────────────────────────────
 
 async function loadStore(): Promise<Subscriber[]> {
-  if (HAS_KV) return kvLoadStore();
+  const r = getRedis();
+  if (r) {
+    try {
+      const data = await r.get<Subscriber[]>(SUBSCRIBERS_KEY);
+      return data || [];
+    } catch (e) {
+      console.error("Redis load error:", e);
+      return [];
+    }
+  }
   return fileLoadStore();
 }
 
 async function saveStore(subscribers: Subscriber[]): Promise<void> {
-  if (HAS_KV) {
-    await kvSaveStore(subscribers);
+  const r = getRedis();
+  if (r) {
+    await r.set(SUBSCRIBERS_KEY, subscribers);
   } else {
     fileSaveStore(subscribers);
   }
 }
+
+// ── Public API ────────────────────────────────────────────────────
 
 export async function subscribe(
   email: string
@@ -136,7 +133,6 @@ export async function confirmSubscription(
   const subscribers = await loadStore();
   const sub = subscribers.find((s) => s.confirmationToken === token);
   if (!sub) return null;
-
   sub.confirmed = true;
   sub.confirmedAt = new Date().toISOString();
   await saveStore(subscribers);
@@ -149,7 +145,6 @@ export async function unsubscribe(
   const subscribers = await loadStore();
   const idx = subscribers.findIndex((s) => s.unsubscribeToken === token);
   if (idx === -1) return null;
-
   const [removed] = subscribers.splice(idx, 1);
   await saveStore(subscribers);
   return removed;
@@ -169,8 +164,5 @@ export async function getSubscriberCount(): Promise<{
   confirmed: number;
 }> {
   const subscribers = await loadStore();
-  return {
-    total: subscribers.length,
-    confirmed: subscribers.filter((s) => s.confirmed).length,
-  };
+  return { total: subscribers.length, confirmed: subscribers.filter((s) => s.confirmed).length };
 }
