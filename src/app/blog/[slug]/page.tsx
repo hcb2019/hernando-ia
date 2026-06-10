@@ -58,7 +58,7 @@ export default async function BlogPostPage({ params, searchParams }: PageProps) 
   const relatedPosts = getRelatedPosts(slug, post.tags, 3);
   const allPosts = getBlogPosts(lang).filter(p => p.slug !== slug);
 
-  const { total: subscriberCount } = getSubscriberCount();
+  const { total: subscriberCount } = await getSubscriberCount();
   const displayCount = subscriberCount >= 1000
     ? (subscriberCount / 1000).toFixed(1) + "K"
     : String(subscriberCount);

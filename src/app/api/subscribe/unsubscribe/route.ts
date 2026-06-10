@@ -10,7 +10,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(`${SITE.url}/blog?unsubscribed=error`);
   }
 
-  const sub = unsubscribe(token);
+  const sub = await unsubscribe(token);
   if (sub) {
     return NextResponse.redirect(`${SITE.url}/blog?unsubscribed=success`);
   }

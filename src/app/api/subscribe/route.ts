@@ -12,7 +12,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Subscribe (handles duplicates gracefully, auto-confirms)
-    const { subscriber: sub, isNew } = subscribe(email.toLowerCase().trim());
+    const { subscriber: sub, isNew } = await subscribe(email.toLowerCase().trim());
 
     if (!isNew) {
       return NextResponse.json({

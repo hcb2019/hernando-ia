@@ -14,7 +14,7 @@ export async function GET(request: NextRequest) {
   const path = request.nextUrl.pathname;
 
   if (path.includes("unsubscribe")) {
-    const sub = unsubscribe(token);
+    const sub = await unsubscribe(token);
     if (sub) {
       return NextResponse.redirect(`${SITE.url}/blog?unsubscribed=success`);
     }
@@ -22,7 +22,7 @@ export async function GET(request: NextRequest) {
   }
 
   // Confirm subscription
-  const sub = confirmSubscription(token);
+  const sub = await confirmSubscription(token);
   if (sub) {
     return NextResponse.redirect(`${SITE.url}/blog?subscribed=success`);
   }

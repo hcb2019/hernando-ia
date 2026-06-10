@@ -81,8 +81,8 @@ const BENEFITS = [
 
 // ── Page ────────────────────────────────────────────────────────────
 
-export default function NewsletterPage() {
-  const { total, confirmed } = getSubscriberCount();
+export default async function NewsletterPage() {
+  const { total, confirmed } = await getSubscriberCount();
   const displayCount = formatCount(confirmed || total);
   const rawCount = confirmed || total;
 

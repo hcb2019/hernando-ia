@@ -1,6 +1,4 @@
-import { readFileSync, writeFileSync, existsSync, mkdirSync } from "fs";
-import { join } from "path";
-import crypto from "crypto";
+import { kv } from "@vercel/kv";
 
 // ── Types ──────────────────────────────────────────────────────────
 
@@ -13,61 +11,45 @@ export interface Subscriber {
   unsubscribeToken: string;
 }
 
-interface SubscriberStore {
-  subscribers: Subscriber[];
-  lastUpdated: string;
-}
+// ── KV key ─────────────────────────────────────────────────────────
 
-// ── Storage ────────────────────────────────────────────────────────
-
-// On Vercel/cloud, use /tmp which is writable. On local/dev, use data/ dir.
-const DATA_DIR = process.env.VERCEL
-  ? "/tmp"
-  : join(process.cwd(), "data");
-const SUBSCRIBERS_FILE = join(DATA_DIR, "subscribers.json");
-
-function ensureDataDir(): void {
-  if (!existsSync(DATA_DIR)) {
-    mkdirSync(DATA_DIR, { recursive: true });
-  }
-}
-
-function loadStore(): SubscriberStore {
-  ensureDataDir();
-  if (!existsSync(SUBSCRIBERS_FILE)) {
-    return { subscribers: [], lastUpdated: new Date().toISOString() };
-  }
-  try {
-    const raw = readFileSync(SUBSCRIBERS_FILE, "utf-8");
-    return JSON.parse(raw);
-  } catch {
-    return { subscribers: [], lastUpdated: new Date().toISOString() };
-  }
-}
-
-function saveStore(store: SubscriberStore): void {
-  ensureDataDir();
-  store.lastUpdated = new Date().toISOString();
-  writeFileSync(SUBSCRIBERS_FILE, JSON.stringify(store, null, 2));
-}
+const SUBSCRIBERS_KEY = "subscribers:list";
 
 function generateToken(): string {
-  return crypto.randomBytes(32).toString("hex");
+  return Array.from({ length: 32 }, () =>
+    Math.floor(Math.random() * 16).toString(16)
+  ).join("");
 }
 
 // ── Public API ─────────────────────────────────────────────────────
 
-export function subscribe(email: string): { subscriber: Subscriber; isNew: boolean } {
-  const store = loadStore();
+async function loadStore(): Promise<Subscriber[]> {
+  try {
+    const data = await kv.get<Subscriber[]>(SUBSCRIBERS_KEY);
+    return data || [];
+  } catch (e) {
+    console.error("KV load error:", e);
+    return [];
+  }
+}
+
+async function saveStore(subscribers: Subscriber[]): Promise<void> {
+  await kv.set(SUBSCRIBERS_KEY, subscribers);
+}
+
+export async function subscribe(
+  email: string
+): Promise<{ subscriber: Subscriber; isNew: boolean }> {
+  const subscribers = await loadStore();
 
   // Check if already subscribed
-  const existing = store.subscribers.find((s) => s.email === email);
+  const existing = subscribers.find((s) => s.email === email);
   if (existing) {
     // If unconfirmed, auto-confirm now
     if (!existing.confirmed) {
       existing.confirmed = true;
       existing.confirmedAt = new Date().toISOString();
-      saveStore(store);
+      await saveStore(subscribers);
     }
     return { subscriber: existing, isNew: false };
   }
@@ -77,50 +59,56 @@ export function subscribe(email: string): { subscriber: Subscriber; isNew: boole
     confirmed: true,
     subscribedAt: new Date().toISOString(),
     confirmedAt: new Date().toISOString(),
-    confirmationToken: generateToken(),   // kept for legacy confirm links
+    confirmationToken: generateToken(), // kept for legacy confirm links
     unsubscribeToken: generateToken(),
   };
 
-  store.subscribers.push(subscriber);
-  saveStore(store);
+  subscribers.push(subscriber);
+  await saveStore(subscribers);
   return { subscriber, isNew: true };
 }
 
-export function confirmSubscription(token: string): Subscriber | null {
-  const store = loadStore();
-  const sub = store.subscribers.find((s) => s.confirmationToken === token);
+export async function confirmSubscription(
+  token: string
+): Promise<Subscriber | null> {
+  const subscribers = await loadStore();
+  const sub = subscribers.find((s) => s.confirmationToken === token);
   if (!sub) return null;
 
   sub.confirmed = true;
   sub.confirmedAt = new Date().toISOString();
-  saveStore(store);
+  await saveStore(subscribers);
   return sub;
 }
 
-export function unsubscribe(token: string): Subscriber | null {
-  const store = loadStore();
-  const sub = store.subscribers.find((s) => s.unsubscribeToken === token);
-  if (!sub) return null;
+export async function unsubscribe(
+  token: string
+): Promise<Subscriber | null> {
+  const subscribers = await loadStore();
+  const idx = subscribers.findIndex((s) => s.unsubscribeToken === token);
+  if (idx === -1) return null;
 
-  store.subscribers = store.subscribers.filter((s) => s.unsubscribeToken !== token);
-  saveStore(store);
-  return sub;
+  const [removed] = subscribers.splice(idx, 1);
+  await saveStore(subscribers);
+  return removed;
 }
 
-export function getConfirmedSubscribers(): Subscriber[] {
-  const store = loadStore();
-  return store.subscribers.filter((s) => s.confirmed);
+export async function getConfirmedSubscribers(): Promise<Subscriber[]> {
+  const subscribers = await loadStore();
+  return subscribers.filter((s) => s.confirmed);
 }
 
-export function getAllSubscribers(): Subscriber[] {
-  const store = loadStore();
-  return store.subscribers;
+export async function getAllSubscribers(): Promise<Subscriber[]> {
+  return loadStore();
 }
 
-export function getSubscriberCount(): { total: number; confirmed: number } {
-  const store = loadStore();
+export async function getSubscriberCount(): Promise<{
+  total: number;
+  confirmed: number;
+}> {
+  const subscribers = await loadStore();
   return {
-    total: store.subscribers.length,
-    confirmed: store.subscribers.filter((s) => s.confirmed).length,
+    total: subscribers.length,
+    confirmed: subscribers.filter((s) => s.confirmed).length,
   };
 }
