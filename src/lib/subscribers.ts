@@ -19,16 +19,8 @@ let redis: Redis | null = null;
 function getRedis(): Redis | null {
   if (!REDIS_URL) return null;
   if (!redis) {
-    // Parse token from redis://default:TOKEN@HOST:PORT
-    const match = REDIS_URL.match(/redis:\/\/default:(.+)@(.+):(\d+)/);
-    if (match) {
-      const [, token, host] = match;
-      redis = new Redis({
-        url: `https://${host}`,
-        token,
-        // critical: don't try TCP — serverless only supports REST
-      });
-    }
+    // @upstash/redis auto-parses redis:// URLs for REST mode
+    redis = new Redis({ url: REDIS_URL } as any);
   }
   return redis;
 }
