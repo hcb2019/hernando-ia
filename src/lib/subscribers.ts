@@ -1,4 +1,4 @@
-import { Redis } from "@upstash/redis";
+import Redis from "ioredis";
 
 // ── Types ──────────────────────────────────────────────────────────
 
@@ -11,24 +11,26 @@ export interface Subscriber {
   unsubscribeToken: string;
 }
 
-// ── Redis client ──────────────────────────────────────────────────
+// ── Redis client (Redis Cloud via TCP) ─────────────────────────────
 
 const REDIS_URL = process.env.REDIS_URL;
 let redis: Redis | null = null;
+let redisFailed = false;
 
 function getRedis(): Redis | null {
-  if (!REDIS_URL) return null;
+  if (!REDIS_URL || redisFailed) return null;
   if (!redis) {
     try {
-      // Parse host and token from redis://default:TOKEN@HOST:PORT
-      const u = new URL(REDIS_URL);
-      const token = decodeURIComponent(u.password || "");
-      redis = new Redis({
-        url: `https://${u.hostname}`,
-        token,
-      }) as any;
+      redis = new Redis(REDIS_URL, {
+        lazyConnect: true,
+        maxRetriesPerRequest: 1,
+        connectTimeout: 3000,
+        commandTimeout: 3000,
+        retryStrategy: () => null, // no retries
+      });
     } catch (e) {
       console.error("Redis init error:", e);
+      redisFailed = true;
       return null;
     }
   }
@@ -37,7 +39,7 @@ function getRedis(): Redis | null {
 
 const SUBSCRIBERS_KEY = "subscribers:list";
 
-// ── File-based fallback (when REDIS_URL is missing) ───────────────
+// ── File-based fallback ────────────────────────────────────────────
 
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from "fs";
 import { join } from "path";
@@ -82,16 +84,14 @@ async function loadStore(): Promise<Subscriber[]> {
   const r = getRedis();
   if (r) {
     try {
-      // Timeout after 3s — fall back to file-based on Redis slowness
-      const data = await Promise.race([
-        r.get<Subscriber[]>(SUBSCRIBERS_KEY),
-        new Promise<null>((_, reject) =>
-          setTimeout(() => reject(new Error("Redis timeout")), 3000)
-        ),
-      ]);
-      return data || [];
+      const raw = await r.get(SUBSCRIBERS_KEY);
+      if (raw) {
+        return JSON.parse(raw);
+      }
+      return [];
     } catch (e) {
       console.error("Redis load error, falling back to file:", e);
+      redisFailed = true;
     }
   }
   return fileLoadStore();
@@ -101,15 +101,11 @@ async function saveStore(subscribers: Subscriber[]): Promise<void> {
   const r = getRedis();
   if (r) {
     try {
-      await Promise.race([
-        r.set(SUBSCRIBERS_KEY, subscribers),
-        new Promise<null>((_, reject) =>
-          setTimeout(() => reject(new Error("Redis timeout")), 3000)
-        ),
-      ]);
+      await r.set(SUBSCRIBERS_KEY, JSON.stringify(subscribers));
       return;
     } catch (e) {
       console.error("Redis save error, falling back to file:", e);
+      redisFailed = true;
     }
   }
   fileSaveStore(subscribers);
