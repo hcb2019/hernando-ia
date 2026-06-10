@@ -63,14 +63,21 @@ export function subscribe(email: string): Subscriber {
   // Check if already subscribed
   const existing = store.subscribers.find((s) => s.email === email);
   if (existing) {
-    return existing; // Already subscribed, don't create duplicate
+    // If unconfirmed, auto-confirm now
+    if (!existing.confirmed) {
+      existing.confirmed = true;
+      existing.confirmedAt = new Date().toISOString();
+      saveStore(store);
+    }
+    return existing; // Already subscribed
   }
 
   const subscriber: Subscriber = {
     email,
-    confirmed: false,
+    confirmed: true,
     subscribedAt: new Date().toISOString(),
-    confirmationToken: generateToken(),
+    confirmedAt: new Date().toISOString(),
+    confirmationToken: generateToken(),   // kept for legacy confirm links
     unsubscribeToken: generateToken(),
   };
 

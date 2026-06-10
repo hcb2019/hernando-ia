@@ -85,6 +85,12 @@ export default function NewsletterForm() {
           {message}
         </p>
       )}
+
+      {/* Frequency note — always visible */}
+      <p className="text-xs text-center mt-3 text-[--muted]">
+        📬 Toda <strong className="text-white/60">quarta-feira, 10h</strong>.
+        Cancele quando quiser.
+      </p>
     </div>
   );
 }
