@@ -39,14 +39,6 @@ export const metadata: Metadata = {
   },
   description: SITE.description,
   metadataBase: new URL(SITE.url),
-  icons: {
-    icon: [
-      { url: "/favicon-32x32.png", sizes: "32x32", type: "image/png" },
-      { url: "/favicon-16x16.png", sizes: "16x16", type: "image/png" },
-    ],
-    shortcut: "/favicon-h-20250610.ico",
-    apple: "/apple-touch-icon.png",
-  },
   manifest: "/site.webmanifest",
   alternates: {
     canonical: SITE.url,
@@ -109,6 +101,11 @@ export default function RootLayout({
       className={`${spaceGrotesk.variable} ${inter.variable} ${geistMono.variable} h-full antialiased dark`}
     >
       <head>
+        {/* Favicon — direct links (bypass Next.js auto-generation) */}
+        <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
+        <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
+        <link rel="shortcut icon" href="/favicon-h-20250610.ico" />
+        <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
         {/* JSON-LD Structured Data */}
         <script
           type="application/ld+json"
