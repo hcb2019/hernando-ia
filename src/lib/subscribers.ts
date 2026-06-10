@@ -20,12 +20,15 @@ function getRedis(): Redis | null {
   if (!REDIS_URL) return null;
   if (!redis) {
     // Parse token from redis://default:TOKEN@HOST:PORT
-    const url = new URL(REDIS_URL);
-    const token = url.password || url.username;
-    redis = new Redis({
-      url: `https://${url.hostname}`,
-      token,
-    });
+    const match = REDIS_URL.match(/redis:\/\/default:(.+)@(.+):(\d+)/);
+    if (match) {
+      const [, token, host] = match;
+      redis = new Redis({
+        url: `https://${host}`,
+        token,
+        // critical: don't try TCP — serverless only supports REST
+      });
+    }
   }
   return redis;
 }
