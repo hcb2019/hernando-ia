@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-06-10T18:00:05.908584+00:00",
+  "updated_at": "2026-06-13T12:00:46.663116+00:00",
   "github": {
     "user": {
       "login": "hcb2019",
@@ -21,7 +21,17 @@
         "language": "MDX",
         "stargazers_count": 0,
         "forks_count": 0,
-        "updated_at": "2026-06-10T17:58:57Z"
+        "updated_at": "2026-06-13T09:30:46Z"
+      },
+      {
+        "name": "Ufokko",
+        "full_name": "hcb2019/Ufokko",
+        "html_url": "https://github.com/hcb2019/Ufokko",
+        "description": "Marketplace que conecta clientes a videomakers profissionais. Sistema completo com pagamento escrow, chat real-time, avaliacoes e geolocalizacao.",
+        "language": "JavaScript",
+        "stargazers_count": 0,
+        "forks_count": 0,
+        "updated_at": "2026-06-10T21:56:33Z"
       },
       {
         "name": "claude-code-skills",
@@ -32,16 +42,6 @@
         "stargazers_count": 0,
         "forks_count": 0,
         "updated_at": "2026-06-08T22:53:44Z"
-      },
-      {
-        "name": "Ufokko",
-        "full_name": "hcb2019/Ufokko",
-        "html_url": "https://github.com/hcb2019/Ufokko",
-        "description": "Marketplace que conecta clientes a videomakers profissionais. Sistema completo com pagamento escrow, chat real-time, avaliacoes e geolocalizacao.",
-        "language": "JavaScript",
-        "stargazers_count": 0,
-        "forks_count": 0,
-        "updated_at": "2026-06-04T18:20:25Z"
       },
       {
         "name": "arenabite",
@@ -91,13 +91,13 @@
       "forks": 0
     },
     "events": [],
-    "updated_at": "2026-06-10T18:00:05.908584+00:00"
+    "updated_at": "2026-06-13T12:00:46.663116+00:00"
   },
   "instagram": {
-    "followers": 1274,
-    "posts": 116,
+    "followers": 1287,
+    "posts": 121,
     "account_type": "MEDIA_CREATOR",
-    "reach_30d": 467670,
-    "updated_at": "2026-06-10T18:00:05.908584+00:00"
+    "reach_30d": 471913,
+    "updated_at": "2026-06-13T12:00:46.663116+00:00"
   }
 }

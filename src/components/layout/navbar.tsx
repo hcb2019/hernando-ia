@@ -10,6 +10,7 @@ const navLinks = [
   { href: "/blog", label: "BLOG" },
   { href: "/newsletter", label: "NEWSLETTER" },
   { href: "/produtos/claude-code-skills", label: "SKILLS" },
+  { href: "/produtos/hermes-agent", label: "AGENTE" },
   { href: "/servicos", label: "SERVIÇOS" },
 ];
 
