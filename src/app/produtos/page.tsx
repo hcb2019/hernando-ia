@@ -55,7 +55,7 @@ const products: Product[] = [
     description:
       "Scanner de refeição por foto em 3 segundos + timeline preditiva do que comer e quando. Para Beach Tennis, Futevôlei, CrossFit e Corrida.",
     price: "Grátis · PRO R$19,90/mês",
-    accent: "lime",
+    accent: "emerald",
     badge: "NOVO",
   },
 ];
@@ -76,13 +76,6 @@ const accentStyles: Record<string, { border: string; bg: string; text: string; b
     text: "text-emerald-400",
     badge: "bg-emerald-400 text-black",
     glow: "shadow-[0_0_30px_-10px_rgba(52,211,153,0.15)]",
-  },
-  lime: {
-    border: "border-lime-900/50",
-    bg: "bg-lime-950/10",
-    text: "text-lime-400",
-    badge: "bg-lime-400 text-black",
-    glow: "shadow-[0_0_30px_-10px_rgba(163,230,53,0.15)]",
   },
 };
 

@@ -210,12 +210,12 @@ export default function ArenaBitePage() {
         {/* ── Hero ──────────────────────────────────────────────────── */}
         <section className="pt-32 pb-20 px-6 max-w-4xl mx-auto text-center">
           <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-zinc-800 bg-zinc-950 text-sm text-zinc-400 mb-8">
-            <span className="w-2 h-2 rounded-full bg-lime-400 animate-pulse" />
+            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
             Nutrição Tática com IA para Atletas
           </div>
           <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight mb-6">
             Performance começa no{" "}
-            <span className="text-lime-400">prato certo</span>
+            <span className="text-emerald-400">prato certo</span>
             , na hora certa
           </h1>
           <p className="text-lg text-zinc-400 max-w-2xl mx-auto mb-10">
@@ -230,7 +230,7 @@ export default function ArenaBitePage() {
               href="https://arenabite.lovable.app"
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-lime-400 text-black font-semibold hover:bg-lime-300 transition-colors"
+              className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-emerald-400 text-black font-semibold hover:bg-emerald-300 transition-colors"
             >
               Começar grátis
               <span className="text-black/60">→</span>
@@ -280,26 +280,26 @@ export default function ArenaBitePage() {
               </ul>
             </div>
             {/* After */}
-            <div className="p-8 rounded-2xl border border-lime-900/50 bg-lime-950/10">
+            <div className="p-8 rounded-2xl border border-emerald-900/50 bg-emerald-950/10">
               <div className="text-3xl mb-4">🎯</div>
-              <h3 className="text-lg font-semibold text-lime-400 mb-4">
+              <h3 className="text-lg font-semibold text-emerald-400 mb-4">
                 Com ArenaBite
               </h3>
               <ul className="space-y-3 text-sm text-zinc-300">
                 <li className="flex gap-2">
-                  <span className="text-lime-400 flex-shrink-0">✓</span>
+                  <span className="text-emerald-400 flex-shrink-0">✓</span>
                   Timeline define exatamente o que comer e quando
                 </li>
                 <li className="flex gap-2">
-                  <span className="text-lime-400 flex-shrink-0">✓</span>
+                  <span className="text-emerald-400 flex-shrink-0">✓</span>
                   Scanner IA: foto do prato vira análise nutricional em 3s
                 </li>
                 <li className="flex gap-2">
-                  <span className="text-lime-400 flex-shrink-0">✓</span>
+                  <span className="text-emerald-400 flex-shrink-0">✓</span>
                   Metas de macros calibradas pro SEU esporte
                 </li>
                 <li className="flex gap-2">
-                  <span className="text-lime-400 flex-shrink-0">✓</span>
+                  <span className="text-emerald-400 flex-shrink-0">✓</span>
                   Grátis pra começar. PRO por R$19,90/mês
                 </li>
               </ul>
@@ -310,7 +310,7 @@ export default function ArenaBitePage() {
         {/* ── Como Funciona ─────────────────────────────────────────── */}
         <section className="py-20 px-6 max-w-5xl mx-auto">
           <div className="text-center mb-16">
-            <p className="text-xs text-lime-400 uppercase tracking-[0.15em] font-medium mb-3">
+            <p className="text-xs text-emerald-400 uppercase tracking-[0.15em] font-medium mb-3">
               Como Funciona
             </p>
             <h2 className="text-3xl font-bold mb-4">
@@ -327,7 +327,7 @@ export default function ArenaBitePage() {
                 key={step.number}
                 className="p-6 rounded-2xl border border-zinc-900 bg-zinc-950 hover:border-zinc-800 transition-colors"
               >
-                <span className="text-3xl font-bold text-lime-400/30">
+                <span className="text-3xl font-bold text-emerald-400/30">
                   {step.number}
                 </span>
                 <h3 className="font-semibold text-lg mt-3 mb-2">
@@ -344,7 +344,7 @@ export default function ArenaBitePage() {
         {/* ── Features ──────────────────────────────────────────────── */}
         <section className="py-20 px-6 max-w-5xl mx-auto">
           <div className="text-center mb-16">
-            <p className="text-xs text-lime-400 uppercase tracking-[0.15em] font-medium mb-3">
+            <p className="text-xs text-emerald-400 uppercase tracking-[0.15em] font-medium mb-3">
               O Que Você Ganha
             </p>
             <h2 className="text-3xl font-bold mb-4">
@@ -373,7 +373,7 @@ export default function ArenaBitePage() {
         {/* ── Esportes ──────────────────────────────────────────────── */}
         <section className="py-20 px-6 max-w-5xl mx-auto">
           <div className="text-center mb-16">
-            <p className="text-xs text-lime-400 uppercase tracking-[0.15em] font-medium mb-3">
+            <p className="text-xs text-emerald-400 uppercase tracking-[0.15em] font-medium mb-3">
               Pro Seu Esporte
             </p>
             <h2 className="text-3xl font-bold mb-4">
@@ -388,7 +388,7 @@ export default function ArenaBitePage() {
             {sports.map((sport) => (
               <div
                 key={sport.name}
-                className="p-5 rounded-2xl border border-zinc-900 bg-zinc-950 text-center hover:border-lime-900/50 hover:bg-lime-950/5 transition-colors"
+                className="p-5 rounded-2xl border border-zinc-900 bg-zinc-950 text-center hover:border-emerald-900/50 hover:bg-emerald-950/5 transition-colors"
               >
                 <div className="text-3xl mb-3">{sport.emoji}</div>
                 <h3 className="font-semibold text-sm mb-2">{sport.name}</h3>
@@ -403,7 +403,7 @@ export default function ArenaBitePage() {
         {/* ── Pricing ───────────────────────────────────────────────── */}
         <section className="py-20 px-6 max-w-3xl mx-auto">
           <div className="text-center mb-16">
-            <p className="text-xs text-lime-400 uppercase tracking-[0.15em] font-medium mb-3">
+            <p className="text-xs text-emerald-400 uppercase tracking-[0.15em] font-medium mb-3">
               Planos
             </p>
             <h2 className="text-3xl font-bold mb-4">
@@ -427,19 +427,19 @@ export default function ArenaBitePage() {
               </div>
               <ul className="space-y-3 text-sm text-zinc-400 mb-8">
                 <li className="flex gap-2">
-                  <span className="text-lime-400">✓</span>
+                  <span className="text-emerald-400">✓</span>
                   Timeline diária do seu esporte
                 </li>
                 <li className="flex gap-2">
-                  <span className="text-lime-400">✓</span>
+                  <span className="text-emerald-400">✓</span>
                   Scanner IA (5 análises/mês)
                 </li>
                 <li className="flex gap-2">
-                  <span className="text-lime-400">✓</span>
+                  <span className="text-emerald-400">✓</span>
                   Alertas de timing nutricional
                 </li>
                 <li className="flex gap-2">
-                  <span className="text-lime-400">✓</span>
+                  <span className="text-emerald-400">✓</span>
                   Histórico básico
                 </li>
               </ul>
@@ -453,11 +453,11 @@ export default function ArenaBitePage() {
               </a>
             </div>
             {/* PRO */}
-            <div className="p-8 rounded-2xl border border-lime-900/50 bg-lime-950/10 relative">
-              <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-4 py-1 rounded-full bg-lime-400 text-black text-xs font-semibold">
+            <div className="p-8 rounded-2xl border border-emerald-900/50 bg-emerald-950/10 relative">
+              <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-4 py-1 rounded-full bg-emerald-400 text-black text-xs font-semibold">
                 MAIS POPULAR
               </div>
-              <p className="text-xs text-lime-400 uppercase tracking-wide mb-2">
+              <p className="text-xs text-emerald-400 uppercase tracking-wide mb-2">
                 Plano PRO
               </p>
               <div className="mb-6">
@@ -469,27 +469,27 @@ export default function ArenaBitePage() {
               </p>
               <ul className="space-y-3 text-sm text-zinc-300 mb-8">
                 <li className="flex gap-2">
-                  <span className="text-lime-400">✓</span>
+                  <span className="text-emerald-400">✓</span>
                   Tudo do plano Free
                 </li>
                 <li className="flex gap-2">
-                  <span className="text-lime-400">✓</span>
+                  <span className="text-emerald-400">✓</span>
                   Scanner IA ilimitado
                 </li>
                 <li className="flex gap-2">
-                  <span className="text-lime-400">✓</span>
+                  <span className="text-emerald-400">✓</span>
                   Estatísticas avançadas
                 </li>
                 <li className="flex gap-2">
-                  <span className="text-lime-400">✓</span>
+                  <span className="text-emerald-400">✓</span>
                   Histórico completo
                 </li>
                 <li className="flex gap-2">
-                  <span className="text-lime-400">✓</span>
+                  <span className="text-emerald-400">✓</span>
                   Conquistas e streaks PRO
                 </li>
                 <li className="flex gap-2">
-                  <span className="text-lime-400">✓</span>
+                  <span className="text-emerald-400">✓</span>
                   Suporte prioritário
                 </li>
               </ul>
@@ -497,7 +497,7 @@ export default function ArenaBitePage() {
                 href="https://arenabite.lovable.app"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="block text-center px-6 py-3 rounded-xl bg-lime-400 text-black font-semibold hover:bg-lime-300 transition-colors"
+                className="block text-center px-6 py-3 rounded-xl bg-emerald-400 text-black font-semibold hover:bg-emerald-300 transition-colors"
               >
                 Testar PRO grátis
               </a>
@@ -508,7 +508,7 @@ export default function ArenaBitePage() {
         {/* ── Testimonials ──────────────────────────────────────────── */}
         <section className="py-20 px-6 max-w-5xl mx-auto">
           <div className="text-center mb-16">
-            <p className="text-xs text-lime-400 uppercase tracking-[0.15em] font-medium mb-3">
+            <p className="text-xs text-emerald-400 uppercase tracking-[0.15em] font-medium mb-3">
               Quem Usa, Fala
             </p>
             <h2 className="text-3xl font-bold mb-4">
@@ -523,7 +523,7 @@ export default function ArenaBitePage() {
               >
                 <div className="flex gap-1 mb-4">
                   {[...Array(5)].map((_, i) => (
-                    <span key={i} className="text-lime-400 text-sm">
+                    <span key={i} className="text-emerald-400 text-sm">
                       ★
                     </span>
                   ))}
@@ -554,7 +554,7 @@ export default function ArenaBitePage() {
                 key={faq.question}
                 className="group border border-zinc-900 rounded-xl bg-zinc-950"
               >
-                <summary className="px-6 py-4 cursor-pointer font-medium text-zinc-200 group-open:text-lime-400 transition-colors list-none flex items-center justify-between">
+                <summary className="px-6 py-4 cursor-pointer font-medium text-zinc-200 group-open:text-emerald-400 transition-colors list-none flex items-center justify-between">
                   {faq.question}
                   <span className="text-zinc-600 group-open:rotate-45 transition-transform text-lg">
                     +
@@ -570,7 +570,7 @@ export default function ArenaBitePage() {
 
         {/* ── Footer CTA ────────────────────────────────────────────── */}
         <section className="pb-32 px-6 text-center">
-          <div className="max-w-xl mx-auto p-8 rounded-2xl border border-lime-900/30 bg-lime-950/10">
+          <div className="max-w-xl mx-auto p-8 rounded-2xl border border-emerald-900/30 bg-emerald-950/10">
             <h2 className="text-2xl font-bold mb-3">
               Sua próxima prova começa agora.
             </h2>
@@ -583,7 +583,7 @@ export default function ArenaBitePage() {
                 href="https://arenabite.lovable.app"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 px-8 py-4 rounded-xl bg-lime-400 text-black font-semibold text-lg hover:bg-lime-300 transition-colors"
+                className="inline-flex items-center gap-2 px-8 py-4 rounded-xl bg-emerald-400 text-black font-semibold text-lg hover:bg-emerald-300 transition-colors"
               >
                 Começar grátis agora →
               </a>
