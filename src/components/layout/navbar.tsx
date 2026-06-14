@@ -9,8 +9,7 @@ const navLinks = [
   { href: "/#projetos", label: "PROJETOS" },
   { href: "/blog", label: "BLOG" },
   { href: "/newsletter", label: "NEWSLETTER" },
-  { href: "/produtos/claude-code-skills", label: "SKILLS" },
-  { href: "/produtos/hermes-agent", label: "AGENTE" },
+  { href: "/produtos", label: "PRODUTOS" },
   { href: "/servicos", label: "SERVIÇOS" },
 ];
 

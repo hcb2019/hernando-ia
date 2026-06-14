@@ -47,6 +47,17 @@ export default function sitemap(): MetadataRoute.Sitemap {
       },
     },
     {
+      url: `${SITE.url}/produtos`,
+      lastModified: new Date(),
+      changeFrequency: "weekly",
+      priority: 0.9,
+      alternates: {
+        languages: {
+          pt: `${SITE.url}/produtos`,
+        },
+      },
+    },
+    {
       url: `${SITE.url}/produtos/claude-code-skills`,
       lastModified: new Date(),
       changeFrequency: "weekly",
@@ -56,6 +67,17 @@ export default function sitemap(): MetadataRoute.Sitemap {
           pt: `${SITE.url}/produtos/claude-code-skills`,
           en: `${SITE.url}/produtos/claude-code-skills?lang=en`,
           es: `${SITE.url}/produtos/claude-code-skills?lang=es`,
+        },
+      },
+    },
+    {
+      url: `${SITE.url}/produtos/arenabite`,
+      lastModified: new Date(),
+      changeFrequency: "weekly",
+      priority: 0.9,
+      alternates: {
+        languages: {
+          pt: `${SITE.url}/produtos/arenabite`,
         },
       },
     },
