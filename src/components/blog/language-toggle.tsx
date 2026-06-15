@@ -31,7 +31,7 @@ export default function LanguageToggle({ currentLang }: LanguageToggleProps) {
           onClick={() => switchLang(lang.code)}
           className={`text-xs px-2 py-1 rounded font-medium transition-colors ${
             currentLang === lang.code
-              ? "bg-[--accent] text-black"
+              ? "bg-[--accent] text-[#09090B]"
               : "text-[--muted] hover:text-[--foreground]"
           }`}
           aria-label={`Idioma: ${lang.label}`}
