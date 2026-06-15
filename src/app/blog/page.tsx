@@ -6,6 +6,7 @@ import NewsletterForm from "@/components/blog/newsletter-form";
 import SubscribeBanner from "@/components/blog/subscribe-banner";
 import Navbar from "@/components/layout/navbar";
 import LanguageToggle from "@/components/blog/language-toggle";
+import TagFilterBar from "@/components/blog/tag-filter-bar";
 import { Suspense } from "react";
 import Link from "next/link";
 import type { Metadata } from "next";
@@ -76,43 +77,18 @@ export default async function BlogPage({ searchParams }: BlogPageProps) {
 
         {/* Tag filters */}
         {tags.length > 0 && (
-          <div className="flex flex-wrap justify-center gap-2 mb-6">
-            {/* "All" button — clears filter */}
-            <Link
-              href={`/blog${lang !== "pt" ? `?lang=${lang}` : ""}`}
-              className={`text-xs px-3 py-1 rounded-full border transition-colors font-medium ${
-                !activeTag
-                  ? "border-accent bg-accent text-black"
-                  : "border-white/15 text-white/40 hover:border-white/30 hover:text-white/70"
-              }`}
-            >
-              Todos ({allPosts.length})
-            </Link>
-            {tags.map(({ tag, count }) => {
-              const isActive = activeTag === tag;
-              const href = `/blog?tag=${encodeURIComponent(tag)}${lang !== "pt" ? `&lang=${lang}` : ""}`;
-              return (
-                <Link
-                  key={tag}
-                  href={href}
-                  className={`text-xs px-3 py-1 rounded-full border transition-colors font-medium ${
-                    isActive
-                      ? "border-accent bg-accent text-black"
-                      : "border-accent/20 text-accent/70 bg-accent/5 hover:bg-accent/10 hover:border-accent/40"
-                  }`}
-                >
-                  {tag} ({count})
-                  {isActive && <span className="ml-1 opacity-70">×</span>}
-                </Link>
-              );
-            })}
-          </div>
+          <TagFilterBar
+            tags={tags}
+            activeTag={activeTag}
+            totalPosts={allPosts.length}
+            lang={lang}
+          />
         )}
 
         {/* Active tag indicator */}
         {activeTag && (
-          <p className="text-center text-sm text-white/40 mb-8">
-            Mostrando {posts.length} {posts.length === 1 ? "post" : "posts"} com a tag{" "}
+          <p className="text-center text-sm text-white/40 -mt-4 mb-8">
+            Mostrando {posts.length} {posts.length === 1 ? "post" : "posts"} com{" "}
             <strong className="text-accent">{activeTag}</strong>
             {" — "}
             <Link
