@@ -36,7 +36,7 @@ export default function Navbar() {
       <nav className="fixed top-0 left-0 right-0 z-50">
         <div
           className="mx-auto px-4 sm:px-6 h-16 flex items-center justify-between max-w-[95vw]
-          bg-[--background]/70 backdrop-blur-xl border-b border-white/10"
+          bg-[--background]/70 backdrop-blur-xl border-b border-[--border]"
         >
           {/* Logo */}
           <Link
@@ -109,12 +109,12 @@ export default function Navbar() {
 
       {/* Slide-in panel */}
       <div
-        className={`fixed top-0 right-0 z-40 h-full w-[min(85vw,380px)] bg-[--background] border-l border-white/10 flex flex-col transition-transform duration-400 ease-[cubic-bezier(0.22,1,0.36,1)] md:hidden ${
+        className={`fixed top-0 right-0 z-40 h-full w-[min(85vw,380px)] bg-[--background] border-l border-[--border] flex flex-col transition-transform duration-400 ease-[cubic-bezier(0.22,1,0.36,1)] md:hidden ${
           open ? "translate-x-0" : "translate-x-full"
         }`}
       >
         {/* Panel header */}
-        <div className="h-16 flex items-center px-6 border-b border-white/10 shrink-0">
+        <div className="h-16 flex items-center px-6 border-b border-[--border] shrink-0">
           <Link
             href="/"
             onClick={close}
@@ -141,7 +141,7 @@ export default function Navbar() {
                 key={link.href}
                 href={link.href}
                 onClick={close}
-                className="group flex items-center justify-between py-4 border-b border-white/[0.06] text-base font-semibold uppercase tracking-[0.08em] text-white/70 hover:text-white transition-colors"
+                className="group flex items-center justify-between py-4 border-b border-[--border] text-base font-semibold uppercase tracking-[0.08em] text-white/70 hover:text-white transition-colors"
                 style={{
                   transitionDelay: open ? `${i * 50}ms` : "0ms",
                   transform: open ? "translateX(0)" : "translateX(24px)",
@@ -159,7 +159,7 @@ export default function Navbar() {
         </div>
 
         {/* Panel footer */}
-        <div className="px-6 py-4 border-t border-white/10 shrink-0">
+        <div className="px-6 py-4 border-t border-[--border] shrink-0">
           <a
             href="https://instagram.com/hernando.ia"
             target="_blank"

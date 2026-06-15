@@ -180,18 +180,18 @@ export default function Home() {
           yearsXP={heroYears}
         />
 
-        {/* Stats Marquee — dynamic from live-stats */}
-        <section className="border-y-2 border-[--border] py-6 bg-[--accent]">
+        {/* Stats Marquee — cosmic, plum-tinted */}
+        <section className="border-y border-[--border] py-6 bg-[--muted]">
           <Marquee speed={80} gradient={false} autoFill>
             {marqueeItems.map((item, i) => (
               <span key={i} className="inline-flex items-center gap-3 mx-8">
-                <span className="text-3xl md:text-4xl font-bold tabular-nums text-[--accent-foreground]">
+                <span className="text-3xl md:text-4xl font-bold tabular-nums text-[--accent]">
                   {item.value}
                 </span>
-                <span className="text-xs uppercase tracking-[0.2em] text-[--accent-foreground]/70">
+                <span className="text-xs uppercase tracking-[0.2em] text-[--muted-foreground]">
                   {item.label}
                 </span>
-                <span className="text-2xl text-[--accent-foreground]/30 mx-4">✦</span>
+                <span className="text-2xl text-[--accent-secondary]/30 mx-4">✦</span>
               </span>
             ))}
           </Marquee>

@@ -92,7 +92,7 @@ export default function ProdutosPage() {
           </div>
           <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight mb-6">
             Ferramentas de IA que{" "}
-            <span className="text-[#DFE104]">trabalham</span> pra você
+            <span className="text-[--accent]">trabalham</span> pra você
           </h1>
           <p className="text-lg text-zinc-400 max-w-2xl mx-auto">
             Skills, agentes e apps. Cada produto resolve um problema real —
@@ -153,10 +153,10 @@ export default function ProdutosPage() {
               Me chama que a gente conversa.
             </p>
             <a
-              href="https://wa.me/55219920032747"
+              href="https://wa.me/5521920032747"
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-[#DFE104] text-black font-semibold hover:bg-[#c9cc00] transition-colors"
+              className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-[--accent] text-white font-semibold hover:bg-[--accent]/80 transition-colors"
             >
               <svg
                 width="20"

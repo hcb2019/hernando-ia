@@ -1,20 +1,21 @@
 import type { Metadata, Viewport } from "next";
-import { Space_Grotesk, Inter, Geist_Mono } from "next/font/google";
+import { Inter, Space_Grotesk, Geist_Mono } from "next/font/google";
 import ClientProviders from "@/components/providers/client-providers";
+import ParticleCosmos from "@/components/ui/particle-cosmos";
 import { SITE, JSONLD } from "@/lib/seo";
 import "./globals.css";
+
+const inter = Inter({
+  variable: "--font-inter",
+  subsets: ["latin"],
+  weight: ["200", "300", "400", "500", "600", "700"],
+  display: "swap",
+});
 
 const spaceGrotesk = Space_Grotesk({
   variable: "--font-space-grotesk",
   subsets: ["latin"],
   weight: ["300", "400", "500", "600", "700"],
-  display: "swap",
-});
-
-const inter = Inter({
-  variable: "--font-inter",
-  subsets: ["latin"],
-  weight: ["400", "500", "700"],
   display: "swap",
 });
 
@@ -29,7 +30,7 @@ export const viewport: Viewport = {
   initialScale: 1,
   maximumScale: 1,
   userScalable: false,
-  themeColor: "#09090B",
+  themeColor: "#000000",
 };
 
 export const metadata: Metadata = {
@@ -98,7 +99,7 @@ export default function RootLayout({
   return (
     <html
       lang="pt-BR"
-      className={`${spaceGrotesk.variable} ${inter.variable} ${geistMono.variable} h-full antialiased dark`}
+      className={`${inter.variable} ${spaceGrotesk.variable} ${geistMono.variable} h-full antialiased dark`}
     >
       <head>
         {/* Favicon — direct links (bypass Next.js auto-generation) */}
@@ -145,15 +146,12 @@ export default function RootLayout({
         <link rel="dns-prefetch" href="https://github.com" />
       </head>
       <body className="min-h-full flex flex-col bg-[--background] text-[--foreground] relative overflow-x-hidden">
-        {/* Noise texture — CSS-only on mobile for performance */}
-        <div className="noise-overlay" aria-hidden="true" />
-        <svg className="noise-svg hidden lg:block" aria-hidden="true" width="100%" height="100%">
-          <filter id="noise">
-            <feTurbulence type="fractalNoise" baseFrequency="0.5" numOctaves="2" stitchTiles="stitch" />
-            <feColorMatrix type="saturate" values="0" />
-          </filter>
-          <rect width="100%" height="100%" filter="url(#noise)" />
-        </svg>
+        {/* Particle cosmos — animated geometric field */}
+        <ParticleCosmos />
+
+        {/* Subtle noise grain over particles */}
+        <div className="noise-grain" aria-hidden="true" />
+
         <ClientProviders>
           {children}
         </ClientProviders>

@@ -38,7 +38,7 @@ export default function HeroSection({ followers, projects, yearsXP }: HeroSectio
         }}
       />
 
-      {/* Particle field — subtle acid yellow sparkles */}
+      {/* Particle field — plum voltage + white cosmic sparkles */}
       <div className="pointer-events-none absolute inset-0 z-[1]">
         <SparklesCore
           background="transparent"
@@ -46,18 +46,18 @@ export default function HeroSection({ followers, projects, yearsXP }: HeroSectio
           maxSize={0.8}
           particleDensity={80}
           className="w-full h-full"
-          particleColor="#DFE104"
+          particleColor="#8052FF"
           speed={0.4}
         />
       </div>
 
-      {/* Bottom fade to background */}
+      {/* Bottom fade to void */}
       <div
         aria-hidden="true"
         className="pointer-events-none absolute inset-0"
         style={{
           background:
-            "linear-gradient(to top, #09090B 0%, transparent 40%)",
+            "linear-gradient(to top, #000000 0%, transparent 40%)",
         }}
       />
 
