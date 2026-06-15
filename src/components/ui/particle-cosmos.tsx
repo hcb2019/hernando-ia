@@ -16,10 +16,10 @@ interface Particle {
 }
 
 const COLORS = [
-  "rgba(128, 82, 255, 0.5)",   // Plum Voltage
-  "rgba(255, 255, 255, 0.3)",   // Bone / white
-  "rgba(255, 184, 41, 0.3)",    // Amber Spark
-  "rgba(21, 132, 110, 0.25)",   // Lichen
+  "rgba(223, 225, 4, 0.35)",    // Acid Yellow (accent)
+  "rgba(255, 255, 255, 0.3)",    // Bone / white
+  "rgba(255, 184, 41, 0.25)",    // Amber Spark
+  "rgba(21, 132, 110, 0.2)",     // Lichen
 ];
 
 const SHAPES: Particle["shape"][] = ["circle", "circle", "circle", "triangle", "diamond", "square"];
@@ -135,7 +135,7 @@ export default function ParticleCosmos() {
         if (dist < 120) {
           const lineOpacity = (1 - dist / 120) * 0.06 * displayOpacity;
           ctx.globalAlpha = lineOpacity;
-          ctx.strokeStyle = "rgba(128, 82, 255, 1)";
+          ctx.strokeStyle = "rgba(223, 225, 4, 0.8)";
           ctx.lineWidth = 0.5;
           ctx.beginPath();
           ctx.moveTo(p.x, p.y);
@@ -169,9 +169,11 @@ export default function ParticleCosmos() {
     resize();
     window.addEventListener("resize", resize);
 
+    // More particles on mobile too, but scaled
+    const isMobile = window.innerWidth < 768;
     const count = prefersReduced
-      ? 30
-      : Math.min(120, Math.floor((window.innerWidth * window.innerHeight) / 12000));
+      ? 20
+      : Math.min(isMobile ? 80 : 120, Math.floor((window.innerWidth * window.innerHeight) / (isMobile ? 6000 : 12000)));
     particlesRef.current = Array.from({ length: count }, () =>
       createParticle(window.innerWidth, window.innerHeight)
     );
