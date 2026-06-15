@@ -46,7 +46,7 @@ export default function HeroSection({ followers, projects, yearsXP }: HeroSectio
           maxSize={0.8}
           particleDensity={80}
           className="w-full h-full"
-          particleColor="#DFE104"
+          particleColor="#8052FF"
           speed={0.4}
         />
       </div>

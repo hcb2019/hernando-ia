@@ -76,17 +76,17 @@
   --secondary-foreground: #ffffff;
   --muted: #0a0a0a;
   --muted-foreground: #9a9a9a;
-  --accent: #DFE104;
-  --accent-foreground: #000000;
+  --accent: #8052ff;
+  --accent-foreground: #ffffff;
   --accent-secondary: #ffb829;
   --accent-decorative: #15846e;
   --surface: #000000;
-  --surface-hover: #DFE104;
+  --surface-hover: #8052ff;
   --border: #1a1a1a;
   --destructive: #ef4444;
   --input: #1a1a1a;
-  --ring: #DFE104;
-  --chart-1: #DFE104;
+  --ring: #8052ff;
+  --chart-1: #8052ff;
   --chart-2: #ffb829;
   --chart-3: #9a9a9a;
   --chart-4: #1a1a1a;
@@ -94,12 +94,12 @@
   --radius: 0px;
   --sidebar: #000000;
   --sidebar-foreground: #ffffff;
-  --sidebar-primary: #DFE104;
-  --sidebar-primary-foreground: #000000;
+  --sidebar-primary: #8052ff;
+  --sidebar-primary-foreground: #ffffff;
   --sidebar-accent: #0a0a0a;
   --sidebar-accent-foreground: #ffffff;
   --sidebar-border: #1a1a1a;
-  --sidebar-ring: #DFE104;
+  --sidebar-ring: #8052ff;
 }
 
 .dark {
@@ -136,14 +136,7 @@ html, body {
   inset: 0;
   z-index: 0;
   pointer-events: none;
-  opacity: 0.8;
-}
-
-/* Desktop — slightly more subtle */
-@media (min-width: 768px) {
-  .particle-canvas {
-    opacity: 0.65;
-  }
+  opacity: 0.7;
 }
 
 /* Subtle noise grain over particles — depth texture */
