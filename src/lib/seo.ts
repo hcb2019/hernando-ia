@@ -77,22 +77,11 @@ export function generatePageMeta({
       : `${SITE.url}${ogImage}`
     : `${SITE.url}${SITE.ogImage}`;
 
-  const languages = {
-    pt: `${SITE.url}${path}${path.includes("?") ? "&" : "?"}lang=pt`,
-    en: `${SITE.url}${path}${path.includes("?") ? "&" : "?"}lang=en`,
-    es: `${SITE.url}${path}${path.includes("?") ? "&" : "?"}lang=es`,
-  };
-
   return {
     title,
     description,
     alternates: {
       canonical: url,
-      languages: {
-        pt: languages.pt,
-        en: languages.en,
-        es: languages.es,
-      },
     },
     authors: [{ name: SITE.author.name, url: SITE.author.url }],
     creator: SITE.author.name,

@@ -8,100 +8,52 @@ export default function sitemap(): MetadataRoute.Sitemap {
   const blogEntries: MetadataRoute.Sitemap = posts.map((post) => ({
     url: `${SITE.url}/blog/${post.slug}`,
     lastModified: new Date(post.date),
-    changeFrequency: "weekly",
+    changeFrequency: "weekly" as const,
     priority: 0.8,
-    alternates: {
-      languages: {
-        pt: `${SITE.url}/blog/${post.slug}`,
-        en: `${SITE.url}/blog/${post.slug}?lang=en`,
-        es: `${SITE.url}/blog/${post.slug}?lang=es`,
-      },
-    },
   }));
 
   return [
     {
       url: SITE.url,
       lastModified: new Date(),
-      changeFrequency: "daily",
+      changeFrequency: "daily" as const,
       priority: 1.0,
-      alternates: {
-        languages: {
-          pt: SITE.url,
-          en: `${SITE.url}?lang=en`,
-          es: `${SITE.url}?lang=es`,
-        },
-      },
     },
     {
       url: `${SITE.url}/blog`,
       lastModified: new Date(),
-      changeFrequency: "daily",
+      changeFrequency: "daily" as const,
       priority: 0.9,
-      alternates: {
-        languages: {
-          pt: `${SITE.url}/blog`,
-          en: `${SITE.url}/blog?lang=en`,
-          es: `${SITE.url}/blog?lang=es`,
-        },
-      },
     },
     {
       url: `${SITE.url}/produtos`,
       lastModified: new Date(),
-      changeFrequency: "weekly",
+      changeFrequency: "weekly" as const,
       priority: 0.9,
-      alternates: {
-        languages: {
-          pt: `${SITE.url}/produtos`,
-        },
-      },
     },
     {
       url: `${SITE.url}/produtos/claude-code-skills`,
       lastModified: new Date(),
-      changeFrequency: "weekly",
+      changeFrequency: "weekly" as const,
       priority: 0.9,
-      alternates: {
-        languages: {
-          pt: `${SITE.url}/produtos/claude-code-skills`,
-          en: `${SITE.url}/produtos/claude-code-skills?lang=en`,
-          es: `${SITE.url}/produtos/claude-code-skills?lang=es`,
-        },
-      },
     },
     {
       url: `${SITE.url}/produtos/arenabite`,
       lastModified: new Date(),
-      changeFrequency: "weekly",
+      changeFrequency: "weekly" as const,
       priority: 0.9,
-      alternates: {
-        languages: {
-          pt: `${SITE.url}/produtos/arenabite`,
-        },
-      },
     },
     {
       url: `${SITE.url}/newsletter`,
       lastModified: new Date(),
-      changeFrequency: "weekly",
+      changeFrequency: "weekly" as const,
       priority: 0.8,
-      alternates: {
-        languages: {
-          pt: `${SITE.url}/newsletter`,
-        },
-      },
     },
     {
       url: `${SITE.url}/servicos`,
       lastModified: new Date(),
-      changeFrequency: "weekly",
+      changeFrequency: "weekly" as const,
       priority: 0.9,
-      alternates: {
-        languages: {
-          pt: `${SITE.url}/servicos`,
-        },
-      },
     },
     ...blogEntries,
   ];

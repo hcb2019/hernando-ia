@@ -42,11 +42,6 @@ export const metadata: Metadata = {
   manifest: "/site.webmanifest",
   alternates: {
     canonical: SITE.url,
-    languages: {
-      pt: SITE.url,
-      en: `${SITE.url}?lang=en`,
-      es: `${SITE.url}?lang=es`,
-    },
   },
   authors: [{ name: SITE.author.name, url: SITE.author.url }],
   creator: SITE.author.name,
