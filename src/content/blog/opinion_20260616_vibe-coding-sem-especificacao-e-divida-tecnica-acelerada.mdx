@@ -1,0 +1,56 @@
+---
+title: "VIBE CODING CONSTRÓI PIPELINES EM MINUTOS. DAQUI A SEIS MESES, NINGUÉM VAI SABER COMO FUNCIONAM."
+date: 2026-06-16
+excerpt: "Agentes de IA geram código numa velocidade absurda, mas todo aquele conhecimento de arquitetura, regras de negócio e contexto operacional some junto com o prompt. A indústria está criando a maior dívida técnica da história. E a solução não é parar de usar IA — é parar de fingir que prompt é documentação."
+tags: [ia, engenharia-de-software, vibe-coding, divida-tecnica, especificacao, agentes, carreira, naval]
+readingTime: 6
+sponsored: false
+premium: false
+---
+
+## O problema não é a velocidade. É a memória.
+
+Tem uma matéria no VentureBeat essa semana que me fez parar e pensar. O título já entrega: *"Vibe coding can build your pipeline. It can't explain it six months later."* E é exatamente disso que eu quero falar.
+
+Na minha experiência, a gente viveu três fases com IA pra código nos últimos dois anos. Primeiro foi o copilot básico — autocomplete glorificado, útil, nada revolucionário. Depois veio o "vibe coding" — você descreve o que quer e o agente cospe o código inteiro, testes, Dockerfile, a porra toda. Agora a gente tá entrando na terceira fase — e é ela que me preocupa. É a fase em que as empresas percebem que **velocidade de entrega e sustentabilidade do sistema não são a mesma coisa**.
+
+## O Que Aconteceu
+
+O VentureBeat publicou uma análise de Shuhua Xu que articula algo que muito engenheiro sênior já sentia mas não tinha nome: o **problema da memória operacional**. Agentes de IA geram pipelines, transformações, workflows de orquestração e configurações de infraestrutura em segundos. O problema é que **todo o contexto que justifica essas decisões — regras de negócio, premissas de arquitetura, dependências downstream, restrições operacionais — fica preso no prompt original**. Some. Evapora.
+
+A matéria aponta que, em times que adotaram vibe coding sem cerimônia, as organizações estão lentamente perdendo visibilidade sobre: intenção arquitetural, dependências entre sistemas, premissas de validação, comportamento operacional e contexto de negócio por trás das implementações [Fonte: VentureBeat]. Traduzindo: o sistema funciona, mas ninguém sabe mais **por quê**.
+
+A resposta que está emergindo é o que chamam de **Spec-Driven Development (SDD)** — converter prompts, regras de negócio e lógica de validação em especificações executáveis e versionadas, que viram parte do sistema. Essas specs funcionam como "memória operacional persistente" tanto pra humanos quanto pra agentes de IA.
+
+## Por Que Isso Importa (de Verdade)
+
+Isso não é debate acadêmico. Isso é **sobrevivência de carreira e de negócio**.
+
+Pensa comigo: um engenheiro brasileiro médio trabalhando numa fintech ou healthtech da Faria Lima consegue, com vibe coding, entregar feature em 1/5 do tempo. Isso é real. Eu mesmo já usei agentes pra gerar microsserviço inteiro numa tarde. Mas a pergunta que ninguém tá fazendo é: **quem vai dar manutenção nisso?** Porque manutenção é 80% do custo de software. E se o código foi gerado sem que ninguém internalizasse as decisões de design, sem specs versionadas, sem testes que capturem **intenção** (não só comportamento), você não tem um sistema. Você tem uma bomba-relógio.
+
+O Naval fala muito sobre **leverage** — alavancagem. Código é a forma definitiva de leverage porque você escreve uma vez e ele executa infinitamente com custo marginal zero. Mas código que você não entende, que ninguém documentou, que foi gerado por um agente com contexto que já se perdeu... **isso não é leverage. É passivo.** É dívida técnica com juros compostos.
+
+E aqui vai o take polêmico: vibe coding sem especificação é **terceirização disfarçada de inovação**. Só que em vez de terceirizar pra um dev júnior na Índia, você terceirizou pra um modelo estatístico que não tem memória, não tem accountability e não atende telefone de madrugada quando o pipeline quebra.
+
+## Minha Opinião
+
+Eu confesso que tenho sentimentos contraditórios sobre isso. Por um lado, vibe coding é uma das coisas mais úteis que já aconteceram na engenharia de software. Sério. A quantidade de boilerplate, CRUD sem graça e script de migração que eu não precisei escrever nos últimos meses é absurda. Isso libera tempo pra pensar em arquitetura de verdade, em produto, em negócio.
+
+Mas — e esse "mas" é enorme — **tem uma diferença entre usar IA pra acelerar e usar IA pra substituir entendimento**. O primeiro é alavancagem. O segundo é roleta russa.
+
+O que o artigo do VentureBeat acerta em cheio é que prompt **não é artefato de engenharia**. Não dá pra versionar prompt em branch de Git e achar que tá tudo certo. O prompt captura uma intenção momentânea — "faz um pipeline que ingere CSV do S3, limpa colunas nulas e escreve no PostgreSQL particionado por data". Beleza, o agente gera. Funciona. Mas e quando o schema do CSV muda? E quando o particionamento precisa ser por região em vez de data? Seis meses depois, você não vai lembrar qual era o prompt original — e, pior, **o mesmo prompt pode gerar código diferente com um modelo atualizado**.
+
+O SDD me parece a antítese mais madura desse problema. Em vez de depender de prompts como memória, você transforma o que o prompt *representa* em especificação viva: contratos de API, schemas validados, regras de negócio executáveis. O código gerado vira consequência da spec, não o contrário. Isso inclusive melhora o output dos agentes, porque eles passam a ter um "norte" determinístico.
+
+Imagina aplicar isso num contexto brasileiro, onde a rotatividade de devs em consultorias é altíssima. O dev entra, faz vibe coding sem spec, entrega, sai. O próximo dev herda um Frankenstein. Com SDD, o conhecimento fica no sistema — não na cabeça de quem já pediu as contas.
+
+## Takeaways
+
+- **Vibe coding é velocidade. Spec-driven development é sustentabilidade.** Os dois não são mutuamente exclusivos. Na verdade, o melhor resultado vem quando você usa agentes de IA guiados por especificações versionadas, não por prompts descartáveis.
+- **Prompt não é documentação.** Se o contexto de arquitetura, regras de negócio e decisões de design não está versionado junto com o código, você não tem um sistema — você tem uma aposta.
+- **A próxima crise de software não vai ser de bugs. Vai ser de "ninguém sabe como isso funciona".** Empresas que não adotarem alguma forma de memória operacional persistente vão acumular dívida técnica numa velocidade inédita.
+- **Pra mim, a conclusão é clara:** use IA pra acelerar, mas exija specs como entregável. Código sem especificação é igual carro sem freio — impressionante de acelerar, mas a conta chega. E chega caro.
+
+## Fontes
+
+- [VentureBeat — Vibe coding can build your pipeline. It can't explain it six months later](https://venturebeat.com/orchestration/vibe-coding-can-build-your-pipeline-it-cant-explain-it-six-months-later) — 15 de junho de 2026
