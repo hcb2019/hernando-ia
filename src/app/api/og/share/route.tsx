@@ -21,7 +21,7 @@ export async function GET(req: Request) {
     const titleLines: string[] = [];
     let currentLine = "";
     for (const word of words) {
-      if ((currentLine + " " + word).length > 28) {
+      if ((currentLine + " " + word).length > 26) {
         titleLines.push(currentLine.trim());
         currentLine = word;
       } else {
@@ -30,15 +30,15 @@ export async function GET(req: Request) {
     }
     if (currentLine) titleLines.push(currentLine.trim());
 
-    // ── Excerpt: muito mais texto agora ──
-    const excerptMaxChars = isStories ? 420 : 340;
+    // ── Excerpt ──
+    const excerptMaxChars = isStories ? 500 : 400;
     const trimmedExcerpt = excerpt.length > excerptMaxChars
       ? excerpt.slice(0, excerptMaxChars).replace(/\s+\S*$/, "") + "..."
       : excerpt;
     const excerptWords = trimmedExcerpt.split(" ");
     const excerptLines: string[] = [];
     let exLine = "";
-    const exMaxLen = isStories ? 48 : 42;
+    const exMaxLen = isStories ? 46 : 40;
     for (const word of excerptWords) {
       if ((exLine + " " + word).length > exMaxLen) {
         excerptLines.push(exLine.trim());
@@ -48,15 +48,14 @@ export async function GET(req: Request) {
       }
     }
     if (exLine) excerptLines.push(exLine.trim());
-    // Mais linhas visíveis
-    const maxExcerptLines = isStories ? 6 : 4;
+    const maxExcerptLines = isStories ? 7 : 5;
     const visibleExcerpt = excerptLines.slice(0, maxExcerptLines);
 
     // ── Fontes ──
-    const titleFontSize = titleLines.length > 3 ? 44 : titleLines.length > 2 ? 52 : 62;
-    const excerptFontSize = isStories ? 28 : 24;
-    const paddingX = 80;
-    const paddingY = isStories ? 90 : 60;
+    const titleFontSize = titleLines.length > 3 ? 42 : titleLines.length > 2 ? 50 : 60;
+    const excerptFontSize = isStories ? 30 : 26;
+    const paddingX = 90;
+    const paddingY = isStories ? 100 : 70;
 
     return new ImageResponse(
       (
@@ -66,7 +65,7 @@ export async function GET(req: Request) {
             height: "100%",
             display: "flex",
             flexDirection: "column",
-            justifyContent: "flex-start",
+            justifyContent: "center",
             alignItems: "flex-start",
             background: "linear-gradient(160deg, #0a0a2e 0%, #120a3e 40%, #0d0d35 100%)",
             fontFamily: "Inter, Space Grotesk, sans-serif",
@@ -89,12 +88,12 @@ export async function GET(req: Request) {
           <div
             style={{
               position: "absolute",
-              top: "-100px",
-              right: "-100px",
-              width: "500px",
-              height: "500px",
+              top: "-150px",
+              right: "-120px",
+              width: "550px",
+              height: "550px",
               borderRadius: "50%",
-              background: "radial-gradient(circle, rgba(0,255,200,0.06) 0%, transparent 70%)",
+              background: "radial-gradient(circle, rgba(0,255,200,0.05) 0%, transparent 70%)",
             }}
           />
 
@@ -102,10 +101,10 @@ export async function GET(req: Request) {
           <div
             style={{
               position: "absolute",
-              bottom: "-150px",
-              left: "-150px",
-              width: "600px",
-              height: "600px",
+              bottom: "-200px",
+              left: "-180px",
+              width: "650px",
+              height: "650px",
               borderRadius: "50%",
               background: "radial-gradient(circle, rgba(123,47,247,0.04) 0%, transparent 70%)",
             }}
@@ -129,12 +128,12 @@ export async function GET(req: Request) {
               display: "flex",
               alignItems: "center",
               gap: "12px",
-              marginBottom: isStories ? "36px" : "22px",
+              marginBottom: isStories ? "48px" : "30px",
             }}
           >
             <span
               style={{
-                fontSize: "20px",
+                fontSize: "22px",
                 fontWeight: 700,
                 color: "#00ffc8",
                 letterSpacing: "0.1em",
@@ -145,15 +144,15 @@ export async function GET(req: Request) {
             </span>
             <span
               style={{
-                width: "6px",
-                height: "6px",
+                width: "7px",
+                height: "7px",
                 borderRadius: "50%",
                 backgroundColor: "#00ffc8",
               }}
             />
             <span
               style={{
-                fontSize: "16px",
+                fontSize: "17px",
                 color: "rgba(255,255,255,0.35)",
                 fontWeight: 500,
               }}
@@ -167,8 +166,8 @@ export async function GET(req: Request) {
             <div
               style={{
                 display: "flex",
-                gap: "10px",
-                marginBottom: isStories ? "28px" : "18px",
+                gap: "12px",
+                marginBottom: isStories ? "36px" : "24px",
                 flexWrap: "wrap",
               }}
             >
@@ -176,13 +175,13 @@ export async function GET(req: Request) {
                 <span
                   key={tag}
                   style={{
-                    fontSize: "14px",
+                    fontSize: "15px",
                     color: "#00ffc8",
                     border: "1.5px solid rgba(0,255,200,0.25)",
-                    padding: "5px 16px",
-                    borderRadius: "6px",
+                    padding: "6px 20px",
+                    borderRadius: "8px",
                     textTransform: "uppercase",
-                    letterSpacing: "0.04em",
+                    letterSpacing: "0.05em",
                     fontWeight: 600,
                     backgroundColor: "rgba(0,255,200,0.06)",
                   }}
@@ -198,9 +197,9 @@ export async function GET(req: Request) {
             style={{
               display: "flex",
               flexDirection: "column",
-              gap: "3px",
+              gap: "4px",
               width: "100%",
-              marginBottom: isStories ? "28px" : "16px",
+              marginBottom: isStories ? "36px" : "24px",
             }}
           >
             {titleLines.map((line, i) => (
@@ -228,9 +227,9 @@ export async function GET(req: Request) {
               style={{
                 display: "flex",
                 flexDirection: "column",
-                gap: "3px",
+                gap: "4px",
                 width: "100%",
-                flex: 1,
+                marginBottom: isStories ? "48px" : "30px",
               }}
             >
               {visibleExcerpt.map((line, i) => (
@@ -240,7 +239,7 @@ export async function GET(req: Request) {
                     fontSize: `${excerptFontSize}px`,
                     fontWeight: 400,
                     color: "rgba(255,255,255,0.7)",
-                    lineHeight: 1.5,
+                    lineHeight: 1.55,
                     margin: 0,
                   }}
                 >
@@ -257,15 +256,14 @@ export async function GET(req: Request) {
               justifyContent: "space-between",
               alignItems: "flex-end",
               width: "100%",
-              marginTop: isStories ? "28px" : "18px",
-              paddingTop: "20px",
-              borderTop: "1px solid rgba(255,255,255,0.06)",
+              paddingTop: "24px",
+              borderTop: "1px solid rgba(255,255,255,0.08)",
             }}
           >
-            <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
               <span
                 style={{
-                  fontSize: "15px",
+                  fontSize: "16px",
                   color: "rgba(255,255,255,0.45)",
                   fontWeight: 600,
                 }}
@@ -274,7 +272,7 @@ export async function GET(req: Request) {
               </span>
               <span
                 style={{
-                  fontSize: "22px",
+                  fontSize: "24px",
                   fontWeight: 800,
                   color: "#00ffc8",
                   letterSpacing: "-0.02em",
@@ -287,14 +285,14 @@ export async function GET(req: Request) {
             {/* Brand mark */}
             <div
               style={{
-                width: "50px",
-                height: "50px",
-                borderRadius: "13px",
+                width: "54px",
+                height: "54px",
+                borderRadius: "14px",
                 background: "linear-gradient(135deg, #00ffc8, #7b2ff7)",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
-                fontSize: "24px",
+                fontSize: "26px",
                 fontWeight: 900,
                 color: "#0a0a2e",
               }}
