@@ -296,7 +296,11 @@ export default async function BlogPostPage({ params, searchParams }: PageProps) 
             Compartilhe este artigo
           </h3>
           <div className="flex items-center justify-center">
-            <ShareButton />
+            <ShareButton
+              title={post.title}
+              date={formattedDate}
+              tags={post.tags}
+            />
           </div>
         </section>
       </main>
