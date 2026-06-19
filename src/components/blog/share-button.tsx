@@ -20,12 +20,17 @@ export default function ShareButton({
   const [generating, setGenerating] = useState(false);
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [imageType, setImageType] = useState<"stories" | "post" | null>(null);
-  const ref = useRef<HTMLDivElement>(null);
+  const [menuStyle, setMenuStyle] = useState<{ top: number; left: number } | null>(null);
+  const btnRef = useRef<HTMLButtonElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
 
   // Fechar ao clicar fora
   useEffect(() => {
     function handleClick(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) {
+      if (
+        menuRef.current && !menuRef.current.contains(e.target as Node) &&
+        btnRef.current && !btnRef.current.contains(e.target as Node)
+      ) {
         setOpen(false);
         setImageUrl(null);
         setImageType(null);
@@ -34,6 +39,21 @@ export default function ShareButton({
     if (open) document.addEventListener("mousedown", handleClick);
     return () => document.removeEventListener("mousedown", handleClick);
   }, [open]);
+
+  const toggleMenu = () => {
+    if (!open && btnRef.current) {
+      const rect = btnRef.current.getBoundingClientRect();
+      setMenuStyle({
+        top: rect.top - 8, // acima do botão
+        left: rect.left + rect.width / 2,
+      });
+    }
+    setOpen(!open);
+    if (open) {
+      setImageUrl(null);
+      setImageType(null);
+    }
+  };
 
   // Gerar imagem via API OG
   const generateImage = async (type: "stories" | "post") => {
@@ -76,9 +96,10 @@ export default function ShareButton({
   const tagsStr = tags.slice(0, 4).join(",");
 
   return (
-    <div ref={ref} className="relative inline-block">
+    <div className="relative inline-block">
       <button
-        onClick={() => setOpen(!open)}
+        ref={btnRef}
+        onClick={toggleMenu}
         className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg border border-accent/30 bg-accent/10 text-accent text-sm font-semibold hover:bg-accent/20 hover:border-accent/50 transition-all"
         aria-label="Compartilhar artigo"
       >
@@ -92,8 +113,17 @@ export default function ShareButton({
         {label}
       </button>
 
-      {open && (
-        <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 w-72 bg-[#0f0f1e] border border-white/10 rounded-xl p-4 shadow-2xl z-50">
+      {open && menuStyle && (
+        <div
+          ref={menuRef}
+          className="fixed w-72 bg-[#0f0f1e] border border-white/10 rounded-xl p-4 shadow-2xl"
+          style={{
+            zIndex: 99999,
+            top: `${menuStyle.top}px`,
+            left: `${menuStyle.left}px`,
+            transform: "translate(-50%, -100%)",
+          }}
+        >
           {/* Botão fechar */}
           <button
             onClick={() => { setOpen(false); setImageUrl(null); }}
