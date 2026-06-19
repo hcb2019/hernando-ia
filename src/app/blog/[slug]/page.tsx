@@ -300,6 +300,7 @@ export default async function BlogPostPage({ params, searchParams }: PageProps) 
               title={post.title}
               date={formattedDate}
               tags={post.tags}
+              excerpt={post.excerpt}
             />
           </div>
         </section>

@@ -9,18 +9,19 @@ export async function GET(req: Request) {
     const title = searchParams.get("title") || "Hernando.ia";
     const date = searchParams.get("date") || "";
     const tags = searchParams.get("tags")?.split(",").filter(Boolean) || [];
-    const mode = searchParams.get("mode") || "post"; // "stories" | "post"
+    const mode = searchParams.get("mode") || "post";
+    const excerpt = searchParams.get("excerpt") || "";
 
     const isStories = mode === "stories";
     const width = 1080;
     const height = isStories ? 1920 : 1080;
 
-    // Quebrar título longo
+    // Quebrar título longo em linhas
     const words = title.split(" ");
     const titleLines: string[] = [];
     let currentLine = "";
     for (const word of words) {
-      if ((currentLine + " " + word).length > 35) {
+      if ((currentLine + " " + word).length > 30) {
         titleLines.push(currentLine.trim());
         currentLine = word;
       } else {
@@ -29,11 +30,35 @@ export async function GET(req: Request) {
     }
     if (currentLine) titleLines.push(currentLine.trim());
 
+    // Quebrar excerpt em linhas (2-4 linhas dependendo do modo)
+    const excerptMaxChars = isStories ? 220 : 180;
+    const trimmedExcerpt = excerpt.length > excerptMaxChars
+      ? excerpt.slice(0, excerptMaxChars).replace(/\s+\S*$/, "") + "..."
+      : excerpt;
+    const excerptWords = trimmedExcerpt.split(" ");
+    const excerptLines: string[] = [];
+    let exLine = "";
+    const exMaxLen = isStories ? 42 : 38;
+    for (const word of excerptWords) {
+      if ((exLine + " " + word).length > exMaxLen) {
+        excerptLines.push(exLine.trim());
+        exLine = word;
+      } else {
+        exLine += " " + word;
+      }
+    }
+    if (exLine) excerptLines.push(exLine.trim());
+    // Limitar linhas do excerpt
+    const maxExcerptLines = isStories ? 4 : 2;
+    const visibleExcerpt = excerptLines.slice(0, maxExcerptLines);
+
     // Tamanho de fonte adaptativo
-    const titleFontSize = titleLines.length > 3 ? 48 : titleLines.length > 2 ? 56 : 64;
-    const paddingY = isStories ? 120 : 80;
+    const titleFontSize = titleLines.length > 3 ? 46 : titleLines.length > 2 ? 54 : 64;
+    const titleLineHeight = titleFontSize * 1.15;
+    const excerptFontSize = isStories ? 26 : 22;
+    const excerptLineHeight = excerptFontSize * 1.45;
     const paddingX = 80;
-    const titleGap = titleFontSize * 1.3;
+    const paddingY = isStories ? 100 : 70;
 
     return new ImageResponse(
       (
@@ -43,7 +68,7 @@ export async function GET(req: Request) {
             height: "100%",
             display: "flex",
             flexDirection: "column",
-            justifyContent: "center",
+            justifyContent: "flex-start",
             alignItems: "flex-start",
             background: "linear-gradient(160deg, #0a0a2e 0%, #120a3e 40%, #0d0d35 100%)",
             fontFamily: "Inter, Space Grotesk, sans-serif",
@@ -100,13 +125,13 @@ export async function GET(req: Request) {
             }}
           />
 
-          {/* Top label */}
+          {/* ── Top bar: brand + date ── */}
           <div
             style={{
               display: "flex",
               alignItems: "center",
               gap: "12px",
-              marginBottom: isStories ? "50px" : "36px",
+              marginBottom: isStories ? "40px" : "28px",
             }}
           >
             <span
@@ -139,13 +164,13 @@ export async function GET(req: Request) {
             </span>
           </div>
 
-          {/* Tags */}
+          {/* ── Tags ── */}
           {tags.length > 0 && (
             <div
               style={{
                 display: "flex",
                 gap: "10px",
-                marginBottom: isStories ? "40px" : "28px",
+                marginBottom: isStories ? "32px" : "22px",
                 flexWrap: "wrap",
               }}
             >
@@ -153,10 +178,10 @@ export async function GET(req: Request) {
                 <span
                   key={tag}
                   style={{
-                    fontSize: "15px",
+                    fontSize: "14px",
                     color: "#00ffc8",
                     border: "1.5px solid rgba(0,255,200,0.25)",
-                    padding: "6px 18px",
+                    padding: "5px 16px",
                     borderRadius: "6px",
                     textTransform: "uppercase",
                     letterSpacing: "0.04em",
@@ -170,15 +195,14 @@ export async function GET(req: Request) {
             </div>
           )}
 
-          {/* Title */}
+          {/* ── Title ── */}
           <div
             style={{
               display: "flex",
               flexDirection: "column",
-              gap: `${titleGap * 0.15}px`,
-              maxWidth: "100%",
-              flex: 1,
-              justifyContent: "center",
+              gap: "4px",
+              width: "100%",
+              marginBottom: isStories ? "30px" : "20px",
             }}
           >
             {titleLines.map((line, i) => (
@@ -188,7 +212,7 @@ export async function GET(req: Request) {
                   fontSize: `${titleFontSize}px`,
                   fontWeight: 800,
                   color: "#ffffff",
-                  lineHeight: 1.15,
+                  lineHeight: titleLineHeight / titleFontSize,
                   letterSpacing: "-0.03em",
                   textTransform: "uppercase",
                   textShadow: "0 2px 40px rgba(0,255,200,0.15)",
@@ -200,23 +224,50 @@ export async function GET(req: Request) {
             ))}
           </div>
 
-          {/* CTA Footer */}
+          {/* ── Excerpt / Resumo ── */}
+          {visibleExcerpt.length > 0 && (
+            <div
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                gap: "2px",
+                width: "100%",
+                flex: 1,
+              }}
+            >
+              {visibleExcerpt.map((line, i) => (
+                <p
+                  key={i}
+                  style={{
+                    fontSize: `${excerptFontSize}px`,
+                    fontWeight: 400,
+                    color: "rgba(255,255,255,0.65)",
+                    lineHeight: excerptLineHeight / excerptFontSize,
+                    margin: 0,
+                  }}
+                >
+                  {line}
+                </p>
+              ))}
+            </div>
+          )}
+
+          {/* ── CTA Footer ── */}
           <div
             style={{
               display: "flex",
               justifyContent: "space-between",
               alignItems: "flex-end",
               width: "100%",
-              marginTop: isStories ? "60px" : "40px",
-              paddingTop: "30px",
+              paddingTop: "24px",
               borderTop: "1px solid rgba(255,255,255,0.06)",
             }}
           >
-            <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
               <span
                 style={{
-                  fontSize: "17px",
-                  color: "rgba(255,255,255,0.6)",
+                  fontSize: "16px",
+                  color: "rgba(255,255,255,0.5)",
                   fontWeight: 600,
                 }}
               >
@@ -224,7 +275,7 @@ export async function GET(req: Request) {
               </span>
               <span
                 style={{
-                  fontSize: "26px",
+                  fontSize: "24px",
                   fontWeight: 800,
                   color: "#00ffc8",
                   letterSpacing: "-0.02em",
@@ -237,14 +288,14 @@ export async function GET(req: Request) {
             {/* Brand mark */}
             <div
               style={{
-                width: "60px",
-                height: "60px",
-                borderRadius: "16px",
+                width: "56px",
+                height: "56px",
+                borderRadius: "14px",
                 background: "linear-gradient(135deg, #00ffc8, #7b2ff7)",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
-                fontSize: "28px",
+                fontSize: "26px",
                 fontWeight: 900,
                 color: "#0a0a2e",
               }}

@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-06-19T00:00:31.750670+00:00",
+  "updated_at": "2026-06-19T18:00:41.217923+00:00",
   "github": {
     "user": {
       "login": "hcb2019",
@@ -14,16 +14,6 @@
     },
     "repos": [
       {
-        "name": "gold-carbon",
-        "full_name": "hcb2019/gold-carbon",
-        "html_url": "https://github.com/hcb2019/gold-carbon",
-        "description": "Gold Carbon — Seu BYD vale dinheiro. Transforme km rodados em créditos de carbono.",
-        "language": "TypeScript",
-        "stargazers_count": 0,
-        "forks_count": 0,
-        "updated_at": "2026-06-18T23:45:35Z"
-      },
-      {
         "name": "hernando-ia",
         "full_name": "hcb2019/hernando-ia",
         "html_url": "https://github.com/hcb2019/hernando-ia",
@@ -31,7 +21,17 @@
         "language": "MDX",
         "stargazers_count": 0,
         "forks_count": 0,
-        "updated_at": "2026-06-18T20:05:59Z"
+        "updated_at": "2026-06-19T17:51:55Z"
+      },
+      {
+        "name": "gold-carbon",
+        "full_name": "hcb2019/gold-carbon",
+        "html_url": "https://github.com/hcb2019/gold-carbon",
+        "description": "Gold Carbon — Seu BYD vale dinheiro. Transforme km rodados em créditos de carbono.",
+        "language": "TypeScript",
+        "stargazers_count": 0,
+        "forks_count": 0,
+        "updated_at": "2026-06-19T17:47:29Z"
       },
       {
         "name": "Ufokko",
@@ -101,13 +101,13 @@
       "forks": 0
     },
     "events": [],
-    "updated_at": "2026-06-19T00:00:31.750670+00:00"
+    "updated_at": "2026-06-19T18:00:41.217923+00:00"
   },
   "instagram": {
     "followers": 1294,
-    "posts": 125,
+    "posts": 127,
     "account_type": "MEDIA_CREATOR",
-    "reach_30d": 419019,
-    "updated_at": "2026-06-19T00:00:31.750670+00:00"
+    "reach_30d": 413281,
+    "updated_at": "2026-06-19T18:00:41.217923+00:00"
   }
 }

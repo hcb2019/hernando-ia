@@ -7,6 +7,7 @@ interface ShareButtonProps {
   title: string;
   date: string;
   tags: string[];
+  excerpt?: string;
   label?: string;
 }
 
@@ -14,6 +15,7 @@ export default function ShareButton({
   title,
   date,
   tags,
+  excerpt,
   label = "Compartilhar",
 }: ShareButtonProps) {
   const [open, setOpen] = useState(false);
@@ -68,6 +70,7 @@ export default function ShareButton({
         title: title.slice(0, 120),
         date,
         tags: tags.slice(0, 4).join(","),
+        excerpt: excerpt?.slice(0, 250) || "",
         mode: type,
       });
       const url = `/api/og/share?${params.toString()}`;
