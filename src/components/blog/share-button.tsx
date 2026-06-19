@@ -70,7 +70,7 @@ export default function ShareButton({
         title: title.slice(0, 120),
         date,
         tags: tags.slice(0, 4).join(","),
-        excerpt: excerpt?.slice(0, 420) || "",
+        excerpt: excerpt?.slice(0, 500) || "",
         mode: type,
       });
       const url = `/api/og/share?${params.toString()}`;

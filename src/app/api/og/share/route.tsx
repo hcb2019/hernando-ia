@@ -30,15 +30,15 @@ export async function GET(req: Request) {
     }
     if (currentLine) titleLines.push(currentLine.trim());
 
-    // ── Excerpt ──
-    const excerptMaxChars = isStories ? 500 : 400;
+    // ── Excerpt: máximo de texto possível ──
+    const excerptMaxChars = isStories ? 650 : 500;
     const trimmedExcerpt = excerpt.length > excerptMaxChars
       ? excerpt.slice(0, excerptMaxChars).replace(/\s+\S*$/, "") + "..."
       : excerpt;
     const excerptWords = trimmedExcerpt.split(" ");
     const excerptLines: string[] = [];
     let exLine = "";
-    const exMaxLen = isStories ? 46 : 40;
+    const exMaxLen = isStories ? 44 : 38;
     for (const word of excerptWords) {
       if ((exLine + " " + word).length > exMaxLen) {
         excerptLines.push(exLine.trim());
@@ -48,14 +48,18 @@ export async function GET(req: Request) {
       }
     }
     if (exLine) excerptLines.push(exLine.trim());
-    const maxExcerptLines = isStories ? 7 : 5;
+    // Sem limite de linhas — mostra tudo que couber no espaço
+    const maxExcerptLines = isStories ? 9 : 6;
     const visibleExcerpt = excerptLines.slice(0, maxExcerptLines);
 
-    // ── Fontes ──
-    const titleFontSize = titleLines.length > 3 ? 42 : titleLines.length > 2 ? 50 : 60;
-    const excerptFontSize = isStories ? 30 : 26;
+    // ── Fontes adaptativas ──
+    const titleFontSize = titleLines.length > 3 ? 40 : titleLines.length > 2 ? 48 : 56;
+    // Fonte do excerpt diminui se tiver muitas linhas
+    const excerptFontSize = visibleExcerpt.length > 4
+      ? (isStories ? 24 : 20)
+      : (isStories ? 28 : 24);
     const paddingX = 90;
-    const paddingY = isStories ? 100 : 70;
+    const paddingY = isStories ? 90 : 60;
 
     return new ImageResponse(
       (
@@ -84,7 +88,7 @@ export async function GET(req: Request) {
             }}
           />
 
-          {/* Glow orb - top right */}
+          {/* Glow orbs */}
           <div
             style={{
               position: "absolute",
@@ -96,8 +100,6 @@ export async function GET(req: Request) {
               background: "radial-gradient(circle, rgba(0,255,200,0.05) 0%, transparent 70%)",
             }}
           />
-
-          {/* Glow orb - bottom left */}
           <div
             style={{
               position: "absolute",
@@ -128,12 +130,12 @@ export async function GET(req: Request) {
               display: "flex",
               alignItems: "center",
               gap: "12px",
-              marginBottom: isStories ? "48px" : "30px",
+              marginBottom: isStories ? "40px" : "22px",
             }}
           >
             <span
               style={{
-                fontSize: "22px",
+                fontSize: "20px",
                 fontWeight: 700,
                 color: "#00ffc8",
                 letterSpacing: "0.1em",
@@ -152,7 +154,7 @@ export async function GET(req: Request) {
             />
             <span
               style={{
-                fontSize: "17px",
+                fontSize: "16px",
                 color: "rgba(255,255,255,0.35)",
                 fontWeight: 500,
               }}
@@ -166,8 +168,8 @@ export async function GET(req: Request) {
             <div
               style={{
                 display: "flex",
-                gap: "12px",
-                marginBottom: isStories ? "36px" : "24px",
+                gap: "10px",
+                marginBottom: isStories ? "30px" : "18px",
                 flexWrap: "wrap",
               }}
             >
@@ -175,13 +177,13 @@ export async function GET(req: Request) {
                 <span
                   key={tag}
                   style={{
-                    fontSize: "15px",
+                    fontSize: "14px",
                     color: "#00ffc8",
                     border: "1.5px solid rgba(0,255,200,0.25)",
-                    padding: "6px 20px",
-                    borderRadius: "8px",
+                    padding: "5px 18px",
+                    borderRadius: "7px",
                     textTransform: "uppercase",
-                    letterSpacing: "0.05em",
+                    letterSpacing: "0.04em",
                     fontWeight: 600,
                     backgroundColor: "rgba(0,255,200,0.06)",
                   }}
@@ -197,9 +199,9 @@ export async function GET(req: Request) {
             style={{
               display: "flex",
               flexDirection: "column",
-              gap: "4px",
+              gap: "3px",
               width: "100%",
-              marginBottom: isStories ? "36px" : "24px",
+              marginBottom: isStories ? "30px" : "18px",
             }}
           >
             {titleLines.map((line, i) => (
@@ -221,15 +223,15 @@ export async function GET(req: Request) {
             ))}
           </div>
 
-          {/* ── Excerpt / Resumo ── */}
+          {/* ── Excerpt ── */}
           {visibleExcerpt.length > 0 && (
             <div
               style={{
                 display: "flex",
                 flexDirection: "column",
-                gap: "4px",
+                gap: "3px",
                 width: "100%",
-                marginBottom: isStories ? "48px" : "30px",
+                marginBottom: isStories ? "36px" : "22px",
               }}
             >
               {visibleExcerpt.map((line, i) => (
@@ -238,8 +240,8 @@ export async function GET(req: Request) {
                   style={{
                     fontSize: `${excerptFontSize}px`,
                     fontWeight: 400,
-                    color: "rgba(255,255,255,0.7)",
-                    lineHeight: 1.55,
+                    color: "rgba(255,255,255,0.68)",
+                    lineHeight: 1.5,
                     margin: 0,
                   }}
                 >
@@ -256,15 +258,15 @@ export async function GET(req: Request) {
               justifyContent: "space-between",
               alignItems: "flex-end",
               width: "100%",
-              paddingTop: "24px",
+              paddingTop: "20px",
               borderTop: "1px solid rgba(255,255,255,0.08)",
             }}
           >
-            <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
               <span
                 style={{
-                  fontSize: "16px",
-                  color: "rgba(255,255,255,0.45)",
+                  fontSize: "15px",
+                  color: "rgba(255,255,255,0.4)",
                   fontWeight: 600,
                 }}
               >
@@ -272,7 +274,7 @@ export async function GET(req: Request) {
               </span>
               <span
                 style={{
-                  fontSize: "24px",
+                  fontSize: "22px",
                   fontWeight: 800,
                   color: "#00ffc8",
                   letterSpacing: "-0.02em",
@@ -281,18 +283,16 @@ export async function GET(req: Request) {
                 hernandoia.com
               </span>
             </div>
-
-            {/* Brand mark */}
             <div
               style={{
-                width: "54px",
-                height: "54px",
-                borderRadius: "14px",
+                width: "50px",
+                height: "50px",
+                borderRadius: "13px",
                 background: "linear-gradient(135deg, #00ffc8, #7b2ff7)",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
-                fontSize: "26px",
+                fontSize: "24px",
                 fontWeight: 900,
                 color: "#0a0a2e",
               }}
