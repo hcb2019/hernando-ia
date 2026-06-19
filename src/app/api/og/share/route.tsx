@@ -16,12 +16,12 @@ export async function GET(req: Request) {
     const width = 1080;
     const height = isStories ? 1920 : 1080;
 
-    // Quebrar título longo em linhas
+    // ── Título ──
     const words = title.split(" ");
     const titleLines: string[] = [];
     let currentLine = "";
     for (const word of words) {
-      if ((currentLine + " " + word).length > 30) {
+      if ((currentLine + " " + word).length > 28) {
         titleLines.push(currentLine.trim());
         currentLine = word;
       } else {
@@ -30,15 +30,15 @@ export async function GET(req: Request) {
     }
     if (currentLine) titleLines.push(currentLine.trim());
 
-    // Quebrar excerpt em linhas (2-4 linhas dependendo do modo)
-    const excerptMaxChars = isStories ? 220 : 180;
+    // ── Excerpt: muito mais texto agora ──
+    const excerptMaxChars = isStories ? 420 : 340;
     const trimmedExcerpt = excerpt.length > excerptMaxChars
       ? excerpt.slice(0, excerptMaxChars).replace(/\s+\S*$/, "") + "..."
       : excerpt;
     const excerptWords = trimmedExcerpt.split(" ");
     const excerptLines: string[] = [];
     let exLine = "";
-    const exMaxLen = isStories ? 42 : 38;
+    const exMaxLen = isStories ? 48 : 42;
     for (const word of excerptWords) {
       if ((exLine + " " + word).length > exMaxLen) {
         excerptLines.push(exLine.trim());
@@ -48,17 +48,15 @@ export async function GET(req: Request) {
       }
     }
     if (exLine) excerptLines.push(exLine.trim());
-    // Limitar linhas do excerpt
-    const maxExcerptLines = isStories ? 4 : 2;
+    // Mais linhas visíveis
+    const maxExcerptLines = isStories ? 6 : 4;
     const visibleExcerpt = excerptLines.slice(0, maxExcerptLines);
 
-    // Tamanho de fonte adaptativo
-    const titleFontSize = titleLines.length > 3 ? 46 : titleLines.length > 2 ? 54 : 64;
-    const titleLineHeight = titleFontSize * 1.15;
-    const excerptFontSize = isStories ? 26 : 22;
-    const excerptLineHeight = excerptFontSize * 1.45;
+    // ── Fontes ──
+    const titleFontSize = titleLines.length > 3 ? 44 : titleLines.length > 2 ? 52 : 62;
+    const excerptFontSize = isStories ? 28 : 24;
     const paddingX = 80;
-    const paddingY = isStories ? 100 : 70;
+    const paddingY = isStories ? 90 : 60;
 
     return new ImageResponse(
       (
@@ -82,7 +80,7 @@ export async function GET(req: Request) {
               position: "absolute",
               inset: 0,
               backgroundImage:
-                "linear-gradient(rgba(0,255,200,0.04) 1px, transparent 1px), linear-gradient(90deg, rgba(0,255,200,0.04) 1px, transparent 1px)",
+                "linear-gradient(rgba(0,255,200,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(0,255,200,0.03) 1px, transparent 1px)",
               backgroundSize: "80px 80px",
             }}
           />
@@ -96,7 +94,7 @@ export async function GET(req: Request) {
               width: "500px",
               height: "500px",
               borderRadius: "50%",
-              background: "radial-gradient(circle, rgba(0,255,200,0.08) 0%, transparent 70%)",
+              background: "radial-gradient(circle, rgba(0,255,200,0.06) 0%, transparent 70%)",
             }}
           />
 
@@ -109,7 +107,7 @@ export async function GET(req: Request) {
               width: "600px",
               height: "600px",
               borderRadius: "50%",
-              background: "radial-gradient(circle, rgba(123,47,247,0.06) 0%, transparent 70%)",
+              background: "radial-gradient(circle, rgba(123,47,247,0.04) 0%, transparent 70%)",
             }}
           />
 
@@ -120,7 +118,7 @@ export async function GET(req: Request) {
               top: 0,
               left: 0,
               right: 0,
-              height: "6px",
+              height: "5px",
               background: "linear-gradient(90deg, #00ffc8, #7b2ff7, #ff6b6b, #00ffc8)",
             }}
           />
@@ -131,7 +129,7 @@ export async function GET(req: Request) {
               display: "flex",
               alignItems: "center",
               gap: "12px",
-              marginBottom: isStories ? "40px" : "28px",
+              marginBottom: isStories ? "36px" : "22px",
             }}
           >
             <span
@@ -170,7 +168,7 @@ export async function GET(req: Request) {
               style={{
                 display: "flex",
                 gap: "10px",
-                marginBottom: isStories ? "32px" : "22px",
+                marginBottom: isStories ? "28px" : "18px",
                 flexWrap: "wrap",
               }}
             >
@@ -200,9 +198,9 @@ export async function GET(req: Request) {
             style={{
               display: "flex",
               flexDirection: "column",
-              gap: "4px",
+              gap: "3px",
               width: "100%",
-              marginBottom: isStories ? "30px" : "20px",
+              marginBottom: isStories ? "28px" : "16px",
             }}
           >
             {titleLines.map((line, i) => (
@@ -212,7 +210,7 @@ export async function GET(req: Request) {
                   fontSize: `${titleFontSize}px`,
                   fontWeight: 800,
                   color: "#ffffff",
-                  lineHeight: titleLineHeight / titleFontSize,
+                  lineHeight: 1.15,
                   letterSpacing: "-0.03em",
                   textTransform: "uppercase",
                   textShadow: "0 2px 40px rgba(0,255,200,0.15)",
@@ -230,7 +228,7 @@ export async function GET(req: Request) {
               style={{
                 display: "flex",
                 flexDirection: "column",
-                gap: "2px",
+                gap: "3px",
                 width: "100%",
                 flex: 1,
               }}
@@ -241,8 +239,8 @@ export async function GET(req: Request) {
                   style={{
                     fontSize: `${excerptFontSize}px`,
                     fontWeight: 400,
-                    color: "rgba(255,255,255,0.65)",
-                    lineHeight: excerptLineHeight / excerptFontSize,
+                    color: "rgba(255,255,255,0.7)",
+                    lineHeight: 1.5,
                     margin: 0,
                   }}
                 >
@@ -259,15 +257,16 @@ export async function GET(req: Request) {
               justifyContent: "space-between",
               alignItems: "flex-end",
               width: "100%",
-              paddingTop: "24px",
+              marginTop: isStories ? "28px" : "18px",
+              paddingTop: "20px",
               borderTop: "1px solid rgba(255,255,255,0.06)",
             }}
           >
             <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
               <span
                 style={{
-                  fontSize: "16px",
-                  color: "rgba(255,255,255,0.5)",
+                  fontSize: "15px",
+                  color: "rgba(255,255,255,0.45)",
                   fontWeight: 600,
                 }}
               >
@@ -275,7 +274,7 @@ export async function GET(req: Request) {
               </span>
               <span
                 style={{
-                  fontSize: "24px",
+                  fontSize: "22px",
                   fontWeight: 800,
                   color: "#00ffc8",
                   letterSpacing: "-0.02em",
@@ -288,14 +287,14 @@ export async function GET(req: Request) {
             {/* Brand mark */}
             <div
               style={{
-                width: "56px",
-                height: "56px",
-                borderRadius: "14px",
+                width: "50px",
+                height: "50px",
+                borderRadius: "13px",
                 background: "linear-gradient(135deg, #00ffc8, #7b2ff7)",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
-                fontSize: "26px",
+                fontSize: "24px",
                 fontWeight: 900,
                 color: "#0a0a2e",
               }}
