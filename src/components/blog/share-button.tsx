@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
+import { createPortal } from "react-dom";
 
 interface ShareButtonProps {
   title: string;
@@ -21,8 +22,11 @@ export default function ShareButton({
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [imageType, setImageType] = useState<"stories" | "post" | null>(null);
   const [menuStyle, setMenuStyle] = useState<{ top: number; left: number } | null>(null);
+  const [mounted, setMounted] = useState(false);
   const btnRef = useRef<HTMLButtonElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => { setMounted(true); }, []);
 
   // Fechar ao clicar fora
   useEffect(() => {
@@ -93,7 +97,123 @@ export default function ShareButton({
     }
   };
 
-  const tagsStr = tags.slice(0, 4).join(",");
+  const renderMenu = () => {
+    if (!mounted) return null;
+    return (
+      <div
+        ref={menuRef}
+        className="fixed w-[280px] bg-[#0f0f1e] border border-white/10 rounded-xl p-4 shadow-2xl"
+        style={{
+          zIndex: 99999,
+          top: `${menuStyle!.top}px`,
+          left: `${menuStyle!.left}px`,
+          transform: "translate(-50%, -100%)",
+          maxWidth: "calc(100vw - 16px)",
+        }}
+      >
+        {/* Botão fechar */}
+        <button
+          onClick={() => { setOpen(false); setImageUrl(null); }}
+          className="absolute top-2 right-2 text-white/30 hover:text-white/80"
+        >
+          ✕
+        </button>
+
+        {!imageUrl ? (
+          <div className="space-y-2">
+            <p className="text-xs text-white/40 mb-3 text-center">Compartilhar como</p>
+
+            {/* Stories */}
+            <button
+              onClick={() => generateImage("stories")}
+              disabled={generating}
+              className="w-full flex items-center gap-3 px-4 py-3 rounded-lg border border-white/10 bg-white/[0.03] hover:bg-white/[0.06] transition-colors text-left group"
+            >
+              <span className="text-2xl">📸</span>
+              <div>
+                <p className="text-sm font-medium text-white/80 group-hover:text-white">
+                  Instagram Stories
+                </p>
+                <p className="text-xs text-white/30">Imagem 9:16 vertical</p>
+              </div>
+              {generating && imageType === "stories" && (
+                <span className="ml-auto animate-spin">⏳</span>
+              )}
+            </button>
+
+            {/* Post */}
+            <button
+              onClick={() => generateImage("post")}
+              disabled={generating}
+              className="w-full flex items-center gap-3 px-4 py-3 rounded-lg border border-white/10 bg-white/[0.03] hover:bg-white/[0.06] transition-colors text-left group"
+            >
+              <span className="text-2xl">📱</span>
+              <div>
+                <p className="text-sm font-medium text-white/80 group-hover:text-white">
+                  Post do Feed
+                </p>
+                <p className="text-xs text-white/30">Imagem 1:1 quadrada</p>
+              </div>
+              {generating && imageType === "post" && (
+                <span className="ml-auto animate-spin">⏳</span>
+              )}
+            </button>
+
+            {/* Copiar link */}
+            <button
+              onClick={handleCopy}
+              className="w-full flex items-center gap-3 px-4 py-3 rounded-lg border border-white/10 bg-white/[0.03] hover:bg-white/[0.06] transition-colors text-left group"
+            >
+              <span className="text-2xl">🔗</span>
+              <div>
+                <p className="text-sm font-medium text-white/80 group-hover:text-white">
+                  {copied ? "✅ Copiado!" : "Copiar link"}
+                </p>
+                <p className="text-xs text-white/30">Compartilhar manualmente</p>
+              </div>
+            </button>
+          </div>
+        ) : (
+          /* Preview da imagem */
+          <div className="space-y-3">
+            <p className="text-xs text-white/40 text-center">
+              {imageType === "stories" ? "📸 Stories" : "📱 Post"} — Pronto!
+            </p>
+            <img
+              src={imageUrl}
+              alt="Preview"
+              className="w-full rounded-lg border border-white/10"
+            />
+            <div className="flex gap-2">
+              <button
+                onClick={downloadImage}
+                className="flex-1 px-3 py-2 rounded-lg bg-accent/20 border border-accent/30 text-accent text-xs font-semibold hover:bg-accent/30 transition-colors"
+              >
+                ⬇ Baixar
+              </button>
+              <button
+                onClick={() => {
+                  const a = document.createElement("a");
+                  a.href = imageUrl;
+                  a.target = "_blank";
+                  a.click();
+                }}
+                className="flex-1 px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white/60 text-xs hover:bg-white/10 transition-colors"
+              >
+                🔗 Abrir
+              </button>
+            </div>
+            <button
+              onClick={() => setImageUrl(null)}
+              className="w-full text-xs text-white/30 hover:text-white/50"
+            >
+              ← Voltar
+            </button>
+          </div>
+        )}
+      </div>
+    );
+  };
 
   return (
     <div className="relative inline-block">
@@ -113,119 +233,7 @@ export default function ShareButton({
         {label}
       </button>
 
-      {open && menuStyle && (
-        <div
-          ref={menuRef}
-          className="fixed w-72 bg-[#0f0f1e] border border-white/10 rounded-xl p-4 shadow-2xl"
-          style={{
-            zIndex: 99999,
-            top: `${menuStyle.top}px`,
-            left: `${menuStyle.left}px`,
-            transform: "translate(-50%, -100%)",
-          }}
-        >
-          {/* Botão fechar */}
-          <button
-            onClick={() => { setOpen(false); setImageUrl(null); }}
-            className="absolute top-2 right-2 text-white/30 hover:text-white/80"
-          >
-            ✕
-          </button>
-
-          {!imageUrl ? (
-            <div className="space-y-2">
-              <p className="text-xs text-white/40 mb-3 text-center">Compartilhar como</p>
-
-              {/* Stories */}
-              <button
-                onClick={() => generateImage("stories")}
-                disabled={generating}
-                className="w-full flex items-center gap-3 px-4 py-3 rounded-lg border border-white/10 bg-white/[0.03] hover:bg-white/[0.06] transition-colors text-left group"
-              >
-                <span className="text-2xl">📸</span>
-                <div>
-                  <p className="text-sm font-medium text-white/80 group-hover:text-white">
-                    Instagram Stories
-                  </p>
-                  <p className="text-xs text-white/30">Imagem 9:16 vertical</p>
-                </div>
-                {generating && imageType === "stories" && (
-                  <span className="ml-auto animate-spin">⏳</span>
-                )}
-              </button>
-
-              {/* Post */}
-              <button
-                onClick={() => generateImage("post")}
-                disabled={generating}
-                className="w-full flex items-center gap-3 px-4 py-3 rounded-lg border border-white/10 bg-white/[0.03] hover:bg-white/[0.06] transition-colors text-left group"
-              >
-                <span className="text-2xl">📱</span>
-                <div>
-                  <p className="text-sm font-medium text-white/80 group-hover:text-white">
-                    Post do Feed
-                  </p>
-                  <p className="text-xs text-white/30">Imagem 1:1 quadrada</p>
-                </div>
-                {generating && imageType === "post" && (
-                  <span className="ml-auto animate-spin">⏳</span>
-                )}
-              </button>
-
-              {/* Copiar link */}
-              <button
-                onClick={handleCopy}
-                className="w-full flex items-center gap-3 px-4 py-3 rounded-lg border border-white/10 bg-white/[0.03] hover:bg-white/[0.06] transition-colors text-left group"
-              >
-                <span className="text-2xl">🔗</span>
-                <div>
-                  <p className="text-sm font-medium text-white/80 group-hover:text-white">
-                    {copied ? "✅ Copiado!" : "Copiar link"}
-                  </p>
-                  <p className="text-xs text-white/30">Compartilhar manualmente</p>
-                </div>
-              </button>
-            </div>
-          ) : (
-            /* Preview da imagem */
-            <div className="space-y-3">
-              <p className="text-xs text-white/40 text-center">
-                {imageType === "stories" ? "📸 Stories" : "📱 Post"} — Pronto!
-              </p>
-              <img
-                src={imageUrl}
-                alt="Preview"
-                className="w-full rounded-lg border border-white/10"
-              />
-              <div className="flex gap-2">
-                <button
-                  onClick={downloadImage}
-                  className="flex-1 px-3 py-2 rounded-lg bg-accent/20 border border-accent/30 text-accent text-xs font-semibold hover:bg-accent/30 transition-colors"
-                >
-                  ⬇ Baixar
-                </button>
-                <button
-                  onClick={() => {
-                    const a = document.createElement("a");
-                    a.href = imageUrl;
-                    a.target = "_blank";
-                    a.click();
-                  }}
-                  className="flex-1 px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white/60 text-xs hover:bg-white/10 transition-colors"
-                >
-                  🔗 Abrir
-                </button>
-              </div>
-              <button
-                onClick={() => setImageUrl(null)}
-                className="w-full text-xs text-white/30 hover:text-white/50"
-              >
-                ← Voltar
-              </button>
-            </div>
-          )}
-        </div>
-      )}
+      {open && menuStyle && createPortal(renderMenu(), document.body)}
     </div>
   );
 }
