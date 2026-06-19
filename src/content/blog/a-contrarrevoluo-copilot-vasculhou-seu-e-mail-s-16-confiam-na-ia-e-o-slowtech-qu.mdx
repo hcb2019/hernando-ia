@@ -1,0 +1,85 @@
+---
+title: "A Contrarrevolução: Copilot Vasculhou Seu E-mail, Só 16% Confiam na IA, e o Slowtech Quer Desligar Tudo"
+date: "2026-06-18"
+excerpt: "Enquanto o Vale do Silício acelera, uma contrarrevolução silenciosa ganha força: o Copilot da Microsoft foi exposto vasculhando caixas de e-mail corporativas sem alerta visível, o LiteLLM entregou chaves de admin por três CVEs encadeadas, só 16% dos americanos acham que a IA terá impacto positivo (Pew Research), usuários estão buscando freneticamente como desligar a IA do Google Docs, e o movimento slowtech — liderado pelo pai do iPod — quer resgatar nossa atenção do sequestro digital. Esta é a semana em que a reação deixou de ser barulho de rede social e virou sinal de mercado."
+tags: [Segurança, Microsoft Copilot, LiteLLM, Varonis, SearchLeak, Confiança, Pew Research, Google Docs, Gemini, Slowtech, Tony Fadell, Algoritmos, Redes Sociais, Privacidade, CVE]
+readingTime: 9
+sponsored: false
+premium: false
+---
+
+Terça a quinta-feira, 17 a 18 de junho de 2026. Enquanto a infraestrutura da IA ferve, uma **contrarrevolução silenciosa** ganhou forma esta semana. Não é sobre rejeitar a IA — é sobre **exigir que ela prove que não vai te machucar antes de ganhar as chaves da casa**.
+
+## O Que Aconteceu
+
+### Copilot vasculhou caixas de e-mail corporativas. Sem alerta. Sem clique extra.
+
+Em 15 de junho, a **Varonis** divulgou o **SearchLeak (CVE-2026-42824)** — uma prova de conceito de exfiltração no Microsoft 365 Copilot Enterprise Search. O mecanismo é assustadoramente simples: a vítima clica em uma URL legítima do `microsoft.com`, o Copilot busca na caixa de e-mail dela, e os dados saem por um SSRF do Bing. **Sem plugins. Sem segundo clique. Sem indicador visível.**
+
+O VentureBeat detalhou a cadeia: o parâmetro `q` da URL injeta instruções no LLM do Copilot; uma condição de corrida na renderização dispara uma tag de imagem antes do sanitizador de saída rodar; e o endpoint de busca de imagens do Bing, presente na Content Security Policy, roteia os dados para fora.
+
+A Microsoft classificou a falha como crítica e corrigiu no backend. Mas este é o **terceiro caso de exfiltração do Copilot revelado pela Varonis em 12 meses** — depois do Reprompt (janeiro de 2026, Copilot Personal) e do EchoLeak (2025). Desta vez o alvo foi o Enterprise Search, que herda **todas as permissões organizacionais do usuário**. O blast radius é tudo que um funcionário pode acessar.
+
+O NVD ainda não pontuou a CVE; um tracker de terceiros estima 6.5 (médio). Mas a severidade é quase irrelevante: o padrão é o que assusta. **Três vulnerabilidades do mesmo tipo em 12 meses no mesmo produto.**
+
+### LiteLLM entregou chaves de admin em três CVEs encadeadas
+
+Quatro dias antes, a **Obsidian Security** publicou uma cadeia de três CVEs contra o **LiteLLM** — o gateway open source que centraliza chaves de OpenAI, Anthropic, Azure e Bedrock atrás de um único proxy. Um usuário padrão de baixo privilégio conseguia escalar até **admin e execução remota de código**. Na prática: **um usuário qualquer pegava as chaves de todos os provedores de IA da empresa.**
+
+Como se não bastasse, uma **compromisso de supply chain** em março de 2026 injetou backdoor nas versões 1.82.7 e 1.82.8 do LiteLLM no PyPI. Duas falhas diferentes, mesma raiz: **ferramentas de IA corporativa aceitam input externo sem boundary de confiança.**
+
+O VentureBeat resumiu em uma frase que deveria estar emoldurada na parede de todo CISO: *"Enterprise AI accepts external input with no trust boundary."*
+
+### Pew: só 16% dos americanos acham que IA terá impacto positivo
+
+O **Pew Research Center** publicou um estudo mostrando que apenas **16% dos americanos acreditam que a IA terá impacto positivo na sociedade**. A maioria tem visões neutras ou negativas — e isso apesar do uso crescente de IA no dia a dia. O TechCrunch resumiu: *"Wall Street ama IA; o americano comum, nem tanto."*
+
+O número de 16% é particularmente brutal quando contrastado com o momento: IPOs quentes, valuations estratosféricos, manchetes diárias sobre novos modelos. **Há um abismo entre a narrativa da indústria e a percepção pública** — e esse abismo está aumentando.
+
+### "Como desligar a IA do Google Docs": o tutorial que viralizou
+
+A TechCrunch publicou um guia prático — escrito em primeira pessoa, com frustração genuína — sobre **como remover os pop-ups do Gemini do Google Docs**. A jornalista abriu um documento para escrever e foi imediatamente confrontada com uma caixa de texto dizendo "escreva com o Gemini". Não havia botão para fechar. Ela passou mais tempo descobrindo como desligar a IA do que escrevendo o artigo original.
+
+O guia não é um manifesto anti-IA — é um sintoma. Quando **desligar a IA da sua ferramenta de trabalho vira um tutorial**, algo está profundamente errado na experiência do usuário. A Google não perguntou se você queria o Gemini no seu Docs. Ela colocou lá. E escondeu o botão de desligar.
+
+### Slowtech: o movimento que quer resgatar sua atenção
+
+Tony Fadell, conhecido como **"pai do iPod"**, entrou na estação de metrô da 28th Street em Nova York e deu de cara com um anúncio do iPod Shuffle — o produto que ele desenhou há 20 anos — com o slogan: **"Zero screen time."**
+
+"Para alguém como eu, que conhece esse produto intimamente, é como ver a foto do seu filho", disse Fadell ao TechCrunch. Mas o insight foi mais profundo: o movimento **slowtech** — que prega uma relação mais intencional com a tecnologia — está ganhando tração real. Apps como o Mivo Scrolling estão surgindo com abordagens sem julgamento para controle de tempo de tela. A ideia central: **as pessoas querem retomar o controle do seu tempo e atenção, e estão dispostas a pagar por isso.**
+
+Paralelamente, as plataformas de redes sociais estão começando a devolver o controle dos algoritmos para os usuários. Threads, Instagram e TikTok estão lançando ferramentas que permitem **personalizar diretamente os algoritmos de recomendação** — uma inversão de 180 graus em relação ao modelo "a plataforma decide o que você vê" que dominou a última década.
+
+## Por Que Importa
+
+Estas cinco histórias não são aleatórias. Elas formam um **arco de reação** que começa na segurança técnica e termina na cultura de consumo:
+
+- **A camada de segurança está quebrada**: três exfiltrações do Copilot em 12 meses + três CVEs encadeadas no LiteLLM + backdoor em supply chain = **o ecossistema de IA corporativa não foi projetado com security-first**. Foi projetado com ship-fast.
+- **A confiança pública está em queda livre**: 16% de percepção positiva não é só um número ruim — é uma **bomba-relógio regulatória**. Quando 84% da população está neutra ou negativa sobre uma tecnologia que domina a economia, a intervenção política é questão de tempo.
+- **A rejeição do usuário é real e mensurável**: pessoas estão buscando ativamente como desligar IA das ferramentas que usam. Isso não é resistência ideológica — é **fadiga de funcionalidade**. Se a IA atrapalha mais do que ajuda, o usuário quer o poder de desligar.
+- **O slowtech não é nostalgia — é um mercado**: Tony Fadell olhando para o iPod Shuffle como símbolo de "zero screen time" mostra que o pêndulo está voltando. A próxima grande oportunidade de consumo pode não ser mais IA — pode ser **menos IA**.
+
+## Minha Opinião
+
+A história do Copilot me tira o sono. Não pela vulnerabilidade em si — toda ferramenta tem bugs — mas pelo **padrão**. Três vezes em 12 meses o mesmo tipo de falha no mesmo produto? Isso não é azar. É **arquitetura**. O Copilot foi construído com acesso total aos dados do usuário e a segurança foi colocada como camada posterior. O resultado é previsível: **cada nova feature é uma nova superfície de ataque**.
+
+O número de 16% do Pew deveria estar na tela de todo CEO de empresa de IA. Se você está construindo um produto que 84% das pessoas veem com indiferença ou medo, você não tem um problema de marketing — **você tem um problema de produto**. E a correção não é "explicar melhor" — é entregar valor que as pessoas sintam no dia a dia, sem atropelar a experiência.
+
+Sobre o Google Docs: já passei por isso. Abrir um documento limpo pra escrever e ser recebido por uma caixa azul piscante de IA é a antítese do que um editor de texto deveria ser. **O modo padrão de qualquer ferramenta de IA deveria ser "desligada até que o usuário peça".** O oposto é hostilidade ao usuário.
+
+O slowtech, pra mim, é o sinal mais esperançoso. Não por ser anti-tecnologia — pelo contrário. É sobre **exigir que a tecnologia sirva às pessoas, e não o contrário**. O anúncio do iPod Shuffle com "zero screen time" é poético e preciso: o mesmo cara que ajudou a criar a era da tela está agora simbolizando o desejo de sair dela.
+
+## Takeaways
+
+- **Segurança de IA corporativa não é "em breve" — é "agora ou depois do incidente"**: SearchLeak e LiteLLM mostram que o design atual das ferramentas de IA assume confiança onde não deveria. Seu CISO precisa de um audit de boundary entre input externo e acesso a dados.
+- **84% de indiferença ou negatividade é um mandato para regulação**: o número do Pew não vai passar despercebido em Washington ou Bruxelas.
+- **"Desligar a IA" virou funcionalidade desejada**: se o Google Docs, o Microsoft 365 e outras ferramentas não oferecerem controle granular sobre IA, os usuários vão migrar para alternativas que ofereçam.
+- **Slowtech é o contraponto inevitável**: depois de uma década de atenção sequestrada, o mercado de "recuperar sua atenção" vai ser enorme. Não aposte contra o cansaço digital.
+
+## Fontes
+
+- [VentureBeat — Copilot searched your mailbox. LiteLLM handed out admin keys. Run this 5-check audit](https://venturebeat.com/security/copilot-searched-your-mailbox-litellm-handed-out-admin-keys-run-this-5-check-audit-before-your-stack-is-next/)
+- [TechCrunch — Only 16 percent of Americans think AI will have a positive impact on society](https://techcrunch.com/2026/06/17/only-16-percent-of-americans-think-ai-will-have-a-positive-impact-on-society-a-new-study-shows/)
+- [TechCrunch — How to turn off AI in your Google Docs](https://techcrunch.com/2026/06/17/how-to-turn-off-ai-in-your-google-docs/)
+- [TechCrunch — The smartphone era created an attention crisis. Slowtech is fixing it](https://techcrunch.com/2026/06/18/the-smartphone-era-created-an-attention-crisis-slowtech-is-fixing-it/)
+- [TechCrunch — Social media's next evolution: User-controlled algorithms](https://techcrunch.com/2026/06/17/social-medias-next-evolution-user-controlled-algorithms/)
