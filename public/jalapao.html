@@ -1,0 +1,456 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Jalapão — Roteiro 7 Dias</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<style>
+:root {
+  --bg: #0a0a2e;
+  --bg-card: #0f0f30;
+  --accent: #00d68f;
+  --accent-dim: rgba(0,214,143,0.15);
+  --text: #e8e8f0;
+  --text-dim: rgba(255,255,255,0.55);
+  --border: rgba(255,255,255,0.08);
+  --radius: 14px;
+  --font: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
+}
+
+* { margin:0; padding:0; box-sizing:border-box; }
+
+body {
+  font-family: var(--font);
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.6;
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+}
+
+.container { max-width: 680px; margin: 0 auto; padding: 0 20px 40px; }
+
+/* Header */
+.header {
+  text-align: center;
+  padding: 36px 20px 24px;
+  position: relative;
+}
+.header::after {
+  content: '';
+  position: absolute;
+  bottom: 0; left: 50%;
+  transform: translateX(-50%);
+  width: 80px; height: 3px;
+  background: var(--accent);
+  border-radius: 2px;
+}
+.header h1 { font-size: 26px; font-weight: 800; letter-spacing: -0.5px; }
+.header .sub { color: var(--accent); font-weight: 700; font-size: 14px; margin-top: 6px; text-transform: uppercase; letter-spacing: 0.08em; }
+.header .meta { color: var(--text-dim); font-size: 13px; margin-top: 4px; }
+
+/* Cards */
+.card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px;
+  margin-bottom: 16px;
+}
+
+/* Map */
+.map-wrap {
+  border-radius: var(--radius);
+  overflow: hidden;
+  border: 1px solid var(--border);
+  margin-bottom: 20px;
+}
+#map { height: 380px; }
+.leaflet-container { background: #0a0a2e !important; }
+.leaflet-tile-pane { filter: brightness(0.7) saturate(0.5) hue-rotate(170deg); }
+.leaflet-control-zoom a { background: #0f0f30 !important; color: #fff !important; border-color: rgba(255,255,255,0.15) !important; }
+.leaflet-popup-content-wrapper { background: #0f0f30 !important; color: #e8e8f0 !important; border-radius: 10px !important; font-family: var(--font) !important; }
+.leaflet-popup-tip { background: #0f0f30 !important; }
+.custom-marker {
+  width: 28px; height: 28px;
+  border-radius: 50%;
+  border: 3px solid #fff;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.4);
+  display: flex; align-items: center; justify-content: center;
+  font-weight: 800; font-size: 12px; color: #fff;
+}
+.marker-start { background: #00d68f; }
+.marker-stop { background: #7b2ff7; }
+.marker-attraction { background: #ff6b6b; }
+.marker-end { background: #00d68f; }
+
+/* Section titles */
+.section-title {
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--accent);
+  font-weight: 700;
+  margin-bottom: 14px;
+  display: flex; align-items: center; gap: 8px;
+}
+.section-title::after {
+  content: '';
+  flex: 1; height: 1px;
+  background: var(--border);
+}
+
+/* Day cards */
+.day-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 18px 20px;
+  margin-bottom: 12px;
+  position: relative;
+  overflow: hidden;
+}
+.day-card::before {
+  content: '';
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: 4px;
+  background: var(--accent);
+  border-radius: 0 4px 4px 0;
+}
+.day-num {
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--accent);
+  margin-bottom: 4px;
+}
+.day-title {
+  font-size: 16px;
+  font-weight: 700;
+  margin-bottom: 6px;
+}
+.day-attractions {
+  font-size: 13px;
+  color: var(--text-dim);
+  line-height: 1.7;
+}
+.day-sleep {
+  font-size: 11px;
+  color: rgba(255,255,255,0.35);
+  margin-top: 8px;
+  display: flex; align-items: center; gap: 4px;
+}
+
+/* Flight banner */
+.flight-banner {
+  background: linear-gradient(135deg, var(--accent-dim), rgba(123,47,247,0.12));
+  border: 1px solid var(--accent);
+  border-radius: var(--radius);
+  padding: 16px 20px;
+  margin-bottom: 20px;
+  text-align: center;
+}
+.flight-banner .price {
+  font-size: 36px; font-weight: 900;
+  color: var(--accent);
+  letter-spacing: -1px;
+}
+.flight-banner .label { font-size: 12px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.08em; }
+
+/* Cost table */
+.cost-table { width: 100%; border-collapse: collapse; }
+.cost-table td {
+  padding: 10px 0;
+  font-size: 14px;
+  border-bottom: 1px solid var(--border);
+}
+.cost-table td:last-child { text-align: right; font-weight: 700; }
+.cost-table .total td {
+  border-bottom: none;
+  border-top: 2px solid var(--accent);
+  font-size: 18px;
+  font-weight: 900;
+  color: var(--accent);
+  padding-top: 14px;
+  margin-top: 4px;
+}
+.cost-table .label-dim { color: var(--text-dim); font-size: 12px; }
+
+/* Tips */
+.tip-list { list-style: none; }
+.tip-list li {
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 13px;
+  line-height: 1.6;
+  display: flex; gap: 10px; align-items: flex-start;
+}
+.tip-list li:last-child { border-bottom: none; }
+.tip-list .icon { font-size: 18px; flex-shrink: 0; margin-top: 1px; }
+
+/* Weather */
+.weather-badge {
+  display: inline-flex; align-items: center; gap: 6px;
+  background: var(--accent-dim);
+  border: 1px solid rgba(0,214,143,0.25);
+  padding: 6px 14px; border-radius: 20px;
+  font-size: 12px; font-weight: 700;
+  color: var(--accent);
+}
+
+/* Legend */
+.legend { display: flex; gap: 16px; flex-wrap: wrap; margin: 12px 0 20px; }
+.legend-item { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--text-dim); }
+.legend-dot { width: 10px; height: 10px; border-radius: 50%; }
+
+/* CTA */
+.cta {
+  text-align: center; padding: 24px;
+  color: var(--text-dim); font-size: 12px;
+}
+.cta a { color: var(--accent); text-decoration: none; font-weight: 700; }
+
+@media (max-width: 400px) {
+  .header h1 { font-size: 22px; }
+  #map { height: 280px; }
+  .cost-table td { font-size: 13px; }
+}
+</style>
+</head>
+<body>
+
+<div class="container">
+
+  <!-- Header -->
+  <header class="header">
+    <h1>🌿 Jalapão — 7 Dias</h1>
+    <div class="sub">Outubro · Fim da Seca</div>
+    <div class="meta">2 pessoas · São Paulo → Palmas</div>
+  </header>
+
+  <!-- Flight Banner -->
+  <div class="flight-banner">
+    <div class="label">Aéreo SP ↔ Palmas (por pessoa)</div>
+    <div class="price">R$265</div>
+    <div class="label">Total casal: R$530</div>
+  </div>
+
+  <!-- Map -->
+  <div class="section-title">📍 Mapa da Rota</div>
+  <div class="map-wrap"><div id="map"></div></div>
+  <div class="legend">
+    <div class="legend-item"><div class="legend-dot" style="background:#00d68f"></div> Chegada/Partida</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#7b2ff7"></div> Pernoitado</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#ff6b6b"></div> Atração/Passeio</div>
+  </div>
+
+  <!-- Weather -->
+  <div style="margin-bottom:20px">
+    <span class="weather-badge">☀️ OUTUBRO — Seca, céu limpo, fervedouros cristalinos, estradas firmes</span>
+  </div>
+
+  <!-- Itinerary -->
+  <div class="section-title">🗺️ Roteiro Dia a Dia</div>
+
+  <div class="day-card">
+    <div class="day-num">Dia 1 · Sexta</div>
+    <div class="day-title">Chegada + Portal do Jalapão</div>
+    <div class="day-attractions">
+      ✈️ Voo SP → Palmas (~2h30)<br>
+      🚙 Traslado Palmas → Ponte Alta do Tocantins (~190km, 3h)<br>
+      🏖️ Lagoa do Japonês (pôr do sol)<br>
+      🪨 Pedra Furada
+    </div>
+    <div class="day-sleep">🏨 Dormir: Ponte Alta do Tocantins</div>
+  </div>
+
+  <div class="day-card">
+    <div class="day-num">Dia 2 · Sábado</div>
+    <div class="day-title">Cânions e Cachoeiras</div>
+    <div class="day-attractions">
+      ⛰️ Cânion Encantado<br>
+      💧 Cachoeira do Urubu Rei<br>
+      🌅 Arcos do Sol
+    </div>
+    <div class="day-sleep">🏨 Dormir: Ponte Alta do Tocantins</div>
+  </div>
+
+  <div class="day-card">
+    <div class="day-num">Dia 3 · Domingo</div>
+    <div class="day-title">Rumo a São Félix</div>
+    <div class="day-attractions">
+      🚙 Viagem a São Félix do Tocantins (~120km)<br>
+      🏔️ Cânion Sussuapara (paredão de 100m!)<br>
+      🏊 Prainha do Rio Novo<br>
+      🌄 Mirante da Serra do Espírito Santo (pôr do sol incrível)
+    </div>
+    <div class="day-sleep">🏨 Dormir: São Félix do Tocantins</div>
+  </div>
+
+  <div class="day-card">
+    <div class="day-num">Dia 4 · Segunda</div>
+    <div class="day-title">Dunas + Cultura Local</div>
+    <div class="day-attractions">
+      🏜️ Dunas do Jalapão (chegar cedo!)<br>
+      🧶 Visita comunidade quilombola (artesanato de capim dourado)<br>
+      💚 Cachoeira do Formiga (água verde esmeralda)
+    </div>
+    <div class="day-sleep">🏨 Dormir: São Félix ou Mateiros</div>
+  </div>
+
+  <div class="day-card">
+    <div class="day-num">Dia 5 · Terça</div>
+    <div class="day-title">Fervedouros — O Ápice!</div>
+    <div class="day-attractions">
+      🫧 Fervedouro Macaúbas (pressão mais forte — vc flutua!)<br>
+      🫧 Fervedouro Buritizinho<br>
+      🌊 Encontro das Águas (Rio Novo + Rio Sono)
+    </div>
+    <div class="day-sleep">🏨 Dormir: Mateiros</div>
+  </div>
+
+  <div class="day-card">
+    <div class="day-num">Dia 6 · Quarta</div>
+    <div class="day-title">Mais Fervedouros + Cachoeiras</div>
+    <div class="day-attractions">
+      🫧 Fervedouro Bela Vista (o mais bonito, água azul turquesa)<br>
+      🫧 Fervedouro Buriti<br>
+      💧 Cachoeira das Araras<br>
+      ⛰️ Serra da Catedral
+    </div>
+    <div class="day-sleep">🏨 Dormir: Mateiros</div>
+  </div>
+
+  <div class="day-card">
+    <div class="day-num">Dia 7 · Quinta</div>
+    <div class="day-title">Retorno</div>
+    <div class="day-attractions">
+      💧 Cachoeira do Escorrega Macaco (se tiver tempo)<br>
+      🚙 Retorno para Palmas (~300km, 4-5h)<br>
+      ✈️ Voo Palmas → SP
+    </div>
+    <div class="day-sleep">🏠 Chegada em casa</div>
+  </div>
+
+  <!-- Costs -->
+  <div class="section-title" style="margin-top:24px">💰 Estimativa de Custos (2 Pessoas)</div>
+  <div class="card">
+    <table class="cost-table">
+      <tr><td>✈️ Aéreo SP ↔ Palmas</td><td>R$530</td></tr>
+      <tr><td>🚙 Aluguel 4×4 (7 dias)</td><td>R$2.450</td></tr>
+      <tr><td>⛽ Combustível (~800 km)</td><td>R$500</td></tr>
+      <tr><td>🧭 Guia local (5 dias de passeios)</td><td>R$1.250</td></tr>
+      <tr><td>🏨 Pousadas casal (6 noites)</td><td>R$1.200</td></tr>
+      <tr><td>🍽️ Alimentação 2 pessoas (7 dias)</td><td>R$1.050</td></tr>
+      <tr><td>🎫 Ingressos + taxas (7 dias)</td><td>R$210</td></tr>
+      <tr class="total"><td>TOTAL CASAL</td><td>R$7.190</td></tr>
+      <tr><td class="label-dim" colspan="2">≈ R$3.595 por pessoa</td></tr>
+    </table>
+  </div>
+
+  <!-- Notes -->
+  <div class="section-title" style="margin-top:24px">⚠️ Importante Saber</div>
+  <ul class="tip-list card" style="list-style:none;padding:16px 20px">
+    <li><span class="icon">📡</span> <span><strong>Zero sinal de celular</strong> no Jalapão. Avise a família antes. O guia é sua conexão com o mundo.</span></li>
+    <li><span class="icon">💵</span> <span><strong>Leve dinheiro vivo.</strong> Quase não tem maquininha de cartão nas comunidades.</span></li>
+    <li><span class="icon">🧴</span> <span><strong>Protetor solar + repelente</strong> obrigatórios. O cerrado é quente e tem mosquitos no fim do dia.</span></li>
+    <li><span class="icon">👟</span> <span><strong>Calçado fechado</strong> para trilhas. Chinelo só nos fervedouros e cachoeiras.</span></li>
+    <li><span class="icon">🚙</span> <span><strong>4×4 é obrigatório.</strong> As estradas são de areia e terra. Não dá pra ir de carro normal.</span></li>
+    <li><span class="icon">🎒</span> <span><strong>Mochila leve:</strong> roupa de banho, toalha, água, lanche. Cada dia é um passeio diferente.</span></li>
+    <li><span class="icon">🌧️</span> <span><strong>Outubro = fim da seca.</strong> Melhor época! Fervedouros cristalinos, zero lama, céu limpo.</span></li>
+  </ul>
+
+  <div class="cta">
+    Jalapão · Tocantins · Outubro 2026<br>
+    <a href="https://hernandoia.com" target="_blank">hernandoia.com</a>
+  </div>
+
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+// ── Map ──
+var map = L.map('map', { zoomControl: true, attributionControl: false }).setView([-10.4, -47.2], 8);
+
+L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+  maxZoom: 14
+}).addTo(map);
+
+// Marker style helpers
+function makeIcon(color, emoji) {
+  return L.divIcon({
+    className: '',
+    html: '<div class="custom-marker" style="background:'+color+'">'+emoji+'</div>',
+    iconSize: [28,28],
+    iconAnchor: [14,14],
+    popupAnchor: [0,-16]
+  });
+}
+
+// ── Locations ──
+var locs = [
+  { name: 'Palmas — Aeroporto', lat: -10.291, lng: -48.357, color: '#00d68f', emoji: '✈', group: 'start' },
+  { name: 'Ponte Alta do Tocantins', lat: -10.743, lng: -47.538, color: '#7b2ff7', emoji: '🏨', group: 'sleep' },
+  { name: 'Pedra Furada', lat: -10.628, lng: -47.542, color: '#ff6b6b', emoji: '🪨', group: 'attr' },
+  { name: 'Lagoa do Japonês', lat: -10.655, lng: -47.520, color: '#ff6b6b', emoji: '🏖', group: 'attr' },
+  { name: 'Cânion Encantado', lat: -10.510, lng: -47.850, color: '#ff6b6b', emoji: '⛰', group: 'attr' },
+  { name: 'Cachoeira Urubu Rei', lat: -10.488, lng: -47.820, color: '#ff6b6b', emoji: '💧', group: 'attr' },
+  { name: 'São Félix do Tocantins', lat: -10.168, lng: -46.659, color: '#7b2ff7', emoji: '🏨', group: 'sleep' },
+  { name: 'Cânion Sussuapara', lat: -10.057, lng: -46.804, color: '#ff6b6b', emoji: '🏔', group: 'attr' },
+  { name: 'Prainha do Rio Novo', lat: -10.125, lng: -46.690, color: '#ff6b6b', emoji: '🏊', group: 'attr' },
+  { name: 'Serra do Espírito Santo', lat: -10.239, lng: -46.529, color: '#ff6b6b', emoji: '🌄', group: 'attr' },
+  { name: 'Dunas do Jalapão', lat: -10.533, lng: -46.528, color: '#ff6b6b', emoji: '🏜', group: 'attr' },
+  { name: 'Cachoeira do Formiga', lat: -10.428, lng: -46.669, color: '#ff6b6b', emoji: '💚', group: 'attr' },
+  { name: 'Mateiros', lat: -10.546, lng: -46.417, color: '#7b2ff7', emoji: '🏨', group: 'sleep' },
+  { name: 'Fervedouro Macaúbas', lat: -10.659, lng: -46.606, color: '#ff6b6b', emoji: '🫧', group: 'attr' },
+  { name: 'Fervedouro Bela Vista', lat: -10.435, lng: -46.342, color: '#ff6b6b', emoji: '🫧', group: 'attr' },
+  { name: 'Fervedouro Buriti', lat: -10.520, lng: -46.395, color: '#ff6b6b', emoji: '🫧', group: 'attr' },
+  { name: 'Cachoeira das Araras', lat: -10.570, lng: -46.380, color: '#ff6b6b', emoji: '💧', group: 'attr' },
+  { name: 'Serra da Catedral', lat: -10.590, lng: -46.350, color: '#ff6b6b', emoji: '⛰', group: 'attr' },
+];
+
+// Add markers
+locs.forEach(function(l) {
+  L.marker([l.lat, l.lng], { icon: makeIcon(l.color, l.emoji) })
+    .bindPopup('<strong>'+l.name+'</strong>')
+    .addTo(map);
+});
+
+// ── Route lines ──
+var routes = [
+  // Day 1: Palmas → Ponte Alta (via Pedra Furada, Lagoa)
+  { path: [[-10.291,-48.357],[-10.628,-47.542],[-10.655,-47.520],[-10.743,-47.538]], color: '#00d68f', day: 'Dia 1' },
+  // Day 2: Ponte Alta → Cânions (ida e volta)
+  { path: [[-10.743,-47.538],[-10.510,-47.850],[-10.488,-47.820],[-10.743,-47.538]], color: '#7b2ff7', day: 'Dia 2' },
+  // Day 3: Ponte Alta → São Félix
+  { path: [[-10.743,-47.538],[-10.057,-46.804],[-10.125,-46.690],[-10.239,-46.529],[-10.168,-46.659]], color: '#ff6b6b', day: 'Dia 3' },
+  // Day 4: São Félix → Dunas → Formiga → Mateiros
+  { path: [[-10.168,-46.659],[-10.533,-46.528],[-10.428,-46.669],[-10.546,-46.417]], color: '#00d68f', day: 'Dia 4' },
+  // Day 5: Mateiros → Fervedouros → Mateiros
+  { path: [[-10.546,-46.417],[-10.659,-46.606],[-10.546,-46.417]], color: '#7b2ff7', day: 'Dia 5' },
+  // Day 6: Mateiros → Fervedouros → Mateiros
+  { path: [[-10.546,-46.417],[-10.435,-46.342],[-10.520,-46.395],[-10.570,-46.380],[-10.590,-46.350],[-10.546,-46.417]], color: '#ff6b6b', day: 'Dia 6' },
+  // Day 7: Mateiros → Palmas
+  { path: [[-10.546,-46.417],[-10.168,-46.659],[-10.743,-47.538],[-10.291,-48.357]], color: '#00d68f', day: 'Dia 7', dash: true },
+];
+
+routes.forEach(function(r) {
+  L.polyline(r.path, {
+    color: r.color,
+    weight: 2.5,
+    opacity: 0.7,
+    dashArray: r.dash ? '8 6' : null,
+    smoothFactor: 1
+  }).bindPopup('<strong>'+r.day+'</strong>').addTo(map);
+});
+
+// Fit bounds
+var allPoints = locs.map(function(l) { return [l.lat, l.lng]; });
+map.fitBounds(allPoints, { padding: [30,30] });
+</script>
+
+</body>
+</html>
