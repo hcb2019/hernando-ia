@@ -1,0 +1,65 @@
+---
+title: "Alibaba sobe ao topo do vídeo com IA, Samsung adota Codex e o novo gargalo da IA é memória, não GPU"
+date: "2026-06-23"
+excerpt: "Alibaba HappyHorse 1.1 alcança #2 global em geração de vídeo enquanto Sora some do mapa. Samsung faz o maior rollout enterprise do ChatGPT. O gargalo da IA migrou das GPUs para o contexto. Nvidia diz que 'resolveu' o problema da água em data centers. E os loops de agentes são hype ou realidade?"
+tags: [Alibaba, Vídeo com IA, Samsung, OpenAI, Codex, Infraestrutura, Nvidia, Sustentabilidade, Agentes]
+readingTime: 7
+sponsored: false
+premium: false
+---
+
+Enquanto o Ocidente brigava por benchmarks de Q&A, a China silenciosamente tomava a dianteira em geração de vídeo com IA. E não é demo de laboratório: é produto enterprise com SLA. Enquanto isso, a Samsung decidiu que 300 mil funcionários merecem ChatGPT Enterprise e Codex, a Nvidia anunciou que "resolveu" o consumo de água dos data centers (spoiler: não resolveu), e o criador do Claude Code foi questionado se agentes em loop são hype ou revolução. A semana teve de tudo.
+
+## O Que Aconteceu
+
+### Alibaba HappyHorse 1.1: a China assume o #2 em vídeo com IA
+
+A Alibaba Cloud lançou o **HappyHorse 1.1**, uma atualização do seu modelo de geração de vídeo que já ocupa a **segunda posição global** no ranking Artificial Analysis, atrás apenas do Google Veo 3.1, segundo o VentureBeat. O modelo pontua 1.444 tanto em text-to-video quanto image-to-video — 69 pontos à frente do Veo 3.1 com áudio em text-to-video e 23 pontos à frente do Grok-Imagine-Video da xAI em image-to-video.
+
+O timing é cirúrgico: a OpenAI **descontinuou o Sora** por inviabilidade financeira, e o Seedance da ByteDance também caiu no ranking. O HappyHorse é construído sobre um Transformer unificado de 15 bilhões de parâmetros que processa texto, imagem, vídeo e áudio em uma única sequência de tokens. Não é um brinquedo de consumidor — é um produto API-first, com SLAs enterprise, certificações de segurança e integração regional, respaldado por **US$ 52,7 bilhões em infraestrutura global**.
+
+### Samsung: o maior rollout enterprise do ChatGPT
+
+A Samsung Electronics fechou o que a OpenAI descreve como **uma das maiores implantações enterprise de IA do mundo**: ChatGPT Enterprise e Codex para funcionários globalmente, segundo o blog oficial da OpenAI. É um voto de confiança massivo de uma das maiores empresas de tecnologia do planeta — e um sinal de que a adoção enterprise de IA saiu da fase de "teste piloto" e entrou na de "todo mundo usa ou fica pra trás".
+
+### O novo gargalo: contexto, não computação
+
+"Por que o gerenciamento de contexto se tornou o principal gargalo, mais do que disponibilidade de GPU ou eficiência computacional — essa é a pergunta de 2026", diz Jeff Harthorn, líder de pesquisa aplicada em IA da Solidigm, em artigo no VentureBeat. O argumento é simples e devastador: sistemas agentivos encadeiam dezenas ou centenas de chamadas ao modelo, cada uma gerando estado que precisa ser rastreado. Empresas exigem que esse estado de inferência **persista entre sessões** para auditoria, governança e reuso.
+
+A arquitetura de storage que a IA usa hoje foi herdada do treinamento, onde o que importa é throughput bruto. Para inferência em sistemas agentivos, o que importa é **latência consistente, estado persistente e confiabilidade**. O gargalo migrou do compute para o contexto — e quase ninguém está prestando atenção nisso.
+
+### Nvidia "resolveu" a água (mas não resolveu)
+
+A Nvidia anunciou um sistema de resfriamento por água morna que, segundo a empresa, elimina "praticamente todo o uso de água" dentro do data center. Josh Parker, chief sustainability officer, declarou ao Axios que "o desafio do consumo de água em data centers está basicamente resolvido". Mas, como aponta o TechCrunch, **reduzir o consumo dentro do data center não resolve o problema da água usada para gerar a eletricidade que alimenta o data center** — que é onde está a maior parte do consumo hídrico da IA. É uma vitória de relações públicas com um asterisco gigante.
+
+### Loops de agentes: hype ou realidade?
+
+Boris Cherny, criador do Claude Code, apareceu na conferência @Scale da Meta e a primeira pergunta da plateia foi sobre loops. "Loops são o próximo ciclo de hype ou são reais?", perguntaram. A pergunta em si já é um sintoma: **todo mundo está falando de agentes que executam tarefas em loop, mas ninguém sabe se funciona de verdade ou se é só mais uma moda**. A resposta do Cherny, segundo o TechCrunch, foi cautelosa — loops são reais, mas o ecossistema ainda está descobrindo o que fazer com eles.
+
+## Por Que Importa
+
+Essas cinco histórias desenham um mapa claro do momento: **a infraestrutura da IA está mudando de fase**. Não é mais sobre quem tem o melhor modelo de linguagem — é sobre quem resolve os problemas reais de implantação: storage para contexto, consumo de água, adoção enterprise em escala, e pipelines de vídeo que funcionam em produção. A Alibaba apostou nisso com o HappyHorse. A Samsung apostou com ChatGPT Enterprise. E a Nvidia está tentando controlar a narrativa ambiental antes que os reguladores cheguem.
+
+O detalhe mais importante, porém, está no artigo da Solidigm: **o gargalo mudou e quase ninguém percebeu**. Enquanto as manchetes gritam sobre GPUs H100 e clusters de treinamento, a inferência agentiva está esbarrando em limites de contexto que a infraestrutura atual não foi projetada para resolver.
+
+## Minha Opinião
+
+O HappyHorse 1.1 é a história mais subestimada da semana — e a mais estratégica. Enquanto OpenAI, Google e Meta brigam por texto, a Alibaba está construindo um fosso em **vídeo enterprise com IA**. Se o HappyHorse entregar o que promete em produção, a China terá uma vantagem de 12-18 meses em um mercado que todo mundo sabe que vai explodir, mas ninguém sabe como monetizar. A resposta da Alibaba: API, SLA, compliance, preço de volume. Nada de demo bonitinha — produto de verdade.
+
+Sobre a Nvidia e a água: acho ótimo que estejam investindo em resfriamento eficiente. Mas declarar "problema resolvido" quando a conta da eletricidade continua lá fora é desonestidade intelectual com embalagem de ESG. O consumo de água da IA é um problema **sistêmico**, não de engenharia de data center.
+
+E o loop dos agentes: minha aposta é que é real, mas vai demorar mais do que o hype cycle atual para entregar valor consistente. O Self-Harness (que cobri no post anterior) é um passo nessa direção — agentes que aprendem com os próprios erros. Loops sem auto-correção são só repetição glorificada.
+
+## Takeaways
+
+- **Alibaba HappyHorse não é demo, é produto**: enquanto o Ocidente faz pesquisa, a China está empacotando IA em vídeo como serviço enterprise com SLA, compliance e preço. É assim que se ganha mercado.
+- **O gargalo da IA migrou para contexto e storage**: GPUs não são mais o limite. O que trava agentes hoje é a capacidade de gerenciar estado persistente entre sessões. Infraestrutura de inferência precisa de uma reformulação.
+- **Nvidia "resolveu" a água, mas a conta de luz continua**: reduzir consumo dentro do data center é bom, mas a maior parte da água da IA está na geração de eletricidade. O problema é maior do que o press release.
+
+## Fontes
+
+- [Fonte: VentureBeat — Alibaba's AI video model rises to No. 2 in global rankings](https://venturebeat.com/technology/alibabas-ai-video-model-rises-to-no-2-in-global-rankings-as-openais-sora-and-bytedances-seedance-fall-away)
+- [Fonte: OpenAI Blog — Samsung Electronics deploys ChatGPT Enterprise and Codex](https://openai.com/index/samsung-electronics-chatgpt-codex-deployment)
+- [Fonte: VentureBeat — AI hit the memory wall — now it needs a new context tier](https://venturebeat.com/orchestration/ai-hit-the-memory-wall-now-it-needs-a-new-context-tier)
+- [Fonte: TechCrunch — Nvidia wants to cut data center water use, but that's not the same as fixing AI's water problem](https://techcrunch.com/2026/06/22/nvidia-wants-to-cut-data-center-water-use-but-thats-not-the-same-as-fixing-ais-water-problem/)
+- [Fonte: TechCrunch — The AI world is getting 'loopy'](https://techcrunch.com/2026/06/22/the-ai-world-is-getting-loopy/)
