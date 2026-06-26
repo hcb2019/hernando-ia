@@ -1,0 +1,87 @@
+---
+title: "O Fim do Tokenmaxxing: Agentes, Infraestrutura e o Novo Mundo da IA"
+date: "2026-06-26"
+excerpt: "Notion mata o email porque agentes fazem melhor, Xiaomi ensina IA a reescrever seu próprio scaffolding e empresas cortam gastos com tokens — a indústria de IA virou a chave de vez."
+tags: [Agentes, Infraestrutura, IA, Notion, Xiaomi, Shopify, Token, Neocloud]
+readingTime: 7
+sponsored: false
+premium: false
+---
+
+O ritmo de notícias dessa semana é brutal. Enquanto você tenta acompanhar, a indústria já virou a página três vezes.
+
+O que conecta tudo é um padrão claro: **estamos saindo da era do modelo-que-vence-todos e entrando na era da infraestrutura que sustenta agentes reais.** A pergunta não é mais "qual modelo é melhor?" — é "como a gente opera isso em produção sem quebrar o banco?"
+
+Vem comigo.
+
+## O Sinal Mais Claro de Que os Agentes Chegaram: Notion Matou o Email
+
+No dia 24, a Notion anunciou que vai descontinuar o **Notion Mail** em 22 de setembro.
+
+O motivo? Mais da metade dos usuários do Notion Mail **nunca abria a caixa de entrada**. Eles usavam agentes de IA para gerenciar o email inteiro — responder, arquivar, categorizar — sem nem olhar para a tela.
+
+> "Como os agentes da Notion ficaram mais capazes, vimos mais usuários delegando fluxos de email para eles. Então vamos focar tudo em agentes para rodar sua caixa de entrada." — Notion, no X
+
+Isso é enorme. Um produto de email sendo **morto porque as pessoas preferem que uma IA cuide dele**. Se isso não é um sinal de que os agentes deixaram de ser brinquedo e viraram ferramenta de trabalho, não sei o que é.
+
+E não é só a Notion — empresas como **Patronus AI** levantaram US$ 50 milhões para construir "mundos digitais" que testam agentes em cenários complexos antes de colocá-los em produção. Vôos, análises financeiras, workflows multi-etapa — os agentes estão fazendo tudo, e alguém precisa garantir que eles não quebrem.
+
+## Xiaomi Descobriu Que o Problema Não É o Modelo — É o Scaffolding
+
+Enquanto todo mundo corre atrás do próximo GPT ou Claude, a Xiaomi soltou um paper que virou a mesa: **HarnessX**, um sistema que permite que a IA **reescreva seu próprio scaffolding** durante a execução.
+
+O que isso significa na prática? O scaffolding (a "armação" de software que conecta o LLM ao ambiente) sempre foi feito na mão, é estático e não evolui com o modelo. A Xiaomi tratou o scaffolding como "objeto de primeira classe" e deixou a própria IA iterar sobre ele.
+
+Resultados:
+- **+14,5% de performance média** em 15 combinações de modelo/benchmark
+- **+44% em tarefas de planejamento** para modelos menores como Qwen3.5-9B
+- Quando os dados de evolução do scaffolding foram usados para treinar o modelo base, ganho adicional de **+4,7%**
+
+O mais louco? **Modelos menores ganharam mais.** Porque eles são mais limitados pelo scaffolding atual — quando a armação melhora, eles finalmente conseguem mostrar o potencial deles.
+
+Isso me lembrou do frame do **Sam Altman sobre o "ciclo de feedback entre código rodando e iteração"** — a Xiaomi está automatizando exatamente esse ciclo.
+
+## Shopify Construiu o Stack de IA Que Não Se Importa Com Quem Vence
+
+Enquanto a Xiaomi mexeu no software, a Shopify atacou o problema de **provedores de modelo**.
+
+A Shopify construiu um **proxy de LLM interno** que dá a cada engenheiro acesso a múltiplos provedores com **failover automático**. Quando o Claude Fable 5 foi descontinuado, os engenheiros da Shopify nem perceberam — o proxy migrou todo mundo pro Claude Opus ou GPT 5.5 automaticamente.
+
+> "Quando um modelo aparece e depois some — ou algo tão banal quanto uma atualização acontece — o proxy nos permite distribuir entre diferentes provedores." — Shopify
+
+A empresa compra tokens em bulk e todos os times se conectam pelos mesmos endpoints. Se um usuário mantém um modelo rodando por 10 horas gastando muitos tokens, recebe um alerta: "Era pra gastar isso mesmo?"
+
+É o oposto do "tokenmaxxing" — é **token engineering**.
+
+## Netris: O Dinheiro Segue pra Quem Acelera a Infra
+
+A a16z colocou **US$ 15 milhões** na **Netris** pra resolver um problema que parece chato mas é gigante: montar um datacenter de IA demora meses, mesmo depois de você ter os GPUs.
+
+Configurar rede, switches, storage, e adaptar pra cada cliente — tudo isso segura os GPUs parados, queimando dinheiro. A Netris acelera o "time to market" dos neoclouds, que são basicamente datacenters especializados em IA.
+
+Esse investimento, junto com os US$ 13 bilhões que a Amazon prometeu pra Índia em infraestrutura de AI e nuvem, mostram pra onde o dinheiro está indo: **não pra startups de modelo, mas pra quem constrói as estradas**.
+
+## E a Conta Chegou: O Fim do Tokenmaxxing
+
+Depois de meses incentivando empresas a "maximizar uso de IA", com leaderboards internos e gastos sem freio, o mercado entrou na **era do racionamento de tokens**.
+
+Empresas estão correndo pra **parar funcionários de estourar o orçamento de IA com tarefas pequenas**. O famoso "tokenmaxxing" — usar o modelo mais caro pra escrever um email — acabou.
+
+A ironia? A indústria de IA criou o problema que agora precisa resolver: ferramentas tão boas que todo mundo quer usar, mas tão caras que o orçamento voa.
+
+## O Que Tudo Isso Significa
+
+Se eu fosse resumir a semana em uma frase: **o jogo mudou de "qual modelo ganha?" pra "como a gente opera agentes sem falir?"**
+
+As empresas que vão vencer não são as com o melhor modelo — são as que constroem a infraestrutura certa: scaffolding que se auto-melhora (Xiaomi), proxies que abstraem provedores (Shopify), neoclouds que aceleram deployment (Netris), e políticas que controlam custos (token rationing).
+
+**E os agentes?** Eles já estão aqui. O Notion Mail morreu porque ninguém mais abria a caixa de entrada. A pergunta agora é: **qual vai ser o próximo app que os agentes vão tornar irrelevante?**
+
+## Fontes
+- [TechCrunch: Notion Mail shuts down amid agent takeover](https://techcrunch.com)
+- [VentureBeat: Xiaomi's HarnessX rewrites its own AI scaffolding mid-task](https://venturebeat.com)
+- [VentureBeat: How Shopify built an AI stack that doesn't care which models survive](https://venturebeat.com)
+- [TechCrunch: Netris raises $15M Series A from a16z](https://techcrunch.com)
+- [TechCrunch: Companies are scrambling to stop employees from maxing out AI budgets](https://techcrunch.com)
+- [TechCrunch: Patronus AI lands $50M to build digital worlds that stress-test AI agents](https://techcrunch.com)
+- [TechCrunch: Amazon ups India bet with fresh $13B AI infrastructure investment](https://techcrunch.com)
