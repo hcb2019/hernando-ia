@@ -203,6 +203,10 @@ export const JSONLD = {
   article(post: BlogPostWithContent, lang: "pt" | "en" | "es" = "pt") {
     const url = `${SITE.url}/blog/${post.slug}`;
     const langSuffix = lang !== "pt" ? `?lang=${lang}` : "";
+    // Use the post's actual image, or fall back to dynamic OG image
+    const imageUrl = post.image
+      ? post.image
+      : `${SITE.url}/api/og?title=${encodeURIComponent(post.title)}&date=${encodeURIComponent(post.date)}&tags=${encodeURIComponent(post.tags.slice(0, 4).join(","))}`;
     return {
       "@context": "https://schema.org",
       "@type": "Article",
@@ -221,7 +225,7 @@ export const JSONLD = {
         name: SITE.name,
         url: SITE.url,
       },
-      image: `${SITE.url}${SITE.ogImage}`,
+      image: imageUrl,
       inLanguage: lang === "pt" ? "pt-BR" : lang === "es" ? "es" : "en",
       mainEntityOfPage: {
         "@type": "WebPage",
