@@ -135,7 +135,7 @@ export default async function BlogPage({ searchParams }: BlogPageProps) {
           <p className="text-xs text-white/20">
             {t("sponsor_cta", lang)}{" "}
             <a
-              href="mailto:hernando@hernando.ia"
+              href="mailto:contato@hernandoia.com"
               className="text-accent/40 hover:text-accent transition-colors"
             >
               {t("sponsor_link", lang)}

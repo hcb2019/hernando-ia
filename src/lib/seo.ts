@@ -28,7 +28,7 @@ export const SITE = {
   twitterHandle: "@hernandoia",
   author: {
     name: "Hernando",
-    email: "hernando@hernando.ia",
+    email: "contato@hernandoia.com",
     url: "https://hernandoia.com",
     jobTitle: "AI Engineer & Entrepreneur",
     sameAs: [

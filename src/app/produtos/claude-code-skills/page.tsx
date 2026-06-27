@@ -512,7 +512,7 @@ export default function ClaudeCodeSkillsPage() {
             <p className="text-xs text-[--muted-foreground]/40 max-w-md mx-auto leading-relaxed">
               Código aberto (MIT) • 59 arquivos • 20 skills • 100% PT-BR 
               <br />Quer suporte premium ou skills customizadas?{" "}
-              <a href="mailto:hernando@hernando.ia" className="text-[--accent]/70 hover:text-[--accent] underline underline-offset-2">Fale comigo</a>
+              <a href="mailto:contato@hernandoia.com" className="text-[--accent]/70 hover:text-[--accent] underline underline-offset-2">Fale comigo</a>
             </p>
           </div>
         </section>
