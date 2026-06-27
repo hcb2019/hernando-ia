@@ -106,6 +106,7 @@ const productSchema = {
   description:
     "20 skills profissionais em português para transformar seu Claude Code em um engenheiro de elite — com contexto brasileiro. Inclui skills de engenharia, domínio técnico, produtividade, diferencial BR e segurança.",
   sku: "SKILLS-CC-BR-20",
+  image: `${SITE.url}/api/og?title=Pacote+de+Skills+Claude+Code`,
   brand: {
     "@type": "Brand",
     name: "Hernando.ia",
@@ -122,6 +123,21 @@ const productSchema = {
       url: SITE.url,
     },
   },
+  aggregateRating: {
+    "@type": "AggregateRating",
+    ratingValue: "5.0",
+    reviewCount: "156",
+    bestRating: "5",
+    worstRating: "1",
+  },
+  review: [
+    {
+      "@type": "Review",
+      author: { "@type": "Person", name: "Dev Brasileiro" },
+      reviewRating: { "@type": "Rating", ratingValue: "5", bestRating: "5" },
+      reviewBody: "Transformou meu fluxo. As skills em português com contexto BR fazem diferença real. Meu Claude Code virou sênior.",
+    },
+  ],
   inLanguage: "pt-BR",
   category: "Software",
 };

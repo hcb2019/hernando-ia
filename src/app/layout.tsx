@@ -106,31 +106,6 @@ export default function RootLayout({
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(JSONLD.person()) }}
         />
-        <script
-          type="application/ld+json"
-          dangerouslySetInnerHTML={{
-            __html: JSON.stringify({
-              "@context": "https://schema.org",
-              "@type": "Product",
-              name: "Pacote de Skills para Claude Code — Desenvolvedor Brasileiro",
-              description:
-                "20 skills profissionais em português para Claude Code. Debugging, TDD, arquitetura, code review — metodologia de engenharia de software para agentes de IA.",
-              url: "https://hernandoia.com/produtos/claude-code-skills",
-              offers: {
-                "@type": "Offer",
-                price: "147",
-                priceCurrency: "BRL",
-                availability: "https://schema.org/InStock",
-                url: "https://hernandoia.com/produtos/claude-code-skills",
-              },
-              image: "https://hernandoia.com/api/og?title=Pacote+de+Skills+Claude+Code",
-              brand: {
-                "@type": "Brand",
-                name: "Hernando.ia",
-              },
-            }),
-          }}
-        />
         {/* Preconnect to critical origins */}
         <link rel="preconnect" href="https://avatars.githubusercontent.com" />
         <link rel="dns-prefetch" href="https://github.com" />
