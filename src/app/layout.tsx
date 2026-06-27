@@ -99,7 +99,7 @@ export default function RootLayout({
         {/* Favicon — direct links (bypass Next.js auto-generation) */}
         <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
         <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
-        <link rel="shortcut icon" href="/favicon-h-20250610.ico" />
+        <link rel="shortcut icon" href="/favicon-h-20250627.ico" />
         <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
         {/* JSON-LD Structured Data */}
         <script
