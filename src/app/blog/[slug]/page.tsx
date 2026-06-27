@@ -343,16 +343,16 @@ function renderMarkdown(md: string): string {
     '<code class="bg-surface px-1.5 py-0.5 rounded text-sm font-mono text-accent">$1</code>'
   );
 
+  // Images (MUST come before links — otherwise link regex eats image syntax)
+  html = html.replace(
+    /!\[([^\]]*)\]\(([^)]+)\)/g,
+    '<img src="$2" alt="$1" class="rounded-lg my-8 max-w-full" loading="lazy" />'
+  );
+
   // Links
   html = html.replace(
     /\[([^\]]+)\]\(([^)]+)\)/g,
     '<a href="$2" class="text-accent hover:underline decoration-accent/50 underline-offset-4">$1</a>'
-  );
-
-  // Images
-  html = html.replace(
-    /!\[([^\]]*)\]\(([^)]+)\)/g,
-    '<img src="$2" alt="$1" class="rounded-lg my-8 max-w-full" loading="lazy" />'
   );
 
   // Horizontal rules
