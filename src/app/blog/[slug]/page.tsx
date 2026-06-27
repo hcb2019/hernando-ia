@@ -200,10 +200,25 @@ export default async function BlogPostPage({ params, searchParams }: PageProps) 
             <p className="text-xs text-white/30">
               {t("sponsor_disclosure", lang)}{" "}
               <a
-                href="/sponsorship"
+                href="/patrocinio"
                 className="text-accent/50 hover:text-accent transition-colors"
               >
                 {t("sponsor_policy", lang)}
+              </a>
+            </p>
+          </div>
+        )}
+
+        {/* Sponsor CTA — subtle banner for non-sponsored posts */}
+        {!post.sponsored && (
+          <div className="mt-12 border border-[--border]/50 p-4 text-center hover:border-accent/20 transition-colors">
+            <p className="text-xs text-white/25">
+              Quer divulgar sua marca para leitores de IA?{" "}
+              <a
+                href="/patrocinio"
+                className="text-accent/50 hover:text-accent underline underline-offset-4 transition-colors"
+              >
+                Patrocine o Hernando.ia →
               </a>
             </p>
           </div>

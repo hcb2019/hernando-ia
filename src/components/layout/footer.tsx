@@ -57,6 +57,12 @@ export default function Footer() {
             >
               Blog
             </Link>
+            <Link
+              href="/patrocinio"
+              className="text-sm text-[--muted-foreground] hover:text-[--foreground] transition-colors uppercase tracking-tighter"
+            >
+              Patrocínio
+            </Link>
             <a
               href="https://github.com/hcb2019"
               target="_blank"
