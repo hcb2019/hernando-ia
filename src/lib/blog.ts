@@ -14,6 +14,8 @@ export interface BlogPost {
   sponsored?: boolean
   /** Whether this is premium/gated content */
   premium?: boolean
+  /** First image URL extracted from post content (for cards/OG) */
+  image?: string
 }
 
 export interface BlogPostWithContent extends BlogPost {
@@ -78,6 +80,12 @@ function extractExcerpt(content: string, maxLen = 160): string {
 
   if (plain.length <= maxLen) return plain
   return plain.slice(0, maxLen).replace(/\s+\S*$/, '') + '…'
+}
+
+function extractImage(content: string): string | undefined {
+  // Match ![alt](url) in markdown
+  const match = content.match(/!\[[^\]]*\]\(([^)]+)\)/)
+  return match ? match[1] : undefined
 }
 
 // ── Language helpers ──────────────────────────────────────────────
@@ -178,6 +186,7 @@ export function getBlogPosts(lang: Lang = 'pt'): BlogPost[] {
           : estimateReadingTime(content),
       sponsored: data.sponsored === true,
       premium: data.premium === true,
+      image: extractImage(content),
     })
   }
 
@@ -206,6 +215,7 @@ export function getBlogPost(slug: string, lang: Lang = 'pt'): BlogPostWithConten
         : estimateReadingTime(content),
     sponsored: data.sponsored === true,
     premium: data.premium === true,
+    image: extractImage(content),
     content,
   }
 }

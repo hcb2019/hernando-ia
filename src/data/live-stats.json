@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-06-19T18:00:41.217923+00:00",
+  "updated_at": "2026-06-27T06:01:56.941995+00:00",
   "github": {
     "user": {
       "login": "hcb2019",
@@ -14,16 +14,6 @@
     },
     "repos": [
       {
-        "name": "hernando-ia",
-        "full_name": "hcb2019/hernando-ia",
-        "html_url": "https://github.com/hcb2019/hernando-ia",
-        "description": "Site pessoal de Hernando — AI Engineer & Entrepreneur. Portfolio, blog e cerebro digital. Next.js + Tailwind v4 + Kinetic Typography.",
-        "language": "MDX",
-        "stargazers_count": 0,
-        "forks_count": 0,
-        "updated_at": "2026-06-19T17:51:55Z"
-      },
-      {
         "name": "gold-carbon",
         "full_name": "hcb2019/gold-carbon",
         "html_url": "https://github.com/hcb2019/gold-carbon",
@@ -31,7 +21,17 @@
         "language": "TypeScript",
         "stargazers_count": 0,
         "forks_count": 0,
-        "updated_at": "2026-06-19T17:47:29Z"
+        "updated_at": "2026-06-27T05:45:52Z"
+      },
+      {
+        "name": "hernando-ia",
+        "full_name": "hcb2019/hernando-ia",
+        "html_url": "https://github.com/hcb2019/hernando-ia",
+        "description": "Site pessoal de Hernando — AI Engineer & Entrepreneur. Portfolio, blog e cerebro digital. Next.js + Tailwind v4 + Kinetic Typography.",
+        "language": "MDX",
+        "stargazers_count": 0,
+        "forks_count": 0,
+        "updated_at": "2026-06-26T22:02:47Z"
       },
       {
         "name": "Ufokko",
@@ -41,7 +41,7 @@
         "language": "JavaScript",
         "stargazers_count": 0,
         "forks_count": 0,
-        "updated_at": "2026-06-10T21:56:33Z"
+        "updated_at": "2026-06-22T20:08:49Z"
       },
       {
         "name": "claude-code-skills",
@@ -61,7 +61,7 @@
         "language": "TypeScript",
         "stargazers_count": 0,
         "forks_count": 0,
-        "updated_at": "2026-06-04T18:13:28Z"
+        "updated_at": "2026-06-26T10:58:23Z"
       },
       {
         "name": "popularizei",
@@ -101,13 +101,13 @@
       "forks": 0
     },
     "events": [],
-    "updated_at": "2026-06-19T18:00:41.217923+00:00"
+    "updated_at": "2026-06-27T06:01:56.941995+00:00"
   },
   "instagram": {
-    "followers": 1294,
-    "posts": 127,
+    "followers": 1391,
+    "posts": 138,
     "account_type": "MEDIA_CREATOR",
-    "reach_30d": 413281,
-    "updated_at": "2026-06-19T18:00:41.217923+00:00"
+    "reach_30d": 391864,
+    "updated_at": "2026-06-27T06:01:56.941995+00:00"
   }
 }
