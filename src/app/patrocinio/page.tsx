@@ -144,10 +144,10 @@ export default function PatrocinioPage() {
             divulgar. Respondo em até 24h.
           </p>
           <a
-            href="mailto:hernando@hernando.ia?subject=Patroc%C3%ADnio%20Hernando.ia"
+            href="mailto:hernando.ia@gmail.com?subject=Patroc%C3%ADnio%20Hernando.ia"
             className="inline-flex items-center gap-2 bg-accent text-[#08081a] font-bold px-6 py-3 text-sm hover:bg-accent/90 transition-colors"
           >
-            hernando@hernando.ia →
+            hernando.ia@gmail.com →
           </a>
           <p className="text-xs text-white/20 mt-4">
             Ou chama no Instagram{" "}

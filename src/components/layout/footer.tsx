@@ -94,10 +94,10 @@ export default function Footer() {
             CONTATO
           </h4>
           <a
-            href="mailto:hernando@hernando.ia"
+            href="mailto:hernando.ia@gmail.com"
             className="text-sm text-[--muted-foreground] hover:text-[--foreground] transition-colors uppercase tracking-tighter"
           >
-            hernando@hernando.ia
+            hernando.ia@gmail.com
           </a>
           <p className="text-xs text-[--muted-foreground] mt-3">
             Aberto a colaboracoes, consultoria e projetos de IA.
