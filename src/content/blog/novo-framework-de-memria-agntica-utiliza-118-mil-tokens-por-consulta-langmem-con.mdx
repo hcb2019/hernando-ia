@@ -1,0 +1,53 @@
+---
+title: "Novo framework de memória agêntica utiliza 118 mil tokens por consulta. LangMem consome 3,26 milhões."
+date: "2026-06-28"
+excerpt: "O raciocínio de longo prazo expõe uma fragilidade central nos agentes de IA: as janelas de contexto se enchem rapidamente, e os pipelines de recuperação devolvem ruído em vez de sinal. Para resolver isso, pesquisadores da Universidade Nacional de Singapura desenvolveram o MRAg..."
+tags: [IA, Inteligência Artificial, VentureBeat, Tarde]
+readingTime: 4
+sponsored: false
+premium: false
+---
+
+O raciocínio de longo prazo expõe uma fragilidade central nos agentes de IA: as janelas de contexto se enchem rapidamente, e os pipelines de recuperação retornam ruído em vez de sinal. Para resolver isso, pesquisadores da Universidade Nacional de Cingapura desenvolveram o MRAgent, uma estrutura que abandona o modelo estático de "recuperar e depois raciocinar".
+
+## O Que Aconteceu
+
+📰 Fonte: **VentureBeat** — 26 jun 2026
+
+Ben Dickson – 14h58, horário do Pacífico, 26 de junho de 2026  
+Crédito da imagem: VentureBeat com ChatGPT  
+
+O raciocínio de longo horizonte expõe uma fragilidade central nos agentes de IA: os contextos se enchem rapidamente, e os pipelines de recuperação devolvem ruído em vez de sinal. Para resolver esse problema, pesquisadores da Universidade Nacional de Cingapura desenvolveram o MRAgent, uma estrutura que abandona a abordagem estática de "recuperar e depois raciocinar". Em vez disso, utiliza um mecanismo que permite ao agente desenvolver dinamicamente sua memória com base no acúmulo de evidências. Essa reconstrução de memória em múltiplas etapas é integrada ao processo de raciocínio do modelo de linguagem de grande escala (LLM). Embora não seja a única estrutura nesse espaço, o MRAgent reduz significativamente o consumo de tokens e os custos operacionais em comparação com outras abordagens de gerenciamento de memória para agentes.
+
+**Os limites da recuperação passiva em tarefas de longo horizonte**
+
+Em pipelines clássicos de recuperação, documentos são obtidos por meio de busca vetorial ou travessia de grafos e passados para um LLM para raciocínio. Essa abordagem passiva falha porque não consegue combinar raciocínio com acesso à memória, criando três grandes gargalos:
+
+Esses sistemas não conseguem revisar sua estratégia de recuperação durante o raciocínio. Se um agente busca um documento e descobre que falta uma pista crucial — uma data ou pessoa específica —, ele não tem como emitir uma nova consulta com base nessa descoberta.
+
+Pontuações de similaridade fixas e expansões predefinidas de grafos retornam correspondências superficiais que inundam a janela de contexto do LLM com ruído irrelevante, degradando o raciocínio.
+
+Os sistemas atuais dependem fortemente de estruturas pré-construídas, como resultados top-k e funções de relevância estáticas, limitando a flexibilidade necessária para escalar em interações imprevisíveis e de longo horizonte com os usuários.
+
+Os pesquisadores argumentam que, para superar essas limitações, os desenvolvedores precisam migrar para um "processo de reconstrução ativo e associativo", um conceito inspirado na neurociência cognitiva.
+
+*Recuperação passiva vs. reconstrução ativa de memória (fonte: arXiv)*
+
+Sob esse paradigma, a recuperação da memória ocorre de forma sequencial,
+
+
+## Por Que Importa
+
+Este desenvolvimento tem peso no ecossistema de IA atual. Embora não seja um evento sísmico, contribui para tendências maiores que estão moldando o setor. Profissionais de tecnologia devem monitorar os desdobramentos nas próximas semanas.
+## Minha Opinião
+
+118 mil tokens por query? Isso é piada de mau gosto. Enquanto a galera hypa "agente autônomo" com RAG meia-boca, a NUS mostra o elefante na sala: contexto é recurso finito e caro. LangMem queimando 3.26M tokens é o preço de não pensar na arquitetura.
+
+Pra startup BR, isso significa que "só jogar tudo no prompt" não escala. Se você não otimizar retrieval com chunking semântico e sumarização hierárquica, vai falir em tokens. O pulo do gato é tratar memória como banco vetorial com poda agressiva, não como cache infinito.
+
+Minha dica: esquece "agente que lembra de tudo". Foca em "agente que esquece rápido e só guarda o essencial". Menos é mais, especialmente quando cada token custa real.
+## Fontes
+
+- [VentureBeat](https://venturebeat.com/orchestration/new-agentic-memory-framework-uses-118k-tokens-per-query-langmem-burns-through-3-26m) — 26 jun 2026
+- Categoria: Grande mídia
+- Curadoria: pipeline hernandoia.com (score: 80/100)
