@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-06-27T18:00:12.393601+00:00",
+  "updated_at": "2026-06-28T18:00:34.425138+00:00",
   "github": {
     "user": {
       "login": "hcb2019",
@@ -14,16 +14,6 @@
     },
     "repos": [
       {
-        "name": "hernando-ia",
-        "full_name": "hcb2019/hernando-ia",
-        "html_url": "https://github.com/hcb2019/hernando-ia",
-        "description": "Site pessoal de Hernando — AI Engineer & Entrepreneur. Portfolio, blog e cerebro digital. Next.js + Tailwind v4 + Kinetic Typography.",
-        "language": "MDX",
-        "stargazers_count": 0,
-        "forks_count": 0,
-        "updated_at": "2026-06-27T17:55:23Z"
-      },
-      {
         "name": "gold-carbon",
         "full_name": "hcb2019/gold-carbon",
         "html_url": "https://github.com/hcb2019/gold-carbon",
@@ -31,7 +21,17 @@
         "language": "TypeScript",
         "stargazers_count": 0,
         "forks_count": 0,
-        "updated_at": "2026-06-27T17:49:40Z"
+        "updated_at": "2026-06-28T17:57:44Z"
+      },
+      {
+        "name": "hernando-ia",
+        "full_name": "hcb2019/hernando-ia",
+        "html_url": "https://github.com/hcb2019/hernando-ia",
+        "description": "Site pessoal de Hernando — AI Engineer & Entrepreneur. Portfolio, blog e cerebro digital. Next.js + Tailwind v4 + Kinetic Typography.",
+        "language": "MDX",
+        "stargazers_count": 0,
+        "forks_count": 0,
+        "updated_at": "2026-06-28T15:01:46Z"
       },
       {
         "name": "Ufokko",
@@ -101,13 +101,13 @@
       "forks": 0
     },
     "events": [],
-    "updated_at": "2026-06-27T18:00:12.393601+00:00"
+    "updated_at": "2026-06-28T18:00:34.425138+00:00"
   },
   "instagram": {
-    "followers": 1393,
-    "posts": 138,
+    "followers": 1418,
+    "posts": 140,
     "account_type": "MEDIA_CREATOR",
-    "reach_30d": 389383,
-    "updated_at": "2026-06-27T18:00:12.393601+00:00"
+    "reach_30d": 402268,
+    "updated_at": "2026-06-28T18:00:34.425138+00:00"
   }
 }
