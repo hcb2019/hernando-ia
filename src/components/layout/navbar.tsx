@@ -11,6 +11,7 @@ const navLinks = [
   { href: "/newsletter", label: "NEWSLETTER" },
   { href: "/produtos", label: "PRODUTOS" },
   { href: "/servicos", label: "SERVIÇOS" },
+  { href: "/sobre", label: "SOBRE" },
 ];
 
 export default function Navbar() {

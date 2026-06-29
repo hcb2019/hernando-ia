@@ -29,7 +29,7 @@ export const SITE = {
   author: {
     name: "Hernando",
     email: "contato@hernandoia.com",
-    url: "https://hernandoia.com",
+    url: "https://hernandoia.com/sobre",
     jobTitle: "AI Engineer & Entrepreneur",
     sameAs: [
       "https://instagram.com/hernando.ia",
