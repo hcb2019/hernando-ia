@@ -63,6 +63,12 @@ export default function Footer() {
             >
               Patrocínio
             </Link>
+            <Link
+              href="/politica-de-privacidade"
+              className="text-sm text-[--muted-foreground] hover:text-[--foreground] transition-colors uppercase tracking-tighter"
+            >
+              Privacidade
+            </Link>
             <a
               href="https://github.com/hcb2019"
               target="_blank"

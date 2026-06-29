@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-06-29T06:00:57.530331+00:00",
+  "updated_at": "2026-06-29T12:00:12.602534+00:00",
   "github": {
     "user": {
       "login": "hcb2019",
@@ -21,7 +21,7 @@
         "language": "MDX",
         "stargazers_count": 0,
         "forks_count": 0,
-        "updated_at": "2026-06-28T22:26:25Z"
+        "updated_at": "2026-06-29T11:46:17Z"
       },
       {
         "name": "gold-carbon",
@@ -101,13 +101,13 @@
       "forks": 0
     },
     "events": [],
-    "updated_at": "2026-06-29T06:00:57.530331+00:00"
+    "updated_at": "2026-06-29T12:00:12.602534+00:00"
   },
   "instagram": {
-    "followers": 1434,
+    "followers": 1435,
     "posts": 140,
     "account_type": "MEDIA_CREATOR",
-    "reach_30d": 413840,
-    "updated_at": "2026-06-29T06:00:57.530331+00:00"
+    "reach_30d": 373215,
+    "updated_at": "2026-06-29T12:00:12.602534+00:00"
   }
 }
