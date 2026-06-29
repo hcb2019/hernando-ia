@@ -8,8 +8,13 @@ export default function sitemap(): MetadataRoute.Sitemap {
   const blogEntries: MetadataRoute.Sitemap = posts.map((post) => ({
     url: `${SITE.url}/blog/${post.slug}`,
     lastModified: new Date(post.date),
-    changeFrequency: "weekly" as const,
+    changeFrequency: post.date > new Date(Date.now() - 7 * 86400000).toISOString().split("T")[0]
+      ? "daily" as const
+      : "weekly" as const,
     priority: 0.8,
+    ...(post.image ? {
+      images: [{ url: post.image }],
+    } : {}),
   }));
 
   return [
