@@ -41,6 +41,15 @@ export const metadata: Metadata = {
   description: SITE.description,
   metadataBase: new URL(SITE.url),
   manifest: "/site.webmanifest",
+  icons: {
+    icon: [
+      { url: "/favicon-16x16.png", sizes: "16x16", type: "image/png" },
+      { url: "/favicon-32x32.png", sizes: "32x32", type: "image/png" },
+      { url: "/favicon-48x48.png", sizes: "48x48", type: "image/png" },
+      { url: "/icon-256.png", sizes: "256x256", type: "image/png" },
+    ],
+    apple: { url: "/icon-256.png", sizes: "256x256", type: "image/png" },
+  },
   alternates: {
     canonical: SITE.url,
   },
