@@ -31,40 +31,7 @@ export async function generateMetadata({ params, searchParams }: PageProps): Pro
   const post = getBlogPost(slug, lang);
   if (!post) return { title: "Post não encontrado | Hernando.ia" };
 
-  const base = generateBlogPostMeta(post, lang);
-
-  // Inject JSON-LD schemas into <head> (not RSC body)
-  const articleLD = JSON.stringify(JSONLD.article(post, lang));
-  const breadcrumbLD = JSON.stringify(JSONLD.breadcrumbList([
-    { name: "Home", url: "https://hernandoia.com" },
-    { name: t("blog_title", lang), url: "https://hernandoia.com/blog" },
-    { name: post.title, url: `https://hernandoia.com/blog/${slug}` },
-  ]));
-  const faqLD = JSONLD.faqPage(post);
-  
-  const scripts: Record<string, string> = {
-    'schema-article': articleLD,
-    'schema-breadcrumb': breadcrumbLD,
-  };
-  if (faqLD) {
-    scripts['schema-faq'] = JSON.stringify(faqLD);
-  }
-
-  return {
-    ...base,
-    other: {
-      ...Object.fromEntries(
-        Object.entries(scripts).map(([id, json]) => [
-          id,
-          <script
-            key={id}
-            type="application/ld+json"
-            dangerouslySetInnerHTML={{ __html: json }}
-          />,
-        ])
-      ),
-    },
-  };
+  return generateBlogPostMeta(post, lang);
 }
 
 export function generateStaticParams() {
@@ -82,6 +49,13 @@ export default async function BlogPostPage({ params, searchParams }: PageProps) 
   if (!post) notFound();
 
   const formattedDate = formatDate(post.date, lang);
+  const articleJSONLD = JSONLD.article(post, lang);
+  const breadcrumbJSONLD = JSONLD.breadcrumbList([
+    { name: "Home", url: "https://hernandoia.com" },
+    { name: t("blog_title", lang), url: "https://hernandoia.com/blog" },
+    { name: post.title, url: `https://hernandoia.com/blog/${slug}` },
+  ]);
+  const faqJSONLD = JSONLD.faqPage(post);
   const relatedPosts = getRelatedPosts(slug, post.tags, 3);
   const allPosts = getBlogPosts(lang).filter(p => p.slug !== slug);
 
@@ -92,6 +66,22 @@ export default async function BlogPostPage({ params, searchParams }: PageProps) 
 
   return (
     <div className="min-h-screen bg-[#08081a]">
+      {/* JSON-LD Structured Data — rendered server-side in RSC body */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(articleJSONLD) }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJSONLD) }}
+      />
+      {faqJSONLD && (
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJSONLD) }}
+        />
+      )}
+
       {/* Grid background */}
       <div className="fixed inset-0 grid-bg opacity-[0.03] pointer-events-none" />
 
