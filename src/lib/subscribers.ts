@@ -11,6 +11,17 @@ export interface Subscriber {
   unsubscribeToken: string;
 }
 
+// ── Consent Record (LGPD Art. 8, §2) ──────────────────────────────
+
+export interface ConsentRecord {
+  email: string;
+  action: "subscribe" | "confirm" | "unsubscribe";
+  timestamp: string;
+  ip: string;
+  userAgent: string;
+  version: string;
+}
+
 // ── Redis client (Redis Cloud via TCP) ─────────────────────────────
 
 const REDIS_URL = process.env.REDIS_URL;
@@ -38,10 +49,11 @@ function getRedis(): Redis | null {
 }
 
 const SUBSCRIBERS_KEY = "subscribers:list";
+const CONSENT_LOG_KEY = "consent:log";
 
 // ── File-based fallback ────────────────────────────────────────────
 
-import { readFileSync, writeFileSync, existsSync, mkdirSync } from "fs";
+import { readFileSync, writeFileSync, existsSync, mkdirSync, appendFileSync } from "fs";
 import { join } from "path";
 
 const DATA_DIR = process.env.VERCEL
@@ -109,6 +121,25 @@ export async function saveStore(subscribers: Subscriber[]): Promise<void> {
     }
   }
   fileSaveStore(subscribers);
+}
+
+// ── Consent Log (LGPD Art. 8, §2) ─────────────────────────────────
+
+const CONSENT_LOG_FILE = join(DATA_DIR, "consent-log.jsonl");
+
+export async function recordConsent(record: ConsentRecord): Promise<void> {
+  const r = getRedis();
+  if (r) {
+    try {
+      await r.lpush(CONSENT_LOG_KEY, JSON.stringify(record));
+      return;
+    } catch (e) {
+      console.error("Consent log error:", e);
+    }
+  }
+  // File-based fallback
+  ensureDataDir();
+  appendFileSync(CONSENT_LOG_FILE, JSON.stringify(record) + "\n");
 }
 
 // ── Public API ────────────────────────────────────────────────────

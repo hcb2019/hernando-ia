@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { subscribe } from "@/lib/subscribers";
+import { subscribe, recordConsent, type ConsentRecord } from "@/lib/subscribers";
 import { SITE } from "@/lib/seo";
 
 export async function POST(request: NextRequest) {
@@ -11,8 +11,21 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Email inválido" }, { status: 400 });
     }
 
-    // Subscribe (handles duplicates gracefully, auto-confirms)
+    // Subscribe (handles duplicates gracefully)
     const { subscriber: sub, isNew } = await subscribe(email.toLowerCase().trim());
+
+    // Record consent (LGPD Art. 8, §2)
+    if (isNew) {
+      const consent: ConsentRecord = {
+        email: email.toLowerCase().trim(),
+        action: "subscribe",
+        timestamp: new Date().toISOString(),
+        ip: request.headers.get("x-forwarded-for") || request.headers.get("x-real-ip") || "unknown",
+        userAgent: request.headers.get("user-agent") || "unknown",
+        version: "1.0",
+      };
+      await recordConsent(consent);
+    }
 
     if (!isNew) {
       return NextResponse.json({
