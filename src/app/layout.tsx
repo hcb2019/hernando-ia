@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Space_Grotesk, Inter, Geist_Mono } from "next/font/google";
 import ClientProviders from "@/components/providers/client-providers";
 import { SITE, JSONLD } from "@/lib/seo";
+import { WebVitals } from "@/components/ui/web-vitals";
 import "./globals.css";
 
 const spaceGrotesk = Space_Grotesk({
@@ -121,6 +122,7 @@ export default function RootLayout({
           <rect width="100%" height="100%" filter="url(#noise)" />
         </svg>
         <ClientProviders>
+          <WebVitals />
           {children}
         </ClientProviders>
       </body>
