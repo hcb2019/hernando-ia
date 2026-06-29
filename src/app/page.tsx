@@ -174,6 +174,10 @@ export default function Home() {
     <>
       <Navbar />
       <main>
+        {/* H1 for SEO — rendered server-side (HeroSection is client-side) */}
+        <h1 className="sr-only">
+          Hernando.ia — AI Engineer &amp; Entrepreneur | Blog, Portfolio e Cérebro Digital sobre IA
+        </h1>
         <HeroSection
           followers={heroFollowers}
           projects={heroProjects}

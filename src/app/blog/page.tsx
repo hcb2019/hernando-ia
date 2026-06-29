@@ -12,7 +12,7 @@ import Link from "next/link";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = generatePageMeta({
-  title: "Blog | Hernando.ia",
+  title: "Blog — IA, Startups e Tecnologia",
   description:
     "Reflexões sobre engenharia de IA, startups e construção do futuro. Tutoriais, insights e bastidores de produtos reais.",
   path: "/blog",
