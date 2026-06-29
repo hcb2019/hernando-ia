@@ -13,7 +13,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
       : "weekly" as const,
     priority: 0.8,
     ...(post.image ? {
-      images: [{ url: post.image }],
+      images: [post.image],
     } : {}),
   }));
 
