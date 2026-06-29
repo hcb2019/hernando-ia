@@ -80,7 +80,7 @@ function generateToken(): string {
 
 // ── Unified load/save ─────────────────────────────────────────────
 
-async function loadStore(): Promise<Subscriber[]> {
+export async function loadStore(): Promise<Subscriber[]> {
   const r = getRedis();
   if (r) {
     try {
@@ -97,7 +97,7 @@ async function loadStore(): Promise<Subscriber[]> {
   return fileLoadStore();
 }
 
-async function saveStore(subscribers: Subscriber[]): Promise<void> {
+export async function saveStore(subscribers: Subscriber[]): Promise<void> {
   const r = getRedis();
   if (r) {
     try {
@@ -130,9 +130,9 @@ export async function subscribe(
 
   const subscriber: Subscriber = {
     email,
-    confirmed: true,
+    confirmed: false,  // Double opt-in: só confirma após clicar link no email
     subscribedAt: new Date().toISOString(),
-    confirmedAt: new Date().toISOString(),
+    confirmedAt: undefined,
     confirmationToken: generateToken(),
     unsubscribeToken: generateToken(),
   };
