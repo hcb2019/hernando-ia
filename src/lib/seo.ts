@@ -246,4 +246,50 @@ export const JSONLD = {
       })),
     };
   },
+
+  /**
+   * Generate FAQPage schema from markdown content.
+   * Extracts headings ending with "?" as questions
+   * and the following paragraph as answer.
+   */
+  faqPage(post: BlogPostWithContent) {
+    const faqs: { question: string; answer: string }[] = [];
+    const lines = post.content.split("\n");
+
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i].trim();
+      // Match headings that end with "?" (## or ###)
+      const qMatch = line.match(/^#{2,3}\s+(.+?\?)$/);
+      if (qMatch) {
+        const question = qMatch[1];
+        // Collect answer: next paragraph(s) until next heading or empty line
+        let answer = "";
+        let j = i + 1;
+        while (j < lines.length) {
+          const nextLine = lines[j].trim();
+          if (!nextLine || /^#{1,4}\s/.test(nextLine)) break;
+          answer += (answer ? " " : "") + nextLine;
+          j++;
+        }
+        if (answer) {
+          faqs.push({ question, answer: answer.slice(0, 300) }); // cap at 300 chars
+        }
+      }
+    }
+
+    if (faqs.length === 0) return null;
+
+    return {
+      "@context": "https://schema.org",
+      "@type": "FAQPage",
+      mainEntity: faqs.map((faq) => ({
+        "@type": "Question",
+        name: faq.question,
+        acceptedAnswer: {
+          "@type": "Answer",
+          text: faq.answer,
+        },
+      })),
+    };
+  },
 };

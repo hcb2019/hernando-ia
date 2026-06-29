@@ -55,6 +55,7 @@ export default async function BlogPostPage({ params, searchParams }: PageProps) 
     { name: t("blog_title", lang), url: "https://hernandoia.com/blog" },
     { name: post.title, url: `https://hernandoia.com/blog/${slug}` },
   ]);
+  const faqJSONLD = JSONLD.faqPage(post);  // null if no FAQ patterns found
   const relatedPosts = getRelatedPosts(slug, post.tags, 3);
   const allPosts = getBlogPosts(lang).filter(p => p.slug !== slug);
 
@@ -74,6 +75,12 @@ export default async function BlogPostPage({ params, searchParams }: PageProps) 
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJSONLD) }}
       />
+      {faqJSONLD && (
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJSONLD) }}
+        />
+      )}
 
       {/* Grid background */}
       <div className="fixed inset-0 grid-bg opacity-[0.03] pointer-events-none" />
