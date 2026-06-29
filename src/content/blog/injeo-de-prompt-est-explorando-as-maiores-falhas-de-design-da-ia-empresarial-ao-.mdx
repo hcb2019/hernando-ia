@@ -1,0 +1,40 @@
+---
+title: "Injeção de prompt está explorando as maiores falhas de design da IA empresarial ao mirar em agentes, pipelines de RAG e "
+date: "2026-06-29"
+excerpt: "Nos últimos dois anos, empresas têm tentado encaixar grandes modelos de linguagem (LLMs) em suporte, análise, desenvolvimento e automação interna como nunca antes. Junto com a crescente adoção da tecnologia de IA, outra tendência ganha força — criminosos cibernéticos estão se ..."
+tags: [IA, Inteligência Artificial, VentureBeat, Manhã]
+readingTime: 4
+sponsored: false
+premium: false
+---
+
+Nos últimos dois anos, as empresas têm tentado integrar grandes modelos de linguagem (LLMs) em suporte, análise, desenvolvimento e automação interna como nunca antes. Junto com a crescente adoção da tecnologia de IA, outra tendência ganha força — cibercriminosos estão se aproveitando das
+
+## O Que Aconteceu
+
+📰 Fonte: **VentureBeat** — 28 jun 2026
+
+**Destaque: Julie Brunias | 11:00, horário do Pacífico, 28 de junho de 2026 | CleoP criada com Midjourney**
+
+Nos últimos dois anos, empresas têm tentado encaixar grandes modelos de linguagem (LLMs) em suporte, análise, desenvolvimento e automação interna como nunca antes. Junto com a crescente adoção da tecnologia de IA, outra tendência ganha força — criminosos cibernéticos estão aproveitando a desconexão entre as suposições sobre LLMs e suas características reais.
+
+Em 2025 e 2026, diversas fontes independentes destacaram a mesma tendência: a injeção de prompts continua sendo um dos vetores de ataque mais impactantes e amplamente demonstrados contra sistemas baseados em LLM. O OWASP LLM Top 10 (2025) lista a injeção de prompts como LLM01, identificando-a como a categoria mais crítica de vulnerabilidades específicas de LLM, pela segunda edição consecutiva. O ranking da OWASP reflete o fato de que LLMs ainda têm dificuldade em separar instruções de dados de forma confiável, tornando-os suscetíveis à manipulação por meio de entradas maliciosamente elaboradas.
+
+O Relatório Global de Ameaças 2026 da CrowdStrike — construído com base em inteligência de linha de frente de mais de 280 adversários monitorados — documentou que agentes de ameaças injetaram prompts maliciosos em ferramentas legítimas de IA generativa em mais de 90 organizações em 2025. Eles então usaram essas injeções para gerar comandos que roubaram credenciais e criptomoedas. O relatório afirmou de forma direta: "Prompts são o novo malware." Adversários habilitados por IA aumentaram seu volume geral de ataques em 89% ano a ano, com a injeção de prompts funcionando tanto como ponto de entrada quanto como multiplicador de força.
+
+Incidentes do mundo real ilustram o impacto operacional. Em agosto de 2024, pesquisadores da PromptArmor revelaram uma vulnerabilidade de injeção de prompts no Slack AI que permitiu que um atacante exfiltasse dados de canais privados do Slack aos quais não tinha acesso — incluindo chaves de API compartilhadas em canais privados de desenvolvedores — ao colocar uma instrução maliciosa em um canal público ou incorporá-la em um documento enviado. Em junho de 2025, pesquisadores da A
+
+
+## Por Que Importa
+
+Este desenvolvimento tem peso no ecossistema de IA atual. Embora não seja um evento sísmico, contribui para tendências maiores que estão moldando o setor. Profissionais de tecnologia devem monitorar os desdobramentos nas próximas semanas.
+## Minha Opinião
+
+Tá vendo? Eu venho falando isso há meses: jogar um LLM num pipeline sem pensar em segurança é pedir pra tomar no cu. Esses ataques de prompt injection não são "bugs" — são falhas de design. Seu agente confia cegamente no input do usuário e ainda puxa dados de fontes externas sem validação? Parabéns, você criou uma backdoor grátis.
+
+Pra startup brasileira, o recado é claro: não adianta ter o modelo mais foda se qualquer zé ruelim consegue fazer ele vazar o banco de clientes. Segurança em AI não é feature, é requisito básico. Seu RAG pipeline precisa de sanitização, seu router precisa de limites de confiança. Senão, daqui a pouco o "assistente virtual" vira "assistente de invasão".
+## Fontes
+
+- [VentureBeat](https://venturebeat.com/security/prompt-injection-is-exploiting-enterprise-ais-biggest-design-flaws-by-targeting-agents-rag-pipelines-and-model-routers) — 28 jun 2026
+- Categoria: Grande mídia
+- Curadoria: pipeline hernandoia.com (score: 80/100)
