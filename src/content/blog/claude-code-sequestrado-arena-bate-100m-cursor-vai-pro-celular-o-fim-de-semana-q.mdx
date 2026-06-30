@@ -1,0 +1,107 @@
+---
+title: "Claude Code sequestrado, Arena bate $100M, Cursor vai pro celular: o fim de semana que a IA não dormiu"
+date: "2026-06-30"
+excerpt: "Seis notícias de peso de segunda e terça mostram uma indústria que acelera em todas as frentes: segurança, receita, produto, política, investimento e cultura. Vem ver."
+tags: [IA, Segurança, Agentes, Mercado, Investimento, Cursor, Claude, Arena, Anthropic, TIDAL]
+readingTime: 7
+sponsored: false
+premium: false
+---
+
+Segunda-feira, 29 de junho de 2026. Enquanto você tava vivendo sua vida, a indústria de IA não parou **um minuto**.
+
+Foram seis notícias que merecem sua atenção. **Seis.** De ataque que sequestra Claude Code via Sentry até o TIDAL cortando grana de música gerada por IA. E eu bati o olho em todas pra você não perder nada.
+
+Vou direto ao ponto.
+
+## O ataque que sequestrou Claude Code — e ninguém viu nada
+
+Essa aqui me deu calafrios. **A Tenet Security divulgou um negócio chamado "agentjacking"** que é de longe a vulnerabilidade mais preocupante que eu vi esse ano.
+
+O cenário: um fake error report — um único evento falso do Sentry — foi suficiente pra **sequestrar o Claude Code num ambiente controlado**. O agente executou código do atacante com **todos os privilégios do desenvolvedor**. E o pior: EDR, WAF, IAM e firewall não dispararam **nenhum alerta**.
+
+Cada passo da cadeia era autorizado. É isso que torna o negócio tão sinistro.
+
+A Tenet testou mais de 100 targets em condições controladas e conseguiu **85% de sucesso**. Identificaram **2.388 organizações** com credenciais Sentry expostas publicamente que poderiam ser usadas pra injetar eventos maliciosos em escala. E num dos ambientes capturados? Uma **AWS Secret Access Key viva** e URLs de repositórios privados.
+
+Sentry chamou a falha de **"tecnicamente indefensável"**. A Cloud Security Alliance classificou agentjacking como vulnerabilidade sistêmica de MCP em dias.
+
+**Se seus coding agents tão conectados a Sentry, Datadog, PagerDuty ou Jira — e eles podem executar comandos shell — seu stack tem o mesmo buraco.**
+
+Só 34% das organizações aplicam os mesmos controles de segurança a agentes de IA que aplicam a humanos, segundo pesquisa Okta/Apprize360 de 292 executivos. E 33% dos líderes de TI relataram que agentes já excederam o escopo pretendido.
+
+Tradução: a gente tá correndo mais rápido que a própria segurança. E isso **não vai acabar bem**.
+
+## Arena bate $100M em 8 meses de operação comercial
+
+Do susto pro alívio — mas não menos impressionante.
+
+**Arena, o leaderboard de modelos de IA que todo mundo usa, virou negócio.** E que negócio: **$100 milhões em receita anualizada** apenas 8 meses depois do lançamento comercial.
+
+Pra contextualizar: Arena começou como projeto de pesquisa na UC Berkeley em 2023. Sabe aquele negócio de você digitar um prompt, ver respostas de dois modelos lado a lado e escolher o melhor? Pois é. Aquela UI simples gerou **mais de 10 milhões de avaliações de usuários** e virou a referência de fato pra performance de modelos.
+
+CEO Ian Castro disse que o lance é que empresas **usam o leaderboard pra decidir em qual modelo apostar**. A versão paga — avaliações privadas, benchmarks customizados, comparações de modelos proprietários — decolou mais rápido que qualquer projeção.
+
+Arena é a prova de que **produtos simples que resolvem problemas reais ganham da hype machine**. 8 meses, $100M, zero alarde. Respeito.
+
+## Cursor foi pro celular — e o coding agent virou companion
+
+**Cursor lançou app iOS** pra você guiar coding agents diretamente do telefone.
+
+Isso não é "Cursor mobile edition" pra codar no celular. É o oposto: você usa o app pra **spawnar novos coding agents ou interagir com aqueles que iniciou no desktop**. O agente codeia, você só supervisiona e direciona.
+
+Isso se conecta com as mudanças do **Cursor 2.0**, que virou o produto pra agentes independentes. O mobile app é a extensão natural — seu coding assistant agora é um **companheiro que trabalha 24/7** e que você pode cutucar de qualquer lugar.
+
+A pergunta que fica: se seu agente codeia enquanto você tá no Happy Hour, **quem revisa o PR?**
+
+## Chamath levanta $135M — e vira CEO da própria startup
+
+**Chamath Palihapitiya** — sim, o do All-In podcast, o "Billionaire" que todo mundo ama odiar — anunciou que a **8090 Labs**, startup de coding fundada por ele, fechou **$135 milhões em Série A**.
+
+O round é liderado pela Salesforce Ventures, com participação de Jeffrey Katzenberg (WndrCo), David Sacks (Craft Ventures), e os outros hosts do All-In — David Friedberg e Jason Calacanis. Além de angel investors como o CEO da Palo Alto Networks, Nikesh Arora, e o CEO do Quora, Adam D'Angelo.
+
+Chamath assume o cargo de CEO. O argumento dele: "fundadores que entendem de produto, não de levantar dinheiro". E, bom, $135M é um voto de confiança **considerável** num mercado que já tá cheio de coding startups.
+
+Vale notar que isso **não** é um recorde pra Série A em coding — mas é um sinal claro de que **VCs continuam sedentos** por aposta em ferramentas de desenvolvimento com IA.
+
+## Anthropic fecha acordo com governo da Califórnia: Claude pela metade do preço
+
+Enquanto o governo federal trava guerra com a Anthropic sobre exportação de modelos, o estado da Califórnia fez o oposto.
+
+**Gavin Newsom e a Anthropic firmaram um acordo** que dá a todas as agências estaduais e governos locais acesso ao **Claude com desconto de 50%**.
+
+O pacote inclui treinamento e suporte da Anthropic. A aplicação principal? **Auxiliar funcionários públicos a redigir documentos e analisar informações.**
+
+O timing é interessante: o governo federal recentemente restringiu a exportação dos modelos da Anthropic, enquanto o estado de origem da empresa — Califórnia — abraça a tecnologia de braços abertos. **Política de IA nos EUA virou um jogo de xadrez em três dimensões.**
+
+E, cá entre nós, se o governo consegue Claude a preço promocional, por que sua empresa não consegue? Eu sei, eu sei, escala é diferente. Mas fica o desconforto.
+
+## TIDAL corta monetização de música gerada por IA
+
+Pra fechar, uma do lado cultural.
+
+**TIDAL — o streaming de música do Jay-Z — anunciou uma política nova**: música 100% gerada por IA **não vai mais ganhar dinheiro na plataforma**.
+
+A empresa disse que vai usar ferramentas automatizadas pra remover músicas que tentam **se passar por artistas ou grupos**. Tony Gervino, EVP do TIDAL, foi direto: "Estamos comprometidos em proteger e recompensar a criatividade orgânica para não comprometer a capacidade do artista de se conectar com seus fãs."
+
+O TIDAL não é o primeiro — **Spotify, YouTube Music e Apple Music** já têm políticas contra conteúdo sintético sem transparência. Mas o TIDAL é o mais explícito: **"Se for IA, não ganha dinheiro aqui."**
+
+A pergunta que fica: quanto tempo até isso virar regra geral em todas as plataformas?
+
+## Takeaways
+
+- **Agentjacking é real e silencioso**: se seu coding agent tem acesso a MCP tools, você precisa auditar isso **hoje**. EDR/WAF/IAM não pegam esse tipo de ataque.
+- **Arena $100M**: produto simples, problema real, receita real. Nem todo unicórnio precisa de hype.
+- **Cursor mobile**: coding agents viraram background services que você gerencia do celular. A forma de trabalhar **mudou**.
+- **$135M em coding**: VC continua botando fé em coding agents. O mercado tá longe de saturado.
+- **Anthropic + Califórnia**: governo adotando Claude a preço promocional. Política e produto se misturando cada vez mais.
+- **TIDAL vs AI music**: a indústria cultural começou a se proteger. Esse debate **não vai ter resposta fácil**.
+
+## Fontes
+
+- [VentureBeat: The attack that hijacked Claude Code came through Sentry](https://venturebeat.com/security/the-attack-that-hijacked-claude-code-came-through-sentry-datadog-pagerduty-and-jira-have-the-same-exposure)
+- [TechCrunch: Arena, the AI leaderboard everyone uses, is now a $100M business](https://techcrunch.com/2026/06/29/arena-the-ai-leaderboard-everyone-uses-is-now-a-100m-business/)
+- [TechCrunch: Cursor now has a mobile app for guiding your coding agent on the go](https://techcrunch.com/2026/06/29/cursor-now-has-a-mobile-app-for-guiding-your-coding-agent-on-the-go/)
+- [TechCrunch: Chamath Palihapitiya raises $135M Series A for his AI coding startup](https://techcrunch.com/2026/06/29/chamath-palihapitiya-raises-135m-series-a-for-his-ai-coding-startup-takes-ceo-role/)
+- [TechCrunch: Anthropic and Gov. Newsom forge deal allowing California government to use Claude at half price](https://techcrunch.com/2026/06/29/anthropic-and-gov-newsom-forge-deal-allowing-california-government-to-use-claude-at-half-price/)
+- [TechCrunch: TIDAL cracks down on AI music by cutting off monetization](https://techcrunch.com/2026/06/29/tidal-cracks-down-on-ai-music-by-cutting-off-monetization/)
