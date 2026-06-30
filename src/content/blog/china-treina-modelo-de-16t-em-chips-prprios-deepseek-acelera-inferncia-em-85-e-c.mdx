@@ -1,0 +1,123 @@
+---
+title: "China treina modelo de 1.6T em chips próprios, DeepSeek acelera inferência em 85%, e Coreia investe US$ 1 tri — a terça que a IA virou geopolítica"
+date: "2026-06-30"
+excerpt: "Meituan revela LongCat-2.0 treinado sem NVIDIA, DeepSeek lança DSpark com MIT license, Google mostra que 73% das empresas já usam IA, e Coreia do Sul anuncia US$ 1,07 trilhão em semicondutores e data centers. A terça-feira mais densa do ano."
+tags: [Geopolítica, China, Coreia do Sul, DeepSeek, Meituan, LongCat, DSpark, Inferência, Mercado de Trabalho, Google, Semicondutores, Investimento]
+readingTime: 8
+sponsored: false
+premium: false
+---
+
+Terça-feira, 30 de junho de 2026. Enquanto o mundo olhava pra bolsa, pra guerra comercial e pros juros, **a indústria de IA reescreveu o mapa geopolítico inteiro** em menos de 24 horas.
+
+Quatro histórias. Quatro sinais de que a IA não é mais sobre chatbots bonitinhos — é sobre **quem controla os chips, os modelos, a velocidade de inferência e, no final, o mercado de trabalho**.
+
+Vou direto ao ponto.
+
+## 1. Meituan LongCat-2.0: 1.6 trilhão de parâmetros, zero NVIDIA
+
+Se você ainda achava que China dependia de chips americanos pra competir em IA, a Meituan — sim, a dona do iFood chinês — acabou de **enterrar esse argumento**.
+
+**LongCat-2.0 é um modelo Mixture-of-Experts de 1.6 trilhão de parâmetros** com janela de contexto nativa de **1 milhão de tokens**. Foi treinado **100% em chips chineses**. E pasmem: já estava rodando em produção há **dois meses como "Owl Alpha"** — um modelo anônimo que liderou o ranking do OpenRouter, ficou em segundo lugar em deployments no Claude Code e terceiro no OpenClaw internacional. Ninguém sabia quem era. Agora sabem.
+
+O modelo usa **LongCat Sparse Attention (LSA)**, uma otimização agressiva de esparsidade MoE que ativa entre **33 bilhões e 56 bilhões de parâmetros por token** — eficiência comparável a modelos muito menores, mas com o conhecimento de um gigante.
+
+O preço? Agressivo. Na promoção de lançamento: **US$ 0,30 por milhão de tokens de entrada** (cache hit é grátis) e US$ 1,20 de saída. Comparável ao DeepSeek-V4 Flash e mais barato que Gemini, Grok e Kimi. Tudo sob **licença MIT**, inclusive pra uso comercial.
+
+**O que isso significa?** A China não precisa mais de NVIDIA pra treinar modelos de fronteira. O embargo de chips americanos forçou a inovação doméstica — e ela chegou. LongCat-2.0 é o primeiro grande modelo chinês que prova que **dá pra chegar perto do state-of-the-art com silício 100% local**, e com uma licença permissiva que qualquer empresa do mundo pode usar.
+
+## 2. DeepSeek DSpark: inferência 85% mais rápida, de graça
+
+No mesmo dia, a DeepSeek — que já tinha abalado o mundo com o V4 — lançou **DSpark**, um novo framework de inferência sob licença MIT que acelera LLMs em **até 85%** sem mudar o modelo subjacente.
+
+A analogia: a maioria dos chatbots escreve como alguém atravessando um rio uma pedra de cada vez. O DSpark coloca um **batedor à frente** — um modelo menor que adivinha o caminho provável, enquanto o modelo grande só precisa **verificar** se o palpite está certo. Quando o batedor acerta, o modelo grande voa. Quando erra, o sistema não perde tempo conferindo.
+
+DeepSeek publicou paper técnico, checkpoints e **DeepSpec** (uma base de código pra treinar e avaliar sistemas de speculative decoding). Tudo aberto, no GitHub e Hugging Face.
+
+**O impacto é enorme** porque inference speed é hoje **o gargalo mais caro da IA empresarial**. Servir modelos grandes rápido o bastante pra usuários reais — chatbots, coding assistants, agentic workflows — consome hardware que custa milhões. Qualquer ganho de velocidade sem trocar o modelo é **dinheiro vivo**.
+
+E a DeepSeek, mais uma vez, simplesmente **dá de graça** o que concorrentes cobrariam caro. O jogo do open source chinês não é só disputar fronteira — é **achatar a curva de custo** pra todo mundo.
+
+## 3. Google UK: 73% das empresas usam IA, mas só os "Trailblazers" colhem os frutos
+
+O Google divulgou hoje com a consultoria Public First **um dos estudos mais abrangentes sobre adoção de IA no Reino Unido**. Os números são impressionantes — e preocupantes.
+
+**73% dos locais de trabalho já adotaram IA**, contra 34% em 2025. Mais que o dobro em **um ano**. Mas por trás do número agregado, a história é de desigualdade.
+
+O Google segmentou a força de trabalho em quatro estágios:
+- **Espectadores (10%)** — ainda não experimentaram IA
+- **Experimentadores (38%)** — iniciantes testando tarefas simples
+- **Praticantes (37%)** — intermediários que usam IA como ferramenta diária
+- **Trailblazers (15%)** — avançados que empurram limites e encontram novas formas de trabalhar
+
+**Os Trailblazers economizam quase 8 horas por semana** — efetivamente um dia extra a cada semana de trabalho. São **84% mais propensos a terem sido promovidos** no último ano e **88% mais propensos a avaliações de desempenho positivas**.
+
+O problema: os outros 85% estão ficando pra trás. O Google lançou a iniciativa **"AI Works for Britain"** pra treinar 10 milhões de trabalhadores em habilidades de IA até 2030.
+
+**A lição pro Brasil é direta:** a IA não vai substituir humanos. Vai substituir humanos **que não sabem usar IA**. A diferença entre quem tira um dia extra por semana e quem fica estagnado não é idade, setor ou formação — é **profundidade de uso**.
+
+## 4. Coreia do Sul investe US$ 1,07 trilhão — e quer robôs humanoides até 2028
+
+O presidente sul-coreano convocou os chairman da **Samsung e SK Hynix** pra um briefing presidencial nesta segunda. O resultado: **o maior pacote de investimento em tecnologia da história do país**.
+
+O plano tem três pilares:
+1. **Memória:** US$ 518 bilhões para **quatro novas fabs** no sudoeste do país, mais US$ 52 bilhões pra um hub de empacotamento HBM na região central
+2. **Data centers:** US$ 356 bilhões em infraestrutura de IA por SK, GS e Naver até 2035
+3. **Robótica física:** meta de **robôs humanoides comerciais até 2028**
+
+O contexto: a "RAMageddon" — escassez global de memória de alta largura pra GPUs de IA — está estrangulando data centers no mundo inteiro. Samsung e SK Hynix controlam ~70% do mercado global de HBM. Eles estão dizendo: **"vamos construir o suficiente pra todo mundo — mas vai sair daqui."**
+
+**O significado geopolítico é claro.** Enquanto EUA e China brigam por hegemonia de IA, a Coreia do Sul está apostando em ser o **fornecedor indispensável de ambos os lados**. Sem memória, não tem GPU. Sem GPU, não tem IA. A Coreia acabou de cravar seu lugar na mesa.
+
+## Bônus: o debate sobre empregos ficou mais complexo
+
+Num estudo separado, a Ramp e a Revelio Labs analisaram registros de **quase 22 mil empresas** e encontraram algo que contraria o pânico geral:
+
+**Empresas classificadas como "adotantes intensivos de IA" aumentaram o headcount em 10,2%.** E entre essas empresas, as contratações de nível **entry-level subiram 12%**.
+
+Isso não significa que IA não substitui funções — significa que o efeito **não é linear**. Empresas que abraçam IA profundamente crescem mais rápido, o que gera mais vagas, inclusive pra quem está começando. Até maio de 2026, cerca de 90 mil demissões foram atribuídas à IA nos EUA. Mas a história de que **"IA só mata emprego"** não se sustenta diante dos dados da Ramp/Revelio.
+
+O quadro real é mais matizado: IA **redistribui** trabalho. Algumas funções somem, outras aparecem, e as que ficam mudam de natureza. A discussão não deveria ser "IA tira ou cria empregos?" — mas **"como a gente prepara as pessoas pra essa redistribuição?"**
+
+## Takeaways
+
+1. **China não precisa mais de NVIDIA**: LongCat-2.0 de 1.6T parâmetros, treinado 100% em chips chineses, prova que o embargo forçou inovação doméstica. Licença MIT.
+
+2. **DeepSeek acelera tudo**: DSpark entrega até 85% mais velocidade de inferência sem trocar de modelo. Tudo open source. O custo de servir IA continua caindo.
+
+3. **IA é sobre profundidade, não adoção**: 73% das empresas já usam IA, mas só os 15% mais avançados colhem os ganhos reais. Treinamento é o novo diferencial competitivo.
+
+4. **Coreia do Sul aposta trilhões**: US$ 1,07 trilhão em semicondutores e data centers. Robôs humanoides comerciais em 2 anos. A geopolítica da IA se escreve em won e yuan, não só em dólar.
+
+5. **Empregos em IA é mais complexo que parece**: Empresas que mais usam IA contratam mais — inclusive entry-level (+12%). O efeito é de redistribuição, não de eliminação pura.
+
+## FAQ
+
+### O que é o LongCat-2.0 e por que ele importa?
+
+É um modelo de código aberto de 1,6 trilhão de parâmetros criado pela Meituan, treinado exclusivamente em chips chineses, com licença MIT e 1 milhão de tokens de contexto. Ele prova que a China consegue competir em IA de fronteira sem depender de NVIDIA.
+
+### Como o DSpark acelera a inferência em 85%?
+
+Usando "speculative decoding": um modelo menor (o batedor) adivinha tokens futuros enquanto o modelo grande verifica os palpites em lote. Quando o batedor acerta, a geração acelera drasticamente. DeepSeek liberou tudo sob licença MIT.
+
+### Qual a principal descoberta do estudo do Google UK?
+
+73% dos locais de trabalho no Reino Unido já adotaram IA (vs 34% em 2025), mas os 15% mais avançados — os "Trailblazers" — economizam 8h/semana e têm 84% mais chances de promoção. O desafio agora é treinar os outros 85%.
+
+### O que o investimento da Coreia do Sul significa para o mercado global?
+
+A Coreia está investindo US$ 1,07 trilhão em semicondutores + data centers + robótica, posicionando-se como fornecedora indispensável de memória HBM para EUA e China. É uma aposta de soberania tecnológica com prazos agressivos: robôs humanoides comerciais em 2028.
+
+### IA está realmente destruindo empregos?
+
+Dados da Ramp e Revelio Labs com 22 mil empresas mostram que "adotantes intensivos de IA" aumentaram headcount em 10,2%, com contratações entry-level subindo 12%. O efeito é de redistribuição, não de eliminação pura — mas 90 mil demissões atribuídas à IA até maio mostram que o impacto é real e desigual.
+
+## Fontes
+
+- [VentureBeat: Meituan open sources LongCat-2.0](https://venturebeat.com/technology/meituan-open-sources-longcat-2-0-the-1-6t-near-frontier-agentic-coding-model-thats-been-leading-openrouter-trained-entirely-on-chinese-chips)
+- [VentureBeat: DeepSeek open sources DSpark](https://venturebeat.com/orchestration/deepseek-open-sources-dspark-a-new-framework-to-speed-up-llm-inference-by-up-to-85)
+- [Google Blog: Unlocking Britain's next era of productivity](https://blog.google/company-news/inside-google/around-the-globe/google-europe/united-kingdom/unlocking-britains-next-era-of-productivity-building-a-nation-of-ai-trailblazers/)
+- [TechCrunch: South Korea invests over $550B](https://techcrunch.com/2026/06/29/south-korean-tech-giants-commit-over-550b-to-ease-ramageddon/)
+- [Ars Technica: South Korea $1T on chips and humanoid robots](https://arstechnica.com/ai/2026/06/south-korea-to-spend-1t-on-more-memory-chip-production-and-humanoid-robots/)
+- [TechCrunch: The AI jobs debate just got messier](https://techcrunch.com/2026/06/29/the-ai-jobs-debate-just-got-messier/)
