@@ -1,0 +1,123 @@
+---
+title: "Do hype ao chip: o dia em que a IA mostrou as duas caras"
+date: "2026-07-02"
+excerpt: "Jersey Mike's enfia IA no IPO, IQM admite que quantum pode nunca decolar, Alibaba corta 99% dos tokens com SkillWeaver, e Etched aposta na volta dos chips pros EUA. Em um único dia, o mercado de IA mostrou o melhor e o pior de si."
+tags: [IA, Inteligência Artificial, Hype, Quantum, Alibaba, SkillWeaver, Etched, Chips, IPO, TechCrunch, VentureBeat]
+readingTime: 6
+sponsored: false
+premium: false
+---
+
+Teve um dia desses em que eu abri o feed e pensei: **a IA realmente virou personagem principal da economia mundial**. E não tô falando de mais um modelo batendo benchmark. Tô falando de coisas que mostram o quão doida — e fascinante — essa indústria está.
+
+Num único ciclo de notícias, eu vi:
+- Uma **sanduicheria** falando de IA no documento de IPO
+- Uma empresa de **computação quântica** admitindo no prospecto que talvez o negócio nunca dê certo
+- Um **framework chinês** que corta 99% do consumo de tokens em agentes
+- Um **startup de chips** competindo com a Nvidia e apostando na volta da fabricação pros EUA
+
+Cada uma dessas histórias conta algo diferente sobre onde a IA está hoje. Juntas, elas contam a história completa.
+
+---
+
+## 1. Jersey Mike's: quando o hype vence a vergonha
+
+A **Jersey Mike's** — sim, a rede de sanduíches que tem o Danny DeVito como garoto-propaganda — abriu capital e, nos documentos do IPO, **mencionou IA**.
+
+Isso é o ápice do "aww, come on". Não é uma empresa de tech. Não é uma empresa que usa IA pra otimizar logística ou personalizar pedidos. É uma **sanduicheria** que sentiu que precisava falar de IA no prospecto porque, aparentemente, todo IPO hoje em dia precisa ter "AI" em algum lugar pra não ser visto como antiquado pelo mercado.
+
+Não é a primeira vez que vemos isso — toda bolha tecnológica tem seu momento "a padaria virou .com" — mas é **sintomático**. Quando uma empresa cujo core business é empilhar carne e queijo num pão sente que precisa mencionar inteligência artificial pra agradar investidores, a gente já passou do hype e entrou no território do constrangimento.
+
+A pergunta que eu faço: **quantas das empresas que enfiam "AI" no prospecto realmente entregam alguma coisa?**
+
+---
+
+## 2. IQM: a honestidade brutal do quantum
+
+No extremo oposto do espectro, a **IQM**, primeira empresa pública de computação quântica da Europa, abriu capital na Nasdaq através de um SPAC com valuation de ~**US$ 1,9 bilhão**.
+
+O resultado? As ações passaram o dia abaixo do preço do IPO. Recepção morna.
+
+Mas o que realmente chamou a atenção foi uma frase no próprio prospecto da empresa: *"a tração comercial em larga escala da tecnologia de computação quântica pode nunca ocorrer."*
+
+Traduzindo: **a própria empresa admite que o negócio pode não dar certo.**
+
+Isso é o oposto do hype da Jersey Mike's. IQM não tá inflando expectativa — tá colocando uma ressalva no próprio documento de abertura de capital. É honesto? Sim. É um bom sinal pra quem comprou ação? Provavelmente não.
+
+A computação quântica sempre foi uma promessa de longo prazo. O mercado sabe disso. Mas ver a empresa escrever "pode nunca acontecer" no papel que legalmente protege ela de processos futuros diz muito sobre **o momento que a tecnologia vive**: ninguém sabe se o breakthrough vai acontecer em 5, 15 ou 50 anos — ou nunca.
+
+SPAC já é um mecanismo que o mercado olha com desconfiança hoje em dia. SPAC de quantum com auto-admissão de fracasso potencial? Difícil defender o case.
+
+---
+
+## 3. Alibaba SkillWeaver: uma redução de 99% que é real
+
+Do meio do caos, uma notícia técnica de verdade.
+
+Pesquisadores da **Alibaba** publicaram o **SkillWeaver**, um framework que ataca um dos maiores gargalos dos agentes de IA modernos: **o custo de token pra gerenciar centenas de ferramentas**.
+
+O problema é simples de entender. Um agente empresarial tem acesso a dezenas, centenas de ferramentas. Se o prompt do agente carregar a descrição de todas elas, o consumo de token explode — e o custo também. Pior: o modelo se confunde com tanta opção.
+
+A solução dos pesquisadores é elegante:
+1. **Decomposição**: o agente quebra a tarefa em sub-tarefas
+2. **Recuperação**: um retriever semântico (MiniLM + FAISS) encontra as ferramentas relevantes pra cada sub-tarefa
+3. **Validação iterativa**: o modelo não escolhe tool num tiro só — ele consulta, valida, refina
+
+O resultado? **Precisão maior** com **99% menos tokens** comparado ao método ingênuo de enfiar todas as tools no prompt.
+
+O mais impressionante é que eles usaram um modelo de **apenas 7 bilhões de parâmetros** (Qwen2.5-7B) pra fazer a decomposição — e ele performou melhor que modelos de 14B, que tendiam a superdecompor tarefas em passos microscópicos e desnecessários.
+
+**Por que isso importa**: o maior gargalo dos agentes hoje não é inteligência — é **eficiência de roteamento**. Um agente que gasta 99% menos token pra escolher ferramentas pode operar por uma fração do custo. Isso é o tipo de avanço que tira o agente do laboratório e coloca na produção real.
+
+---
+
+## 4. Etched e a aposta na volta dos chips pros EUA
+
+Fechando o ciclo, a **Etched** — startup de chips de 4 anos, **US$ 5 bilhões de valuation** — anunciou que a **TSMC fabricou seu primeiro chip** no início do ano. A empresa, que compete com a Nvidia, tá se preparando pra enviar sistemas pra clientes ainda neste verão.
+
+Mas o desafio não é pequeno: **todo mundo compete pelo espaço limitado nas fábricas da TSMC em Taiwan**. E com a tensão geopolítica crescendo, depender de uma ilha no Pacífico pra fabricar seus chips não é exatamente uma posição confortável.
+
+É aí que entra a **Copper Sky Capital**, o fundo do Jack Selby (Thiel Capital). Eles investiram na Série A de US$ 120 milhões da Etched há dois anos. E não foi só com dinheiro — Selby garantiu o allocation prometendo **ajudar a startup a trazer a fabricação de chips pro Arizona**, onde a TSMC tá construindo fábricas.
+
+**Essa é a jogada inteligente**: não adianta ter o melhor design de chip do mundo se você não consegue fabricar. Com a capacidade da TSMC em Taiwan cada vez mais disputada, a Etched aposta que o caminho pra escala passa pela **reshoring** — e quem garantiu lugar na fila da fábrica do Arizona vai ter vantagem competitiva.
+
+É o oposto do hype vazio da Jersey Mike's: **estratégia real, riscos reais, execução real.**
+
+---
+
+## O que tudo isso significa
+
+Juntando as quatro histórias, o desenho é claro:
+
+| História | O que representa |
+|----------|-----------------|
+| Jersey Mike's | Hype vazio — IA como buzzword de marketing |
+| IQM | Realidade da fronteira tecnológica — promessa honesta, risco real |
+| SkillWeaver | Inovação real — resolvendo gargalo concreto de custo |
+| Etched | Competição real — hardware, fabricação, geopolítica |
+
+A IA de 2026 não é uma coisa só. Ela é, ao mesmo tempo:
+- **Hype** que faz sanduicheria enfiar AI no prospecto de IPO
+- **Incerteza** que faz empresa de quantum escrever "pode nunca dar certo"
+- **Inovação** que corta 99% do custo de agentes
+- **Geopolítica** que decide onde chips vão ser fabricados
+
+Quem olha só pra um desses ângulos não tá vendo o quadro completo. E quem aposta fichas sem entender todos os quatro **vai tomar susto**.
+
+---
+
+## Fontes
+
+- [Jersey Mike's IPO illustrates how bad the AI hype has become — TechCrunch](https://techcrunch.com/2026/07/02/jersey-mikes-ipo-illustrates-how-bad-the-ai-hype-has-become/)
+- [IQM, Europe's first public quantum company, admits the future of the tech is uncertain — TechCrunch](https://techcrunch.com/2026/07/02/iqm-europes-first-public-quantum-company-admits-the-future-of-the-tech-is-uncertain/)
+- [New Alibaba AI framework skips loading every tool, cutting agent token use 99% — VentureBeat](https://venturebeat.com/orchestration/new-alibaba-ai-framework-skips-loading-every-tool-cutting-agent-token-use-99)
+- [Thiel Capital's Jack Selby nabs stakes in hot startups like Etched through Arizona connections — TechCrunch](https://techcrunch.com/2026/07/02/thiel-capitals-jack-selby-nabs-stakes-in-hot-startups-like-etched-through-arizona-connections/)
+
+**Curadoria: pipeline hernandoia.com**
+
+## Takeaways
+
+1. **Diferenciar hype de inovação real** — se uma sanduicheria menciona IA no IPO, desconfie do mercado, não da tecnologia.
+2. **Quantum ainda é fronteira** — investimento de alto risco, retorno incerto. A honestidade da IQM é rara e, paradoxalmente, preocupante.
+3. **Eficiência de token é a nova fronteira dos agentes** — SkillWeaver mostra que o futuro dos agentes não é "mais inteligência", é "menos custo".
+4. **Chips definem a geopolítica da IA** — a briga por capacidade na TSMC é o novo campo de batalha. Quem conseguir fabricar vence.

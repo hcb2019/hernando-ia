@@ -1,0 +1,134 @@
+---
+title: "O investigador investigado: Pegasus hackeou quem investigava o Pegasus"
+date: "2026-07-03"
+excerpt: "Stelios Kouloglou estava no comite da UE que investiga abusos de spyware. Enquanto isso, o governo cliente da NSO Group usava Pegasus no celular dele — com zero-click, por meses. A ironia e so o comeco; o problema real e que ninguem foi responsabilizado."
+tags: ["Spyware", "Pegasus", "NSO Group", "Citizen Lab", "Privacidade", "Vigilancia", "UE", "Seguranca", "TechCrunch", "Governo"]
+readingTime: 5
+sponsored: false
+premium: false
+---
+
+No dia 12 de junho, o **Claude Fable 5** foi derrubado por ordem do governo dos EUA. Tres semanas depois, ele voltou. O mercado aprendeu a licao sobre dependencia de fornecedor.
+
+Mas tem um tipo de dependencia que **nao tem licao aprendida**: a dependencia que governos tem de spyware pra espionar os proprios criticos.
+
+Essa semana, a **Citizen Lab** confirmou que **Stelios Kouloglou** — jornalista grego, ex-deputado europeu e, na epoca, membro do comite **PEGA** do Parlamento Europeu — teve o celular invadido pelo **Pegasus** da NSO Group.
+
+O comite PEGA foi criado pra **investigar exatamente esse tipo de abuso**.
+
+O alvo era **o cara que estava investigando o spyware**.
+
+---
+
+## A timeline do absurdo
+
+Vou organizar os fatos porque a cronologia e importante:
+
+1. **2021**: O escandalo Pegasus explode globalmente. Jornalistas, advogados, ativistas e politicos tem seus celulares invadidos por um spyware vendido pela NSO Group **exclusivamente pra governos**.
+
+2. **2022**: O Parlamento Europeu cria o comite **PEGA** (Comite de Investigacao sobre o Uso do Spyware Pegasus) pra investigar abusos. Stelios Kouloglou e um dos membros.
+
+3. **Outubro de 2022**: O celular de Kouloglou e invadido pelo Pegasus via uma vulnerabilidade **zero-click** no HomeKit da Apple — sem ele clicar em nada, sem ele saber.
+
+4. **Marco de 2023**: Acontece de novo. Pelo menos duas vezes.
+
+5. **Julho de 2026**: Citizen Lab publica a confirmacao. O governo cliente da NSO que invadiu o telefone dele e o **mesmo** que invadiu jornalistas em campanhas anteriores. Reutilizaram o mesmo endereco de email carregado de Pegasus.
+
+6. **Ate hoje**: Ninguem sabe quem e o governo. NSO nao comenta. Comissao Europeia nao responde.
+
+**O cara que investigava spyware foi espionado pelo spyware que ele investigava. Durante a investigacao. E ninguem foi punido.**
+
+---
+
+## Zero-click nao e acidente, e recurso
+
+A vulnerabilidade usada era um bug no **HomeKit** da Apple. Ja estava patcheado, mas o patch nao tinha sido instalado no celular do Kouloglou.
+
+Isso e importante porque **muda a narrativa**.
+
+Muita gente trata Pegasus como "ferramenta de ultima geracao pra combater crime organizado e terrorismo". E sim — a NSO vende exatamente essa imagem. Mas a realidade operacional e diferente:
+
+- **Vulnerabilidade zero-click**: a vitima nao precisa fazer nada. Nao e engenharia social. Nao e clicar num link suspeito. E **o celular ser invadido sem interacao humana**.
+- **Alvo politico**: um membro de comite investigativo. Nao um traficante. Nao um terrorista. Um politico investigando abuso de spyware.
+- **Reincidencia**: o mesmo governo cliente atacou **jornalistas** antes. O spyware nao foi usado contra crime organizado — foi usado contra a imprensa e a fiscalizacao politica.
+
+A Citizen Lab foi cuidadosa: nao atribuiu o ataque a um pais especifico. Mas a reutilizacao do mesmo vetor de ataque contra **jornalistas de varios paises europeus** e depois contra um membro do PEGA sugere um programa de vigilancia transnacional operado por um governo que **age dentro da UE**.
+
+Ou seja: **um pais membro da Uniao Europeia esta espionando os proprios parlamentares.**
+
+---
+
+## Por que isso importa agora
+
+Vivemos um momento curioso.
+
+De um lado, a industria de IA esta sendo forcada a prestar contas — o blackout do Fable 5, as salvaguardas mais apertadas, o debate sobre controle de exportacao. A Anthropic teve que **responder** pelo impacto da tecnologia dela.
+
+Do outro lado, a industria de **spyware governamental** segue operando sem nenhuma prestacao de contas equivalente. A NSO Group continua vendendo Pegasus. Governos continuam comprando. Parlamentares continuam sendo alvo.
+
+A diferenca e que com spyware **nao tem patch que resolva**. A NSO nao vai soltar uma nota dizendo "aperfeicoamos nossas salvaguardas". O governo cliente nao vai aparecer no Parlamento Europeu pra explicar por que invadiu o celular de um dos proprios deputados.
+
+A tecnologia de vigilancia, diferente da IA de fronteira, **nao tem accountability**. Porque quem a opera nao quer accountability — quer invisibilidade.
+
+---
+
+## O que o caso Kouloglou escancara
+
+Algumas verdades inconvenientes:
+
+1. **Spyware nao e ferramenta de investigacao criminal — e ferramenta de poder**. Quando um governo tem acesso irrestrito a Pegasus, ele nao usa so contra terroristas. Usa contra jornalistas. Usa contra politicos da oposicao. Usa contra quem **investiga o proprio governo**.
+
+2. **O ecossistema de vigilancia e um oligopolio fechado**. Diferente do mercado de IA, onde qualquer startup pode lancar um modelo open-weight e competir, o mercado de exploits zero-click e **controlado por poucos fornecedores que vendem exclusivamente pra governos**. Nao tem concorrencia aberta. Nao tem transparencia. Nao tem auditoria.
+
+3. **A UE investiga a si mesma e nao se resolve**. O comite PEGA existe desde 2022. Ja produziu relatorios. Ja fez recomendacoes. E o celular de um dos membros foi invadido **durante o periodo da investigacao**. A mensagem e clara: "voces podem investigar, mas quem manda aqui nao vai parar."
+
+4. **O maior risco nao e o seu celular ser hackeado — e voce nunca saber**. Zero-click significa que nao tem pop-up, nao tem link estranho, nao tem app suspeito. O spyware entra, rouba seus dados, sai — e voce nunca viu nada. A unica razao pela qual sabemos do caso Kouloglou e porque a Citizen Lab tem recursos e expertise pra detectar Pegasus. Quantos outros parlamentares, jornalistas e ativistas foram hackeados e **nunca vao saber**?
+
+---
+
+## Minha opiniao franca
+
+Eu acompanho o caso Pegasus desde 2021, quando a primeira leva de reportagens do **Guardian**, **Washington Post** e consorcio Forbidden Stories expos o alcance global do spyware.
+
+Desde entao:
+
+- A NSO foi colocada na **lista negra de comercio** dos EUA (2021)
+- Varios processos foram abertos
+- A Apple processou a NSO
+- O WhatsApp processou a NSO
+- O Parlamento Europeu criou o PEGA
+
+E sabe o que mudou? **Quase nada.**
+
+A NSO continua vendendo. Governos continuam comprando. Jornalistas continuam sendo alvo. E agora sabemos que **os proprios investigadores sao alvo**.
+
+O sistema de accountability pra spyware governamental e uma piada de mau gosto — e o caso Kouloglou e a prova definitiva. Nao existe regulacao internacional que impeca um governo de comprar uma licenca do Pegasus e usar contra seus criticos. Nao existe auditoria independente. Nao existe consequencia real.
+
+O governo cliente da NSO que hackeou Kouloglou — seja ele qual for — **continua operando**. O endereco de email que serviu de vetor de ataque **continua ativo**. Ninguem foi preso. Ninguem foi investigado. Ninguem foi responsabilizado.
+
+A industria de IA esta aprendendo (na marra) que operar sem salvaguardas tem custo. A industria de spyware governamental **nao aprendeu nada** — porque, ate agora, nunca pagou.
+
+---
+
+## O que precisa mudar
+
+- **Rastreabilidade obrigatoria**: cada licenca do Pegasus deveria ter um identificador unico auditavel. Saber que "o governo X comprou" nao e suficiente — precisa saber **quem dentro do governo X usou, quando e contra quem**.
+- **Responsabilidade compartilhada**: a NSO nao pode se eximir dizendo "nos so vendemos, o uso e com o governo". O fornecedor do exploit zero-click e tao responsavel quanto o operador.
+- **Protecao ativa pra alvos politicos**: membros de comites investigativos, jornalistas e ativistas deveriam receber **protecao cibernetica custeada pelo Estado** — porque sao alvos previsiveis.
+- **Sem patch nao e desculpa**: o bug do HomeKit ja estava corrigido. Kouloglou nao instalou o update. Isso nao e culpa da vitima — e o ataque explorando a realidade operacional de que **ninguem atualiza tudo na hora**. Zero-click + target politico = arma de vigilancia. Patch ou nao.
+
+---
+
+## Fontes
+
+- [Politician who investigated spyware abuses had his phone hacked with Pegasus spyware — TechCrunch](https://techcrunch.com/2026/07/02/politician-who-investigated-spyware-abuses-had-his-phone-hacked-with-pegasus-spyware/)
+
+**Curadoria: pipeline hernandoia.com**
+
+## Takeaways
+
+1. **O comite PEGA foi criado pra investigar spyware — e um de seus membros foi vitima do spyware que investigava.** A ironia e documental, mas a gravidade e real.
+2. **Zero-click nao e acidente de percurso, e feature.** O Pegasus entrou no celular de Kouloglou sem interacao dele. Tres vezes.
+3. **O mesmo governo cliente que atacou jornalistas na Europa atacou um parlamentar.** O padrao sugere um programa de vigilancia transnacional dentro da propria UE.
+4. **Spyware governamental nao tem accountability.** Diferente da IA de fronteira, que esta sendo forcada a prestar contas, o mercado de exploits permanece opaco e impune.
+5. **A unica barreira real e a deteccao — e ela e fragil.** Citizen Lab detectou Pegasus no celular de Kouloglou. Quantos outros estao infectados e nao sabem?
