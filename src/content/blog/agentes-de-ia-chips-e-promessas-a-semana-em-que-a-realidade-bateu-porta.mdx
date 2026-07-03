@@ -1,0 +1,71 @@
+---
+title: "Agentes de IA, chips e promessas: a semana em que a realidade bateu à porta"
+date: "2026-07-03"
+tags: [IA, Agentes, Anthropic, Samsung, Microsoft, Zuckerberg, Meta, Google, Amazon, Emissões, Hardware, Chip, Enterprise]
+excerpt: "Zuckerberg admite que agentes não evoluíram tão rápido, Anthropic quer chip próprio com a Samsung, Microsoft despeja $2.5B em deploy de IA, e o custo ambiental começa a doer. Semana movimentada."
+---
+
+Mano, que semana. Enquanto você tava preocupado em debugar a pipeline de CI ou revisar aquela PR de infra, o mundo da IA virou um **episódio de novela com três tramas paralelas**. E todas elas merecem sua atenção — porque afetam diretamente **como e onde** você vai rodar seus agents nos próximos meses.
+
+Vou te contar o resumão. Pega o café.
+
+---
+
+## 1. Zuckerberg soltou o verbo: "agentes não andam tão rápido"
+
+O Zuck convocou um town hall interno na Meta na quinta-feira e soltou a real: o pacing do desenvolvimento de **agentes de IA** não acelerou do jeito que os executivos esperavam.
+
+Segundo o [TechCrunch](https://techcrunch.com/2026/07/02/mark-zuckerberg-tells-staff-that-ai-agents-havent-progressed-as-quickly-as-hed-hoped/), o próprio CEO disse que substituir humanos por IA **não é tão fácil quanto parecia**. Traduzindo: a Meta tem bilhões investidos em infra, dezenas de milhares de GPUs, time de pesquisa de ponta — e ainda assim o *gap* entre o laboratório e a produção real é maior que o esperado.
+
+**Por que isso importa pra você:** Se a Meta — com todos os recursos do mundo — tá tendo dificuldade de colocar agente autônomo em produção num ritmo acelerado, o problema **não é de recurso, é de design**. A mensagem implícita aqui é que **orquestração, memória e tool-use ainda são problemas em aberto**. Não subestima a complexidade de colocar um agente multi-step em produção de verdade. O Zuck acabou de admitir que nem eles dominaram isso ainda.
+
+---
+
+## 2. Anthropic quer fazer chip com a Samsung
+
+Mudando de figurino: a Anthropic, que acabou de ter o *Claude Fable 5* banido e depois liberado pelo governo americano (novela que rendeu outro post aqui), agora tá de conversa com a **Samsung** pra desenvolver **um chip de IA customizado**.
+
+A informação é do [The Information via TechCrunch](https://techcrunch.com/2026/07/02/anthropic-is-discussing-a-new-custom-chip-with-samsung/) — e o detalhe mais louco é que **a Anthropic ainda não sabe exatamente o que o chip vai fazer**. Tipo, a empresa sabe que quer um chip, mas não decidiu a finalidade, a potência, nem como integrar no servidor.
+
+Isso uma **semana depois** da OpenAI anunciar o chip *Jalapeño* com a Broadcom.
+
+**Por que isso importa pra você:** O movimento de *verticalização* de hardware tá acelerando. Todo mundo que tem um modelo de fronteira quer: (a) reduzir dependência da Nvidia, (b) controlar o custo de inferência, (c) ter stack próprio. Se antes você escolhia modelo (GPT vs Claude vs Gemini), **logo você vai escolher ecossistema de hardware também**. O custo por token vai depender de quem fabrica o chip que roda o modelo. Fica de olho.
+
+---
+
+## 3. Microsoft cria empresa de deploy de IA com $2.5 bilhões
+
+A Microsoft não quer só vender Azure pra você rodar IA — ela quer **instalar a porra do negócio na sua empresa**. Na quinta-feira anunciou a **Microsoft Frontier**, uma nova subsidiária operacional focada em *deploy enterprise de IA*.
+
+São **$2.5 bilhões** de investimento e **6 mil engenheiros** dedicados. O CEO da divisão comercial, Judson Althoff, fez questão de diferenciar de "Forward-Deployed Engineering" — nas palavras dele, isso vai ser "a maior organização de engenharia orientada a resultados da indústria".
+
+[TechCrunch](https://techcrunch.com/2026/07/02/microsoft-launches-its-own-ai-deployment-company-with-2-5-billion-commitment/) reporta que a Microsoft segue o movimento que Amazon (com AWS ProServe), OpenAI e Anthropic já estão fazendo.
+
+**Por que isso importa pra você:** Isso é um **sinal de mercado gritando**. As big techs perceberam que vender API é fácil. O difícil é *fazer o negócio funcionar dentro de enterprise* — com compliance, governança, integração de sistemas legados, e escalabilidade. Se você trabalha com plataforma/MLOps/SRE, **seu valor de mercado ACABOU de subir**. As empresas vão precisar de gente que entende tanto de infra quanto de IA pra fazer essa ponte. A Microsoft acabou de colocar $2.5B nessa tese.
+
+---
+
+## 4. O custo ambiental da IA: Google e Amazon na corda bamba
+
+Fechando a rodada: Google e Amazon soltaram seus relatórios de sustentabilidade na mesma semana, e os números são **feios**.
+
+- **Google**: emissões de carbono **subiram 25%** num ano.
+- **Amazon**: emissões **subiram 16%**.
+
+O culpado? Um tal de **inferência de IA**, que consome energia e água como nenhuma tecnologia digital antes. Ambos têm metas de *net-zero* nos próximos anos, mas a conta de IA tá inviabilizando esses compromissos.
+
+O [TechCrunch](https://techcrunch.com/2026/07/02/a-warning-sign-about-ais-real-cost-courtesy-of-google-and-amazon/) resume bem: não é segredo que IA é um *hog* energético. Agora temos os números pra provar.
+
+**Por que isso importa pra você:** Dois impactos diretos. Primeiro: **preço de inferência vai subir** se data centers tiverem que arcar com custos de carbono. Segundo: **regulação vai apertar**. Quando Google e Amazon — que têm os maiores budgets de lobby do planeta — não conseguem conter as emissões, é questão de tempo até governos entrarem com *carbon tax* ou limites de consumo pra data center. Isso mexe com a matemática de **on-premise vs cloud** que você faz hoje no seu projeto.
+
+---
+
+## O fio condutor
+
+Olha o padrão: **Zuckerberg admite que agentes não tão prontos** → **Anthropic corre pra fazer hardware próprio** → **Microsoft joga $2.5B em deploy pra tentar resolver** → **e o custo ambiental começa a apertar**.
+
+A indústria tá naquele momento **entre o hype e a realidade**. Todo mundo sabe que IA vai mudar o jogo. Mas *quão rápido*, *a que custo*, e *com que infraestrutura* — essas perguntas tão longe de ter resposta.
+
+Pra você, dev: esse é o melhor momento pra **se aprofundar em agentes, orquestração e MLOps**. Quem entende de **produto com IA de verdade** — não só chamar API — vai ter uma década de vantagem. Enquanto Zuck admite dificuldade, Microsoft joga $2.5B, e Anthropic corre atrás de chip, a oportunidade é de quem **entrega**, não de quem promete.
+
+Bora codar. 🚀
