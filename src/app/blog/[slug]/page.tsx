@@ -34,6 +34,10 @@ export async function generateMetadata({ params, searchParams }: PageProps): Pro
   return generateBlogPostMeta(post, lang);
 }
 
+// ISR: revalidate every hour so blog posts are cacheable by CDNs and search crawlers
+// Without this, Next.js defaults to cache: no-store (because searchParams is used for ?lang)
+export const revalidate = 3600;
+
 export function generateStaticParams() {
   const posts = getBlogPosts();
   return posts.map((post) => ({ slug: post.slug }));

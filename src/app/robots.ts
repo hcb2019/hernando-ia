@@ -4,11 +4,10 @@ import { SITE } from "@/lib/seo";
 export default function robots(): MetadataRoute.Robots {
   return {
     rules: [
-      {
-        userAgent: "*",
-        allow: "/",
-        disallow: ["/api/", "/_next/"],
-      },
+      // ── Allow AI/search bots EXPLICITLY (must come before wildcard)
+      // Cloudflare injects AI crawler blocks at the top of robots.txt.
+      // If these bots are still blocked, disable "AI Crawlers Block" in
+      // Cloudflare Dashboard: Security > Bots > AI Crawlers
       {
         userAgent: "GPTBot",
         allow: "/",
@@ -48,6 +47,12 @@ export default function robots(): MetadataRoute.Robots {
       {
         userAgent: "cohere-ai",
         allow: "/",
+      },
+      // ── Default: allow all, block API and Next.js internals
+      {
+        userAgent: "*",
+        allow: "/",
+        disallow: ["/api/", "/_next/"],
       },
     ],
     sitemap: `${SITE.url}/sitemap.xml`,

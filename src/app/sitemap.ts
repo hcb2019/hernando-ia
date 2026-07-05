@@ -3,7 +3,7 @@ import { SITE } from "@/lib/seo";
 import type { MetadataRoute } from "next";
 
 export default function sitemap(): MetadataRoute.Sitemap {
-  const posts = getBlogPosts();
+  const posts = getBlogPosts().filter(p => !p.noindex);
 
   const blogEntries: MetadataRoute.Sitemap = posts.map((post) => ({
     url: `${SITE.url}/blog/${post.slug}`,

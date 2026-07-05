@@ -153,6 +153,7 @@ export function generateBlogPostMeta(
     publishedTime: post.date,
     tags: post.tags,
     lang,
+    noindex: post.noindex,
   });
 }
 

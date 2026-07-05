@@ -44,6 +44,17 @@ const nextConfig: NextConfig = {
           },
         ],
       },
+      // Blog pages: CDN-cacheable for 1h (ISR) — critical for SEO
+      // Without this, Next.js sends cache-control: no-store on dynamic pages
+      {
+        source: "/blog/(.*)",
+        headers: [
+          {
+            key: "Cache-Control",
+            value: "public, max-age=3600, s-maxage=3600, stale-while-revalidate=86400",
+          },
+        ],
+      },
       {
         source: "/images/(.*)",
         headers: [

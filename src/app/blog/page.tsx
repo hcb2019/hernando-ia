@@ -35,7 +35,7 @@ export default async function BlogPage({ searchParams }: BlogPageProps) {
   const lang = parseLang(params.lang);
   const activeTag = typeof params.tag === "string" ? params.tag : null;
 
-  const allPosts = getBlogPosts(lang);
+  const allPosts = getBlogPosts(lang).filter(p => !p.noindex);
   const posts = activeTag ? getBlogPostsByTag(activeTag).filter(p => {
     // re-apply language filter since getBlogPostsByTag doesn't filter by lang
     if (lang === "pt") return !p.slug.endsWith(".en") && !p.slug.endsWith(".es");

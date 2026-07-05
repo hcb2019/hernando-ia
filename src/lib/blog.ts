@@ -16,6 +16,8 @@ export interface BlogPost {
   premium?: boolean
   /** First image URL extracted from post content (for cards/OG) */
   image?: string
+  /** Whether this post should be noindexed (low quality, off-topic, etc.) */
+  noindex?: boolean
 }
 
 export interface BlogPostWithContent extends BlogPost {
@@ -34,10 +36,13 @@ function parseFrontmatter(raw: string): { data: Record<string, unknown>; content
   const [, frontmatterBlock, content] = match
   const data: Record<string, unknown> = {}
   for (const line of frontmatterBlock.split('\n')) {
-    const colonIdx = line.indexOf(':')
+    // Strip YAML comments (# after value)
+    const commentIdx = line.indexOf('#')
+    const cleanLine = commentIdx !== -1 ? line.slice(0, commentIdx) : line
+    const colonIdx = cleanLine.indexOf(':')
     if (colonIdx === -1) continue
-    const key = line.slice(0, colonIdx).trim()
-    let value: unknown = line.slice(colonIdx + 1).trim()
+    const key = cleanLine.slice(0, colonIdx).trim()
+    let value: unknown = cleanLine.slice(colonIdx + 1).trim()
 
     // Parse YAML-like arrays: [a, b, c]
     if (typeof value === 'string' && value.startsWith('[') && value.endsWith(']')) {
@@ -186,6 +191,7 @@ export function getBlogPosts(lang: Lang = 'pt'): BlogPost[] {
           : estimateReadingTime(content),
       sponsored: data.sponsored === true,
       premium: data.premium === true,
+      noindex: data.noindex === true,
       image: extractImage(content),
     })
   }
@@ -215,6 +221,7 @@ export function getBlogPost(slug: string, lang: Lang = 'pt'): BlogPostWithConten
         : estimateReadingTime(content),
     sponsored: data.sponsored === true,
     premium: data.premium === true,
+    noindex: data.noindex === true,
     image: extractImage(content),
     content,
   }
