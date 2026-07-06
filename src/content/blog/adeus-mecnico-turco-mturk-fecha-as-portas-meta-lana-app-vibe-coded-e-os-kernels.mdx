@@ -1,0 +1,52 @@
+---
+title: "Adeus, Mecânico Turco: mTurk Fecha as Portas, Meta Lança App Vibe-Coded e os Kernels Ganham Casa Nova"
+description: "A Amazon vai parar de aceitar novos clientes no Mechanical Turk a partir de 30 de julho. Enquanto isso, a Meta lança Pocket — um app que gera jogos por prompt. E o Hugging Face reformula os Kernels como cidadãos de primeira classe no Hub."
+date: "2026-07-06"
+tags: [Amazon, Mechanical Turk, Meta, Pocket, vibe coding, Hugging Face, Kernels, infraestrutura, IA]
+author: "@hernando.ia"
+---
+
+Três sinais na mesma semana. O passado fecha as portas, o presente vira produto de consumo, e o futuro ganha infraestrutura de verdade. Se você queria um resumo de como a indústria de IA está se reorganizando em julho de 2026, aqui está ele em três atos.
+
+## O Que Aconteceu
+
+**Ato 1: O mecânico turco se aposenta.** A Amazon anunciou que o **Mechanical Turk vai parar de aceitar novos clientes a partir de 30 de julho de 2026**. Clientes existentes continuam usando normalmente, mas a AWS já avisou que "não planeja introduzir novas funcionalidades". É o início do fim para a plataforma que literalmente inventou o conceito de "humano como serviço" — e que foi peça-chave no treinamento de praticamente todos os modelos de IA da última década.
+
+**Ato 2: Meta aposta no vibe-coding pra consumo.** A Meta lançou discretamente o **Pocket**, um app que deixa qualquer um gerar joguinhos e "gizmos" interativos a partir de prompts de texto. O app apareceu simultaneamente na App Store e no Google Play em 29 de junho, fruto da aquisição do time de uma plataforma de jogos vibe-coded. Segundo o TechCrunch, a Meta está apostando em "embeddar IA no desenvolvimento de produtos de consumo" — e o Pocket é o primeiro laboratório visível disso.
+
+**Ato 3: Kernels viram cidadãos de primeira classe no Hugging Face.** O HF reformulou seu sistema de Kernels, transformando-o num **tipo de repositório nativo no Hub**, com páginas dedicadas mostrando hardware suportado e versões. Junto com o transformers v5.13.0, que trouxe "major new model support, broader export and kernels tooling", segundo o Releasebot. Compute kernels — FlashAttention, SageAttention e família — agora são tão fáceis de descobrir e versionar quanto modelos.
+
+## Por Que Importa
+
+O arco dessas três notícias conta uma história só: **a cadeia de valor da IA está se reorganizando**.
+
+O mTurk foi o backbone da rotulagem de dados por 20 anos. ImageNet? mTurk. RLHF do ChatGPT? mTurk. Captchas virando datasets? mTurk. Mas a ironia é pesada: a própria IA que o mTurk ajudou a treinar agora torna o serviço obsoleto. Modelos generativos fazem labeling sintético melhor e mais barato. Plataformas especializadas como Scale AI e Surge AI capturaram o mercado enterprise. Sobrou pro mecânico turco o papel de nota de rodapé — uma plataforma que virou commodity e perdeu a relevância estratégica dentro da própria AWS.
+
+Enquanto o passado fecha, o Pocket da Meta mostra pra onde o vento está soprando no consumo: **geração de conteúdo por IA como produto final, não como ferramenta de desenvolvimento**. Não é "use IA pra codar um jogo". É "fale o jogo que você quer e jogue". Isso muda a unidade atômica do entretenimento digital — de app pra prompt.
+
+E os Kernels do Hugging Face? Essa é a camada de infra que ninguém vê mas todo mundo usa. FlashAttention é uma das razões pelas quais LLMs são viáveis em GPUs consumer. SageAttention acelera difusão. Ter kernels como first-class citizens no Hub significa que o ecossistema open-source finalmente tem um lugar canônico pra descobrir, versionar e distribuir otimizações de baixo nível — em vez de cada repo ter seu próprio `csrc/` com código CUDA copiado e colado de algum tweet do Tri Dao.
+
+## Minha Opinião
+
+Sabe o que essas três notícias têm em comum? **Nenhuma delas é sobre um modelo novo.** Nem GPT-5.7, nem Claude 5, nem Mixtral 9x22B. É sobre a cadeia de suprimentos amadurecendo.
+
+O mTurk morrendo é saudável. A existência de um mercado de "humanos clicando em caixinhas por centavos" como infraestrutura crítica de IA sempre foi insustentável — eticamente e economicamente. Que morra. E que a gente lembre dele como o estagiário que fez 90% do trabalho sujo e nunca recebeu crédito.
+
+O Pocket me preocupa mais. Não pelo app em si — vibe-coded games são divertidos e vão gerar umas 3 semanas de conteúdo viral no TikTok. O problema é o padrão: a Meta aprendeu que a melhor forma de distribuir IA é **não vender IA**. É enfiar IA dentro de produtos que as pessoas já querem usar. O Pocket é o primeiro. Não vai ser o último. E quando a Meta conectar isso com o ecossistema de anúncios deles... bem, você já sabe como termina.
+
+Os Kernels do HF são o oposto: infraestrutura genuinamente aberta, sem catch. É o tipo de coisa que faz o ecossistema open-source ser mais rápido que qualquer lab fechado. Quando kernels são tão fáceis de achar quanto modelos, a barreira pra rodar inferência eficiente cai pra zero. Isso acelera todo mundo.
+
+## Takeaways
+
+- **O mTurk fecha pra novos clientes em 30 de julho — e é simbólico pra caramba.** A plataforma que treinou a IA foi morta pela IA que treinou. Ciclo fechado.
+- **"Vibe coding" saiu do Twitter e virou produto de consumo.** O Pocket da Meta transforma prompt em jogo jogável. Isso é um sinal do que vem por aí.
+- **Kernels no HF Hub são infraestrutura que importa.** Compute kernels como first-class citizens aceleram o ecossistema open-source inteiro — não é buzzword, é fundação.
+
+## Fontes
+
+- [Fonte: TechCrunch — Amazon will stop accepting new customers for Mechanical Turk](https://techcrunch.com/2026/07/05/amazon-will-stop-accepting-new-customers-for-mechanical-turk/)
+- [Fonte: The Register — Amazon's Mechanical Turk to stop accepting new customers](https://www.theregister.com/off-prem/2026/07/03/amazons-mechanical-turk-to-stop-accepting-new-customers-and-not-even-ai-can-save-it/5266274)
+- [Fonte: TechCrunch — Meta quietly launches vibe-coded gaming app Pocket](https://techcrunch.com/2026/07/02/meta-quietly-launches-vibe-coded-gaming-app-pocket/)
+- [Fonte: India Today — Meta launches new app called Pocket](https://www.indiatoday.in/amp/technology/news/story/meta-launches-new-app-called-pocket-it-lets-you-vibe-code-cool-games-with-ai-2939711-2026-07-03)
+- [Fonte: Hugging Face — Kernels: Major Updates](https://huggingface.co/blog/revamped-kernels)
+- [Fonte: Releasebot — Hugging Face Release Notes July 2026](https://releasebot.io/updates/huggingface)
