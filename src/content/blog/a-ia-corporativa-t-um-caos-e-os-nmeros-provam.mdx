@@ -1,0 +1,105 @@
+---
+title: "A IA corporativa tá um caos — e os números provam"
+date: "2026-07-05"
+tags: [IA, Enterprise, Governança, Agentes, Alibaba, Claude Code, Midjourney, Hollywood, Copyright, Carreira, DevOps, MLOps]
+excerpt: "40% das empresas acham que detectariam um modelo falhando em produção, mas só 10% têm monitoramento de verdade. Enquanto isso, a IA tá comendo o estágio dos juniores, a Alibaba baniu o Claude Code, e o Midjourney quer que Hollywood mostre como USA IA. O caos é real."
+---
+
+Mano, tem uma diferença **gigantesca** entre o que as empresas *dizem* que tão fazendo com IA e o que realmente tá rolando por baixo dos panos. E essa semana saíram três pesquisas e um caso bizarro que jogaram luz nesse abismo.
+
+Não é sobre modelo novo. Não é sobre benchmark. É sobre **o caos operacional que ninguém quer admitir.** Pega o café que hoje o papo é de quem tá no chão de fábrica.
+
+---
+
+## 1. O "Control Gap": todo mundo usando IA, ninguém governando
+
+A VentureBeat soltou uma pesquisa essa semana que deveria ser **leitura obrigatória** pra qualquer CTO. O título já entrega: *The Control Gap — as empresas têm um problema de ownership, não de tecnologia.*
+
+Os números são **assustadores**:
+
+- **40%** das empresas dizem que estão "muito confiantes" que detectariam um modelo *drifting* ou falhando em produção
+- Mas só **10%** têm monitoramento ativo com alertas. O resto? **Revisão humana manual.**
+- **49%** apontam *shadow AI* — pipelines agênticos rodando em cartão corporativo sem supervisão central — como a falha de controle mais grave
+- **25%** já tomaram uma conta surpresa de agente em *loop infinito*
+
+Traduzindo: metade das empresas tem **agentes autônomos rodando sem ninguém saber**, e um quarto já levou um susto na fatura. E a "governança" é um cara olhando dashboard manualmente.
+
+O [VentureBeat](https://venturebeat.com/resources/the-control-gap-enterprise-ai-organizations-have-an-ownership-problem-not-a-technology-problem-and-most-are-governing-it-by-hand) resume: *"ambição e gasto estão correndo muito à frente de visibilidade, ownership e controle de custo."* Nenhuma empresa tem **uma pessoa** responsável por IA cross-stack. Cada time usa a plataforma que quer — OpenAI, Anthropic, Google — e ninguém tá olhando o quadro completo.
+
+---
+
+## 2. A IA tá comendo o estágio dos juniores
+
+Outra pesquisa, essa da Splunk via [VentureBeat](https://venturebeat.com/security/digital-resilience-compounds-when-ai-and-human-expertise-scale-together), toca num ponto que eu venho martelando aqui: **quem vai formar o especialista de amanhã se a IA já tá fazendo o trabalho que treinava o junior de hoje?**
+
+Agentes de IA estão automatizando tarefas de troubleshooting, análise de log, resposta a incidente — exatamente o tipo de coisa que um **analista junior ou engenheiro de confiabilidade iniciante** fazia pra aprender. O *apprenticeship* — aquela curva de aprendizado que vem de quebrar a cara em produção, escalar incidente, tomar esporro e aprender — tá sendo pulverizado.
+
+O artigo coloca o dilema com clareza: *"Construir a próxima geração de experts quando a IA faz o trabalho que antes os treinava."*
+
+**Isso não é um problema de 2030.** É um problema de agora. Empresas que tão delegando tudo pra agente sem pensar em *people development* vão acordar daqui 3 anos sem ninguém capaz de tomar decisão sênior quando o agente errar. E ele **vai** errar.
+
+---
+
+## 3. Alibaba baniu o Claude Code: as ferramentas de IA viraram arma geopolítica
+
+Enquanto o ocidente discute governança, a China tá jogando xadrez. A **Alibaba** — sim, a gigante chinesa de cloud e e-commerce — classificou o **Claude Code como software de alto risco** e vai banir funcionários de usar a ferramenta a partir de **10 de julho**.
+
+Segundo o [TechCrunch](https://techcrunch.com/2026/07/04/alibaba-reportedly-bans-employees-from-using-claude-code/), a Anthropic já proíbe empresas chinesas (e entidades estrangeiras controladas por elas) de usar seus modelos, e vinha fechando *loopholes* que permitiam acesso da China ao Claude.
+
+Agora a Alibaba responde na mesma moeda: **"vocês bloqueiam a gente, a gente bloqueia vocês."**
+
+Isso é maior do que parece. Claude Code é a ferramenta de coding agent mais usada do mercado hoje. Se a segunda maior economia do mundo tá banindo ela internamente, duas coisas acontecem:
+1. **Desenvolvedores chineses vão ser empurrados pra ferramentas locais**, acelerando o ecossistema doméstico
+2. **A fragmentação de tooling por geopolítica é real.** Seu stack de AI tools pode ser determinado pelo país onde você mora, não pela qualidade da ferramenta
+
+---
+
+## 4. Midjourney quer que Hollywood mostre como USA IA — a ironia é deliciosa
+
+Fecha essa rodada com uma história que é puro **cinema** (trocadilho intencional). O **Midjourney** — isso mesmo, a empresa de geração de imagens que tá sendo processada por **Disney, Universal e Warner Bros** por violação de copyright — agora quer **compelir os estúdios a revelarem como ELES usam IA.**
+
+Sim, você leu certo. Os estúdios processaram o Midjourney porque os modelos geram imagens no estilo de personagens como Bart Simpson e Darth Vader. Agora o Midjourney contra-ataca: **"beleza, então mostra pra gente como VOCÊS usam IA internamente."**
+
+O [TechCrunch](https://techcrunch.com/2026/07/04/midjourney-wants-hollywood-studios-to-reveal-the-details-of-their-ai-usage/) reporta que a empresa quer *discovery* — o processo legal de forçar a outra parte a entregar documentos. A aposta: os estúdios **também** usam IA generativa em produção, e isso enfraquece o argumento de "AI art é roubo."
+
+Independente de quem ganhar, a mensagem é clara: **a guerra pelo direito de treinar em dados públicos vai ser travada nos tribunais, não nos repos do GitHub.** E o tiro pode sair pela culatra pra quem processa.
+
+---
+
+## Por Que Importa
+
+Essas quatro histórias, lidas juntas, contam uma narrativa única: **a indústria de IA entrou na adolescência — e tá dando trabalho.**
+
+O *Control Gap* mostra que as empresas estão deployando IA mais rápido do que conseguem governar. A *crise do apprenticeship* mostra que a automação tem custo humano de longo prazo que ninguém tá contabilizando. O *ban da Alibaba* mostra que AI tools já são peça no tabuleiro geopolítico. E o *Midjourney vs Hollywood* mostra que as batalhas legais vão definir os limites do que modelos podem ou não aprender.
+
+Nenhuma dessas histórias é sobre modelo novo. **São sobre o mundo real alcançando o hype.**
+
+---
+
+## Minha Opinião
+
+Cara, eu olho pra essa pesquisa do Control Gap e penso: **isso é exatamente o que eu vejo em toda empresa que converso.** Todo mundo quer o selo "AI-powered". Mas pergunta quem é o *owner* de governança de IA na empresa. Resposta: silêncio.
+
+O dado dos 49% com shadow AI é **brutal**. Significa que metade das empresas tem dev (ou pior, gente de business) rodando agente autônomo no cartão corporativo sem ninguém saber. Isso não é inovação — é negligência operacional com roupa de futurismo.
+
+E a questão do apprenticeship me pega pessoalmente. Eu **aprendi a programar quebrando coisa em produção.** Se o agente faz tudo e o junior só dá *approve*, quem vai formar o sênior de 2030? Essa conversa precisa acontecer AGORA nos times de engenharia.
+
+Sobre a Alibaba: fiquem espertos. A fragmentação de ferramentas por geopolítica é o próximo capítulo. Hoje é Claude Code na China. Amanhã pode ser GitHub Copilot em países sob sanção. **Diversifiquem seu stack de tools.**
+
+---
+
+## Takeaways
+
+- **Governança de IA é o gap #1 do mercado enterprise** — 40% confiam que detectariam falha, só 10% têm monitoramento real. Se você trabalha com MLOps, **seu telefone vai tocar.**
+- **Automação sem people strategy = apagão de sêniores em 3 anos** — Agentes tão comendo o trabalho que formava especialistas. Pensa nisso antes de automatizar tudo.
+- **AI tools são o novo campo de batalha geopolítico** — Alibaba banindo Claude Code é só o começo. Stack diversity não é luxo, é hedge.
+- **A guerra do copyright vai ser definida nos tribunais** — Midjourney contra-atacando Hollywood mostra que o jogo é de mão dupla.
+
+---
+
+## Fontes
+
+- [Fonte: VentureBeat — The Control Gap: Enterprise AI organizations have an ownership problem](https://venturebeat.com/resources/the-control-gap-enterprise-ai-organizations-have-an-ownership-problem-not-a-technology-problem-and-most-are-governing-it-by-hand)
+- [Fonte: VentureBeat — Digital resilience compounds when AI and human expertise scale together](https://venturebeat.com/security/digital-resilience-compounds-when-ai-and-human-expertise-scale-together)
+- [Fonte: TechCrunch — Alibaba reportedly bans employees from using Claude Code](https://techcrunch.com/2026/07/04/alibaba-reportedly-bans-employees-from-using-claude-code/)
+- [Fonte: TechCrunch — Midjourney wants Hollywood studios to reveal the details of their AI usage](https://techcrunch.com/2026/07/04/midjourney-wants-hollywood-studios-to-reveal-the-details-of-their-ai-usage/)
