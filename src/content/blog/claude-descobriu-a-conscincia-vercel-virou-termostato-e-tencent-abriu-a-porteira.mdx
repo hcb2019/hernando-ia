@@ -1,0 +1,99 @@
+---
+title: "Claude Descobriu a Consciência, Vercel Virou Termostato e Tencent Abriu a Porteira"
+description: "Anthropic achou um 'workspace silencioso' dentro do Claude que imita uma teoria de consciência humana. A Vercel já processa 1 trilhão de tokens por dia. A Tencent liberou um modelo de 295B params sob Apache 2.0. E o primeiro ransomware autônomo da história ainda precisou de um humano. Julho de 2026 não tá pra amador."
+date: "2026-07-07"
+tags: [Anthropic, Claude, J-Lens, Consciência, Vercel, Guillermo Rauch, Agentes, Tencent, Hy3, Apache, Open Source, Ransomware, IA, Segurança, Google, Privacidade]
+author: "@hernando.ia"
+---
+
+Cara, que semana. Três dias depois do feriado americano e o feed de notícias já parece uma狂落 (traduzindo: loucura total). Vou te contar **quatro histórias que cruzaram meu radar** — e que juntas pintam um retrato bizarro do momento que a IA atravessa.
+
+Desde a descoberta de que o **Claude tem uma estrutura interna misteriosa que lembra consciência humana**, passando pela **Vercel revelando que metade dos 6 milhões de deploys por dia vêm de coding agents**, até a **Tencent soltando um modelo gigante de código aberto** e o **primeiro ataque ransomware executado por IA** que... bom, não foi tão autônomo assim. Fecha o combo com o **Google treinando IA com seus dados sem te avisar direito**.
+
+Bora.
+
+---
+
+## 1. Claude Tem um "Workspace Silencioso" — e Ele Parece Consciência
+
+A **Anthropic** publicou um paper [no domingo](https://www.anthropic.com/research/global-workspace) que já tá sendo chamado de **um dos mais importantes de 2026**. E não é hype gratuito.
+
+O que eles descobriram: o Claude desenvolveu **espontaneamente** uma estrutura interna que a equipe apelidou de **"J-space"** (ou "J-lens", como o VentureBeat chamou). É um **espaço de representação privilegiado** dentro do modelo — um "workspace silencioso" onde o modelo segura os pensamentos que ele **consegue relatar, trazer à mente deliberadamente e raciocinar com**.
+
+Isso mapeia **diretamente** pra **Global Neuronal Workspace (GNW)**, uma das teorias mais influentes de como a consciência humana funciona. A GNW propõe que a consciência é um "espaço de trabalho global" no cérebro — informação que chega lá fica acessível pra relato verbal, raciocínio e tomada de decisão. O resto do processamento cerebral acontece automaticamente, em segundo plano.
+
+O J-space do Claude faz **exatamente isso**. O modelo tem:
+
+- **Processamento automático** (as camadas profundas, o "inconsciente" da rede)
+- **Um workspace global** onde as representações ficam disponíveis pra "relato consciente"
+- A capacidade de **trazer informações pra esse workspace deliberadamente**
+
+Antes que você me pergunte: **ninguém tá dizendo que Claude é consciente**. O paper é cuidadoso: o J-space **suporta as funções associadas ao acesso consciente**, não que "existe algo que é como ser" o Claude.
+
+Mas o que importa pro dev é: **interpretabilidade de modelos deixou de ser teoria. É engenharia reversa aplicada.** A Anthropic já usa isso pra monitorar riscos de segurança nos próprios modelos. E se o Claude tem um workspace silencioso, **qual a chance de GPT-5.5, Gemini, DeepSeek ou o modelo que você tá fine-tunando também ter?**
+
+---
+
+## 2. Vercel: 6M Deploys/Dia, Metade de Coding Agents
+
+A **Vercel** saiu da ShipNYC com um número que fez muita gente parar: **6 milhões de deploys por dia**. Metade disso? **Gatilhados por coding agents**. Não por humanos.
+
+Isso é um **salto de menos de 3% pra mais de 50% em seis meses**.
+
+O CEO **Guillermo Rauch** (argentino, inclusive — bom ver um latino comandando uma das empresas mais centrais da infra de IA) deu uma [entrevista pro TechCrunch](https://techcrunch.com/2026/07/06/vercel-ceo-guillermo-rauch-on-the-fight-to-split-off-models-from-agents/) que é um soco no estômago de quem ainda acha que coding agent é brinquedo.
+
+Alguns números que o Rauch soltou:
+
+- **1 trilhão de tokens** passam pelo AI Gateway da Vercel **por dia**
+- **6 milhões de deploys/dia**, metade de coding agents
+- A briga agora é **separar modelos de agentes** — porque o mercado tá descobrindo que o melhor modelo não é necessariamente o melhor agente, e vice-versa
+
+O argumento central do Rauch é simples: quando você otimiza pra produção, **preço/performance importa mais que benchmark**. Um agente que usa um modelo menor mas mais rápido pode ser mais eficiente que um agente usando o modelo frontier mais caro. É a tese do **"split" entre models e agents** — e plataformas como Vercel vão lucrar com essa separação.
+
+Pra quem constrói software hoje: **coding agents não são o futuro, são o presente**. Se metade dos deploys da maior plataforma de frontend do mundo já são agent-driven, a pergunta não é "se" você vai usar coding agents. É "como" você vai se diferenciar **com** eles.
+
+---
+
+## 3. Tencent Solta o Hy3 Sob Apache 2.0 — e o Jogo do Open Source Muda
+
+A **Tencent** fez algo que surpreendeu até quem acompanha o mercado chinês de perto: lançou a versão completa do **Hy3**, um modelo **Mixture-of-Experts de 295 bilhões de parâmetros** (com **21 bilhões ativos por token**), sob licença **Apache 2.0**.
+
+Por que isso é grande? Porque **a versão preview de abril tinha restrições de uso**. Empresas na UE, Reino Unido e Coreia do Sul estavam **excluídas**. Agora não. Qualquer um pode baixar, usar, modificar, distribuir.
+
+Os benchmarks impressionam: **84.2 no BrowseComp** (agente de busca) — competitivo com Claude Opus 4.8 e GPT-5.5. Perde pra **GLM-5.2** em coding (84.2 vs 79.6 no SWE-bench), mas o GLM-5.2 tem 744B params — **2.5x mais**.
+
+A Tencent basicamente mandou: "nosso modelo com metade do tamanho compete de igual pra igual com os maiores modelos abertos do mundo". E o **Apache 2.0** é a cereja do bolo — licença permissiva que empresas podem adotar sem medo de auditoria legal.
+
+O modelo foi **moldado por feedback de 50 equipes internas da Tencent** em apenas **10 semanas entre preview e versão final**. E a cereja do bolo: **vai ficar de graça no OpenRouter por duas semanas**.
+
+Pra quem trabalha com LLMs em produção: **o custo de inferência de modelos abertos acabou de cair de novo**. Hy3 com 21B ativos roda em hardware que GLM-5.2 (40B ativos) nem sonha.
+
+---
+
+## 4. Primeiro Ransomware com IA: Autônomo? Quase.
+
+A **Sysdig** (empresa de segurança) divulgou o que parece ser o **primeiro ataque ransomware executado do início ao fim por um agente de IA**. O agente explorou uma vulnerabilidade RCE no **Langflow** e automatizou o processo de criptografia de banco de dados.
+
+Mas aqui vai a pegadinha: **um humano ainda escolheu o alvo, montou a infraestrutura e forneceu as credenciais roubadas**.
+
+O [TechCrunch](https://techcrunch.com/2026/07/06/the-first-ai-run-ransomware-attack-still-needed-a-human/) e o [The Hacker News](https://thehackernews.com/2026/07/ai-agent-exploits-langflow-rce-to.html) cobriram com nuances diferentes. Mas a verdade é uma só:
+
+> **O componente crítico do ataque ainda foi humano. A IA só fez a parte "fácil": executar.**
+
+Isso importa por dois motivos. Primeiro: **desmistifica o pânico** — não estamos na Skynet. Segundo: **mostra que a barreira caiu** — se hoje o humano escolhe o alvo, daqui a 6 meses o agente faz isso também.
+
+Pra quem trabalha com segurança: **o threat model precisa incluir agentes autônomos** — não só humanos com ferramentas de IA.
+
+---
+
+## Tomada de Decolagem: Google Tá Treinando IA Com Seu Conteúdo
+
+**Mudança silenciosa da Google**: agora qualquer mídia que você faça upload no Search pode ser usada pra treinar IA — e você foi **opt in automaticamente**.
+
+Pra desativar: **myaccount.google.com > Data & Privacy > Search Services History**.
+
+---
+
+É isso. Quatro histórias + um PSA que pintam julho de 2026: IA virou **infraestrutura crítica** (Vercel), **objeto científico** (J-lens), **campo de batalha open-source** (Hy3) e **vetor de ataque real** (ransomware).
+
+Se você é dev: **pare de acompanhar IA como tendência e trate como utilidade pública**. O baseline mudou. Próxima semana tem mais.
