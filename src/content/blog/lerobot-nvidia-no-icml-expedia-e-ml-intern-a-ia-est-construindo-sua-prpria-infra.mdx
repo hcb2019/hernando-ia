@@ -1,0 +1,134 @@
+---
+title: "LeRobot, NVIDIA no ICML, Expedia e ML Intern: A IA Está Construindo Sua Própria Infraestrutura"
+description: "Enquanto todo mundo olha pros modelos, a infraestrutura ao redor deles está evoluindo silenciosamente. Hugging Face fecha o loop da robótica com LeRobot v0.6.0, NVIDIA domina o ICML 2026 com 74 papers em modelos abertos, Expedia cria 'tollgates' pra lançar agentes com segurança, e o ML Intern da Hugging Face automatiza o que data scientists faziam na mão. Julho de 2026 não é sobre o próximo GPT — é sobre o que sustenta ele."
+date: "2026-07-07"
+tags: [LeRobot, Hugging Face, Robótica, NVIDIA, ICML 2026, Modelos Abertos, Expedia, Agentes, Governança, ML Intern, Infraestrutura, IA, Pesquisa, Open Source]
+author: "@hernando.ia"
+---
+
+Se você acompanhou meu post de ontem, viu que a semana começou com **demissões, kernels de GPU e a ironia do Reddit combatendo spam de IA com IA**. Hoje o recorte é diferente. Não é sobre o que os modelos *fazem* — é sobre **o que está sendo construído ao redor deles**.
+
+Enquanto o mercado discute se GPT-5.5 é melhor que Claude Opus 4.8, quatro histórias silenciosas estão redesenhando o chão que pisa qualquer aplicação de IA:
+
+1. **LeRobot v0.6.0** — Hugging Face fechou o loop da robótica com aprendizado por reforço
+2. **NVIDIA no ICML 2026** — 74 papers mostram que modelo aberto virou infraestrutura de pesquisa
+3. **Expedia e os "Agentic Release Tollgates"** — como governar agentes em produção sem morrer
+4. **Hugging Face ML Intern** — o CLI que virou o estagiário de ML que todo time queria ter
+
+Bora.
+
+---
+
+## 1. LeRobot v0.6.0: Hugging Face Fechou o Loop da Robótica
+
+A **Hugging Face** soltou o [LeRobot v0.6.0](https://huggingface.co/blog/lerobot-release-v060), e esse é **o maior update do framework open-source de robótica até hoje**. O slogan diz tudo: *"Imagine, Evaluate, Improve"*.
+
+O que mudou?
+
+**Imagine** — O framework agora inclui **world model policies**: VLA-JEPA, FastWAM, LingBot-VA. São modelos que **aprendem a imaginar o futuro antes de agir**. Em vez de um robô reagir ao que vê agora, ele simula mentalmente o resultado de cada movimento e escolhe o melhor caminho. É o equivalente robótico do *chain-of-thought* — mas braços mecânicos, não tokens.
+
+**Evaluate** — Uma nova **Reward Models API** que integra **Robometer** e **TOPReview**. Você não precisa mais escrever função de recompensa na mão. O modelo do robô assiste a demonstração, entende o que é "sucesso" e auto-avalia cada episódio de treinamento.
+
+**Improve** — O **`lerobot-rollout` CLI** permite deploy de políticas com **correções DAgger-style**: o humano vê o robô errar, intervém com o joystick, e a correção vira dado de treinamento na hora. Ciclo fechado. Aprendizado contínuo.
+
+Seis novos benchmarks de simulação foram unificados sob o **`lerobot-eval`**, e o suporte a **FSDP training** + **cloud training via HF Jobs** significa que você pode escalar do laptop a um cluster sem mudar uma linha de código.
+
+**Por que isso importa:** Robótica sempre foi um campo fragmentado — cada pesquisa tinha seu próprio stack, seus próprios benchmarks, suas próprias funções de recompensa. LeRobot v0.6.0 é a tentativa mais séria de fazer pela robótica o que a Hugging Face fez pelo NLP: **unificar o ecossistema e baixar a barreira de entrada**. Se você trabalha com robótica ou está planejando entrar, esse é o framework pra acompanhar.
+
+---
+
+## 2. NVIDIA no ICML 2026: 74 Papers e o Reinado dos Modelos Abertos
+
+A [NVIDIA divulgou](https://blogs.nvidia.com/blog/open-models-icml-2026/) seus números do **ICML 2026**, e eles contam uma história que vem se consolidando há meses mas agora é inegável: **modelos abertos e infraestrutura open-source se tornaram as ferramentas fundamentais da pesquisa moderna em IA**.
+
+Os números:
+- **74 papers da NVIDIA aceitos** no ICML 2026
+- **~2.000 papers aceitos no total citam GPUs da NVIDIA**
+- **145 papers citam NVIDIA Nemotron** — a família de modelos abertos da empresa — como fundação para novas pesquisas
+
+O dado mais interessante não é a dominância da NVIDIA em hardware (isso todo mundo sabe). É que **modelos abertos da própria NVIDIA — Nemotron, Llama, Mistral, DeepSeek — são citados como base de pesquisa por centenas de papers**. A NVIDIA não vende só picareta no garimpo de IA. Ela também mapeia o terreno, publica os mapas e deixa todo mundo construir em cima.
+
+Isso valida uma tese que venho repetindo: **modelo aberto não é caridade — é estratégia de infraestrutura**. A NVIDIA libera modelos open-weight, a comunidade pesquisa em cima, publica papers que citam NVIDIA, e no final todo mundo precisa de mais GPU pra rodar o que descobriu. É o *flywheel* mais elegante da indústria.
+
+> **O takeaway prático:** Se você está decidindo entre modelo proprietário e modelo aberto pro seu próximo projeto, saiba que o ecossistema de pesquisa já votou — e o voto foi em aberto. Fechado é pra produto. Aberto é pra progresso.
+
+---
+
+## 3. Expedia e os "Agentic Release Tollgates": Governança de Agentes em Produção
+
+Enquanto startups correm pra lançar agentes, a **Expedia Group** — empresa que processa bilhões de predições de IA por dia — publicou um [artigo no VentureBeat](https://venturebeat.com/orchestration/what-billions-of-ai-predictions-taught-expedia-before-the-age-of-ai-agents) que deveria ser leitura obrigatória pra qualquer CTO.
+
+Escrito por **Xavi Amatriain** (Chief AI e Data Officer da Expedia), o artigo descreve os **"Agentic Release Tollgates"** — um conjunto de checkpoints obrigatórios e recomendados antes de lançar qualquer feature agentic em produção.
+
+Os tollgates incluem:
+
+- **Accountability clara**: quem responde quando o agente toma uma decisão errada?
+- **Monitoramento de deriva comportamental**: o agente está agindo diferente hoje do que agia ontem?
+- **Limites de autonomia**: o que o agente **pode** fazer sozinho vs. o que precisa de aprovação humana?
+- **Fallbacks explícitos**: o que acontece quando o modelo não sabe responder?
+- **Ciclo de feedback**: como as decisões do agente viram dados pra melhorar o sistema?
+
+O argumento central do Amatriain é que **velocidade sem disciplina é passivo, não ativo**. A Expedia aprendeu isso na pele depois de anos aplicando ML em personalização, ranking, fraude e suporte ao cliente. Agora, com agentes tomando decisões em nome de viajantes, o rigor precisa ser **maior**, não menor.
+
+> **O que isso significa pra você:** Se você está colocando agentes em produção — ou planejando fazer isso — os tollgates da Expedia são o **padrão mínimo de qualidade**. Não espere seu primeiro incidente de segurança pra descobrir que você precisa deles. Copie o modelo. Adapte pro seu contexto. Implemente antes do lançamento.
+
+---
+
+## 4. Hugging Face ML Intern: O CLI Que Virou Estagiário de ML
+
+No post de ontem eu mencionei o **ML Intern** de passagem. Mas ele merece um holofote próprio.
+
+O [ML Intern](https://github.com/huggingface/ml-intern) é um **agente CLI open-source da Hugging Face** que faz o trabalho de um engenheiro de machine learning júnior: lê papers, escreve scripts, faz fine-tuning, avalia resultados, publica checkpoints. Tudo em linguagem natural.
+
+O fluxo é simples:
+
+```
+ml-intern "fine-tune llama on my dataset"
+```
+
+O agente:
+1. Busca o dataset no Hugging Face Hub
+2. Lê a documentação do modelo
+3. Escreve o script de fine-tuning
+4. Lança o job de treinamento (via HF Jobs)
+5. Avalia os resultados
+6. Publica o checkpoint no Hub
+
+Resultados publicados: o ML Intern melhorou de **~10% para ~32% no GPQA** (benchmark de raciocínio científico) em menos de 10 horas, rodando um modelo Qwen pequeno.
+
+**Por que isso importa (e por que não é só "mais um agente de código"):** Diferente de coding agents como Claude Code ou Cursor, o ML Intern é **especializado no ciclo de pesquisa em ML**. Ele não escreve features de produto. Ele escreve código científico. E isso é um marco — porque a automação do **P&D em IA** tem implicações diferentes da automação do **desenvolvimento de software**.
+
+> **O paralelo com o Fable escrevendo kernels de GPU:** Se o Fable mostrou que IAs podem otimizar a infraestrutura de IA, o ML Intern mostra que IAs podem **conduzir o processo de pesquisa em IA**. Os dois juntos formam a receita do *recursive self-improvement* que Jack Clark descreve no Import AI.
+
+---
+
+## O Que Junta Essas Quatro Histórias?
+
+Cada uma delas é sobre **infraestrutura invisível** — o chão que sustentará os próximos saltos:
+
+| História | Camada de Infraestrutura |
+|---|---|
+| LeRobot v0.6.0 | Robótica + aprendizado por reforço |
+| NVIDIA no ICML 2026 | Pesquisa acadêmica + modelos abertos |
+| Expedia Tollgates | Governança empresarial de agentes |
+| ML Intern | Automação do ciclo de P&D em ML |
+
+Nenhuma delas é sobre "o novo modelo mais inteligente". Todas são sobre **como a gente constrói, valida, escala e governa sistemas de IA**.
+
+E é isso que define julho de 2026: a IA está saindo da fase de laboratório e entrando na fase de **infraestrutura crítica**. A pergunta não é mais "o que a IA pode fazer?" — é "como a gente sustenta o que ela já faz?"
+
+## Takeaways
+
+- **LeRobot v0.6.0 é o ecossistema unificado que a robótica sempre precisou.** World models, reward learning e DAgger-style corrections num framework só. Se você mexe com robótica, esse é o momento de mergulhar.
+- **O ICML 2026 enterrou de vez o debate entre aberto vs. fechado.** Modelos abertos são infraestrutura de pesquisa. A NVIDIA entendeu isso e está surfando os dois lados do flywheel.
+- **Expedia criou o manual de governança pra agentes que ninguém tinha.** Agentic Release Tollgates é o padrão que falta no mercado. Copie.
+- **ML Intern automatiza a parte mais chata da pesquisa em ML.** Não é um Claude Code — é um pesquisador júnior que não dorme e não reclama do café.
+- **O jogo virou de "qual modelo?" pra "qual infraestrutura?".** Quem construir o melhor chão vai decidir quem consegue construir o melhor teto.
+
+## Fontes
+
+- [Hugging Face — LeRobot v0.6.0: Imagine, Evaluate, Improve](https://huggingface.co/blog/lerobot-release-v060)
+- [NVIDIA Blog — How Open Models Are Driving AI Research (ICML 2026)](https://blogs.nvidia.com/blog/open-models-icml-2026/)
+- [VentureBeat — What billions of AI predictions taught Expedia before the age of AI agents](https://venturebeat.com/orchestration/what-billions-of-ai-predictions-taught-expedia-before-the-age-of-ai-agents)
+- [KDnuggets — Getting Started with Hugging Face ML Intern: Your First ML Agent](https://www.kdnuggets.com/getting-started-with-hugging-face-ml-intern-your-first-ml-agent)
+- [GitHub — huggingface/ml-intern](https://github.com/huggingface/ml-intern)
