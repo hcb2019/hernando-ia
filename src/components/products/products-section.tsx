@@ -1,37 +1,34 @@
 import ScrollReveal from "@/components/ui/scroll-reveal";
+import { Bot, BookOpen, Zap, Target, Sparkles, Rocket, Lightbulb } from "lucide-react";
 
 const products = [
   {
     title: "GPTS & GEMS",
     description:
       "Agentes de IA personalizados para automacao, analise de dados e produtividade. Prontos para usar no ChatGPT.",
-    icon: "🤖",
+    Icon: Bot,
     status: "EM BREVE",
-    emoji: "✨",
   },
   {
     title: "E-BOOKS TECNICOS",
     description:
       "Guias praticos sobre Agentes de IA, arquitetura de software e empreendedorismo tech no mercado brasileiro.",
-    icon: "📚",
+    Icon: BookOpen,
     status: "EM BREVE",
-    emoji: "📖",
   },
   {
     title: "PACKS DE PROMPTS",
     description:
       "Colecoes curadas de prompts para desenvolvimento, criacao de conteudo e analise de negocios com IA.",
-    icon: "⚡",
+    Icon: Zap,
     status: "EM BREVE",
-    emoji: "🚀",
   },
   {
     title: "CONSULTORIA",
     description:
       "Mentoria e consultoria em AI Engineering, arquitetura de SaaS e estrategia de produto para o mercado brasileiro.",
-    icon: "🎯",
+    Icon: Target,
     status: "DISPONIVEL",
-    emoji: "💡",
   },
 ];
 
@@ -58,7 +55,6 @@ export default function ProductsSection() {
           {products.map((product, i) => (
             <ScrollReveal key={product.title} delay={i * 100}>
               <div className="bg-[--background] p-8 flex flex-col gap-5 group card-invert transition-colors duration-300 h-full">
-                {/* Status badge */}
                 <div className="flex justify-end">
                   <span
                     className={`text-[10px] font-bold uppercase tracking-[0.12em] px-2.5 py-1 border ${
@@ -71,7 +67,7 @@ export default function ProductsSection() {
                   </span>
                 </div>
 
-                <span className="text-3xl">{product.icon}</span>
+                <product.Icon className="w-8 h-8 text-[--accent]" strokeWidth={1.5} />
 
                 <h3 className="text-lg font-bold uppercase tracking-tighter card-invert-text">
                   {product.title}
@@ -84,8 +80,7 @@ export default function ProductsSection() {
                 <div className="text-xs font-bold uppercase tracking-tighter text-[--muted-foreground] opacity-0 group-hover:opacity-100 transition-opacity">
                   {product.status === "DISPONIVEL"
                     ? "FALAR COM HERNANDO"
-                    : "LISTA DE ESPERA"}{" "}
-                  {product.emoji}
+                    : "LISTA DE ESPERA"}
                 </div>
               </div>
             </ScrollReveal>

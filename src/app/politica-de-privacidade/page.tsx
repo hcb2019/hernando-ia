@@ -3,6 +3,7 @@ import { generatePageMeta } from "@/lib/seo";
 import Navbar from "@/components/layout/navbar";
 import Footer from "@/components/layout/footer";
 import Link from "next/link";
+import { ClipboardList, Mail, ShieldBan, Lock, Globe, Scale } from "lucide-react";
 
 export const metadata: Metadata = generatePageMeta({
   title: "Política de Privacidade",
@@ -29,20 +30,38 @@ export default function PrivacyPolicyPage() {
           <div className="prose-custom text-white/70 space-y-6 text-sm leading-relaxed">
             {/* TL;DR */}
             <section className="border border-border p-6 mb-10">
-              <h2 className="text-lg font-semibold text-white/90 mb-3">
-                📋 Resumo (TL;DR)
+              <h2 className="text-lg font-semibold text-white/90 mb-3 flex items-center gap-2">
+                <ClipboardList className="w-5 h-5 text-accent" />
+                Resumo (TL;DR)
               </h2>
               <ul className="space-y-2 text-white/60">
-                <li>📧 Coletamos <strong className="text-white/80">apenas seu email</strong> quando você assina a newsletter</li>
-                <li>🍪 <strong className="text-white/80">Não usamos</strong> cookies de rastreamento, analytics, nem anúncios</li>
-                <li>🔒 Seus dados <strong className="text-white/80">nunca</strong> são vendidos ou compartilhados com terceiros para marketing</li>
-                <li>✉️ Você pode pedir acesso, correção ou exclusão:{" "}
+                <li className="flex items-center gap-2">
+                  <Mail className="w-4 h-4 text-accent/60 flex-shrink-0" />
+                  Coletamos <strong className="text-white/80">apenas seu email</strong> quando você assina a newsletter
+                </li>
+                <li className="flex items-center gap-2">
+                  <ShieldBan className="w-4 h-4 text-accent/60 flex-shrink-0" />
+                  <strong className="text-white/80">Não usamos</strong> cookies de rastreamento, analytics, nem anúncios
+                </li>
+                <li className="flex items-center gap-2">
+                  <Lock className="w-4 h-4 text-accent/60 flex-shrink-0" />
+                  Seus dados <strong className="text-white/80">nunca</strong> são vendidos ou compartilhados com terceiros para marketing
+                </li>
+                <li className="flex items-center gap-2">
+                  <Mail className="w-4 h-4 text-accent/60 flex-shrink-0" />
+                  Você pode pedir acesso, correção ou exclusão:{" "}
                   <a href="mailto:contato@hernandoia.com" className="text-accent hover:underline">
                     contato@hernandoia.com
                   </a>
                 </li>
-                <li>🌍 Armazenamos dados nos <strong className="text-white/80">EUA</strong> (Vercel, Redis Cloud, Resend)</li>
-                <li>⚖️ Base legal: <strong className="text-white/80">seu consentimento</strong> (Art. 7º, I da LGPD)</li>
+                <li className="flex items-center gap-2">
+                  <Globe className="w-4 h-4 text-accent/60 flex-shrink-0" />
+                  Armazenamos dados nos <strong className="text-white/80">EUA</strong> (Vercel, Redis Cloud, Resend)
+                </li>
+                <li className="flex items-center gap-2">
+                  <Scale className="w-4 h-4 text-accent/60 flex-shrink-0" />
+                  Base legal: <strong className="text-white/80">seu consentimento</strong> (Art. 7º, I da LGPD)
+                </li>
               </ul>
             </section>
 

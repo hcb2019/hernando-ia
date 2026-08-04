@@ -195,7 +195,7 @@ export default function Home() {
                 <span className="text-xs uppercase tracking-[0.2em] text-[--accent-foreground]/70">
                   {item.label}
                 </span>
-                <span className="text-2xl text-[--accent-foreground]/30 mx-4">✦</span>
+                <span className="text-2xl text-[--accent-foreground]/30 mx-4">·</span>
               </span>
             ))}
           </Marquee>

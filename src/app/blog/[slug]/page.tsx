@@ -10,6 +10,7 @@ import LanguageToggle from "@/components/blog/language-toggle";
 import ShareButton from "@/components/blog/share-button";
 import Navbar from "@/components/layout/navbar";
 import type { Metadata } from "next";
+import { Newspaper, Brain, Gift } from "lucide-react";
 
 interface PageProps {
   params: Promise<{ slug: string }>;
@@ -251,11 +252,11 @@ export default async function BlogPostPage({ params, searchParams }: PageProps) 
             {t("liked_sub", lang)}
           </p>
           <div className="flex items-center justify-center gap-3 text-xs text-white/40 mb-5">
-            <span>📰 Curadoria semanal</span>
-            <span className="text-white/15">•</span>
-            <span>🧠 Análise sem hype</span>
-            <span className="text-white/15">•</span>
-            <span>🎁 Conteúdo exclusivo</span>
+            <span className="flex items-center gap-1.5"><Newspaper className="w-3.5 h-3.5" /> Curadoria semanal</span>
+            <span className="text-white/15">·</span>
+            <span className="flex items-center gap-1.5"><Brain className="w-3.5 h-3.5" /> Análise sem hype</span>
+            <span className="text-white/15">·</span>
+            <span className="flex items-center gap-1.5"><Gift className="w-3.5 h-3.5" /> Conteúdo exclusivo</span>
           </div>
           <NewsletterForm />
         </div>

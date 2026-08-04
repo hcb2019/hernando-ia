@@ -3,6 +3,7 @@ import { generatePageMeta } from "@/lib/seo";
 import Navbar from "@/components/layout/navbar";
 import Footer from "@/components/layout/footer";
 import Link from "next/link";
+import { Camera, GitFork, BriefcaseBusiness, Mail, ArrowRight, Globe, Shield } from "lucide-react";
 
 export const metadata: Metadata = generatePageMeta({
   title: "Sobre Hernando",
@@ -74,7 +75,7 @@ export default function AboutPage() {
               </h2>
               <div className="grid gap-4 sm:grid-cols-2">
                 <Link
-                  href="/produtos/claude-code-skills"
+                  href="https://github.com/hcb2019/claude-code-skills"
                   className="block p-4 border border-border hover:border-accent/30 transition-colors group"
                 >
                   <h3 className="text-sm font-semibold text-white/70 group-hover:text-accent transition-colors mb-1">
@@ -86,7 +87,7 @@ export default function AboutPage() {
                   </p>
                 </Link>
                 <Link
-                  href="/produtos/arenabite"
+                  href="https://github.com/hcb2019/arenabite"
                   className="block p-4 border border-border hover:border-accent/30 transition-colors group"
                 >
                   <h3 className="text-sm font-semibold text-white/70 group-hover:text-accent transition-colors mb-1">
@@ -98,15 +99,15 @@ export default function AboutPage() {
                   </p>
                 </Link>
                 <Link
-                  href="/produtos/hermes-agent"
+                  href="https://github.com/hcb2019/hernando-ia"
                   className="block p-4 border border-border hover:border-accent/30 transition-colors group"
                 >
                   <h3 className="text-sm font-semibold text-white/70 group-hover:text-accent transition-colors mb-1">
-                    Hermes Agent
+                    Hernando.ia
                   </h3>
                   <p className="text-xs text-white/40">
-                    Agente de IA autônomo. Executa tarefas, gerencia
-                    servidores, posta conteúdo e opera 24/7.
+                    Site pessoal, blog e cérebro digital. Next.js + Tailwind v4
+                    + AI-powered content pipeline.
                   </p>
                 </Link>
                 <Link
@@ -129,8 +130,8 @@ export default function AboutPage() {
                 Onde me encontrar
               </h2>
               <ul className="space-y-2">
-                <li>
-                  📸{" "}
+                <li className="flex items-center gap-2">
+                  <Camera className="w-4 h-4 text-accent" />
                   <a
                     href="https://instagram.com/hernando.ia"
                     className="text-accent hover:underline decoration-accent/50 underline-offset-4"
@@ -140,8 +141,8 @@ export default function AboutPage() {
                     Instagram @hernando.ia
                   </a>
                 </li>
-                <li>
-                  🐙{" "}
+                <li className="flex items-center gap-2">
+                  <GitFork className="w-4 h-4 text-accent" />
                   <a
                     href="https://github.com/hcb2019"
                     className="text-accent hover:underline decoration-accent/50 underline-offset-4"
@@ -151,8 +152,8 @@ export default function AboutPage() {
                     GitHub @hcb2019
                   </a>
                 </li>
-                <li>
-                  💼{" "}
+                <li className="flex items-center gap-2">
+                  <BriefcaseBusiness className="w-4 h-4 text-accent" />
                   <a
                     href="https://www.linkedin.com/in/hernandoia"
                     className="text-accent hover:underline decoration-accent/50 underline-offset-4"
@@ -162,8 +163,8 @@ export default function AboutPage() {
                     LinkedIn
                   </a>
                 </li>
-                <li>
-                  ✉️{" "}
+                <li className="flex items-center gap-2">
+                  <Mail className="w-4 h-4 text-accent" />
                   <a
                     href="mailto:contato@hernandoia.com"
                     className="text-accent hover:underline decoration-accent/50 underline-offset-4"
@@ -176,18 +177,20 @@ export default function AboutPage() {
 
             <section>
               <h2 className="text-2xl font-semibold text-white/90 mt-10 mb-4">
-                Contrate
+                Contato
               </h2>
               <p>
                 Precisa de um engenheiro de IA pra implementar agentes
-                autônomos, automatizar processos ou dar consultoria estratégica?
+                autônomos, automatizar processos ou trocar uma ideia sobre
+                tecnologia?
               </p>
-              <Link
-                href="/servicos"
+              <a
+                href="mailto:contato@hernandoia.com"
                 className="inline-flex items-center gap-2 mt-3 bg-accent/10 border border-accent/30 text-accent font-bold uppercase tracking-tighter px-6 py-2 text-xs hover:bg-accent/20 transition-colors"
               >
-                VER PLANOS →
-              </Link>
+                <Mail className="w-3.5 h-3.5" />
+                ENVIAR EMAIL
+              </a>
             </section>
           </div>
         </div>

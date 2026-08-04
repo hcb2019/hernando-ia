@@ -5,11 +5,10 @@ import NewsletterForm from "@/components/blog/newsletter-form";
 import Navbar from "@/components/layout/navbar";
 import Footer from "@/components/layout/footer";
 import type { Metadata } from "next";
+import { Search, Brain, Wrench, Rocket, Mail, Users, Clock, Shield } from "lucide-react";
 
-// ── SSR: always fetch fresh subscriber count ────────────────────────
 export const dynamic = "force-dynamic";
 
-// ── SEO Metadata ────────────────────────────────────────────────────
 export const metadata: Metadata = generatePageMeta({
   title: "Newsletter | Hernando.ia",
   description:
@@ -18,15 +17,12 @@ export const metadata: Metadata = generatePageMeta({
   ogImage: "/api/og?title=Newsletter+Hernando.ia&subtitle=IA+sem+hype%2C+toda+quarta",
 });
 
-// ── Helpers ─────────────────────────────────────────────────────────
-
 function formatCount(n: number): string {
   if (n >= 1000000) return (n / 1000000).toFixed(1) + "M";
   if (n >= 1000) return (n / 1000).toFixed(1) + "K";
   return String(n);
 }
 
-// ── JSON-LD Organization Schema ─────────────────────────────────────
 const organizationJSONLD = {
   "@context": "https://schema.org",
   "@type": "Organization",
@@ -51,35 +47,32 @@ const organizationJSONLD = {
   inLanguage: "pt-BR",
 };
 
-// ── Benefits ────────────────────────────────────────────────────────
 const BENEFITS = [
   {
-    icon: "🔍",
+    Icon: Search,
     title: "Curadoria semanal",
     description:
       "As notícias mais relevantes de IA, selecionadas a dedo. Filtramos o ruído para você focar no que importa.",
   },
   {
-    icon: "🧠",
+    Icon: Brain,
     title: "Análise com opinião",
     description:
       "Visão de engenheiro, não de hype. Análise técnica e pragmática do que funciona e do que é só promessa.",
   },
   {
-    icon: "🛠️",
+    Icon: Wrench,
     title: "Dicas práticas",
     description:
       "Tutoriais, truques e ferramentas sobre agentes, automação, Claude Code, LLMs e engenharia de software.",
   },
   {
-    icon: "🚀",
+    Icon: Rocket,
     title: "Acesso antecipado",
     description:
       "Seja o primeiro a conhecer novos produtos, conteúdos exclusivos e oportunidades para assinantes.",
   },
 ];
-
-// ── Page ────────────────────────────────────────────────────────────
 
 export default async function NewsletterPage() {
   const { total, confirmed } = await getSubscriberCount();
@@ -88,7 +81,6 @@ export default async function NewsletterPage() {
 
   return (
     <>
-      {/* JSON-LD Structured Data */}
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{
@@ -99,16 +91,12 @@ export default async function NewsletterPage() {
       <Navbar />
 
       <main className="min-h-screen bg-[#08081a]">
-        {/* Grid background */}
         <div className="fixed inset-0 grid-bg opacity-[0.03] pointer-events-none" />
 
-        {/* ═══ Hero Section ═══ */}
         <section className="relative pt-32 pb-20 px-4 sm:px-8 text-center">
-          {/* Glow orb behind hero */}
           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] rounded-full bg-[--accent] opacity-[0.04] blur-[120px] pointer-events-none" />
 
           <div className="relative max-w-3xl mx-auto">
-            {/* Badge */}
             <span className="inline-block text-xs uppercase tracking-[0.2em] text-[--accent] font-medium border border-[--accent]/30 bg-[--accent]/5 px-4 py-1.5 mb-6">
               Toda quarta-feira, 10h
             </span>
@@ -125,7 +113,6 @@ export default async function NewsletterPage() {
               quarta.
             </p>
 
-            {/* Subscriber count badge */}
             <div className="inline-flex items-center gap-2 mb-8 px-4 py-2 rounded-full border border-[--border] bg-white/[0.03]">
               <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
               <span className="text-sm text-white/60">
@@ -136,7 +123,6 @@ export default async function NewsletterPage() {
               </span>
             </div>
 
-            {/* Subscription form */}
             <NewsletterForm />
 
             <p className="text-xs text-white/20 mt-4">
@@ -145,37 +131,38 @@ export default async function NewsletterPage() {
           </div>
         </section>
 
-        {/* ═══ Stats Section ═══ */}
         <section className="relative py-16 px-4 sm:px-8 border-y-2 border-[--border] bg-[--accent]">
           <div className="max-w-4xl mx-auto grid grid-cols-1 sm:grid-cols-3 gap-8 text-center">
-            <div>
+            <div className="flex flex-col items-center gap-2">
+              <Users className="w-8 h-8 text-[--accent-foreground]/60" />
               <span className="block text-4xl sm:text-5xl font-bold tabular-nums text-[--accent-foreground]">
                 {displayCount}
               </span>
-              <span className="block text-xs uppercase tracking-[0.2em] text-[--accent-foreground]/60 mt-2">
+              <span className="block text-xs uppercase tracking-[0.2em] text-[--accent-foreground]/60">
                 {rawCount === 1 ? "Leitor" : "Leitores"}
               </span>
             </div>
-            <div>
+            <div className="flex flex-col items-center gap-2">
+              <Clock className="w-8 h-8 text-[--accent-foreground]/60" />
               <span className="block text-4xl sm:text-5xl font-bold tabular-nums text-[--accent-foreground]">
-                1×
+                1x
               </span>
-              <span className="block text-xs uppercase tracking-[0.2em] text-[--accent-foreground]/60 mt-2">
+              <span className="block text-xs uppercase tracking-[0.2em] text-[--accent-foreground]/60">
                 Por semana
               </span>
             </div>
-            <div>
+            <div className="flex flex-col items-center gap-2">
+              <Shield className="w-8 h-8 text-[--accent-foreground]/60" />
               <span className="block text-4xl sm:text-5xl font-bold tabular-nums text-[--accent-foreground]">
                 100%
               </span>
-              <span className="block text-xs uppercase tracking-[0.2em] text-[--accent-foreground]/60 mt-2">
+              <span className="block text-xs uppercase tracking-[0.2em] text-[--accent-foreground]/60">
                 Sem hype
               </span>
             </div>
           </div>
         </section>
 
-        {/* ═══ What You Get Section ═══ */}
         <section className="relative py-24 px-4 sm:px-8">
           <div className="max-w-4xl mx-auto">
             <div className="text-center mb-16">
@@ -197,7 +184,7 @@ export default async function NewsletterPage() {
                   key={benefit.title}
                   className="glass p-6 glow-border group hover:border-[--accent]/30 transition-colors"
                 >
-                  <span className="text-3xl mb-3 block">{benefit.icon}</span>
+                  <benefit.Icon className="w-8 h-8 text-[--accent] mb-3" strokeWidth={1.5} />
                   <h3 className="text-lg font-bold mb-2 text-white/90">
                     {benefit.title}
                   </h3>
@@ -210,7 +197,6 @@ export default async function NewsletterPage() {
           </div>
         </section>
 
-        {/* ═══ Past Editions Section ═══ */}
         <section className="relative py-24 px-4 sm:px-8 border-t border-[--border]">
           <div className="max-w-4xl mx-auto">
             <div className="text-center mb-16">
@@ -222,9 +208,8 @@ export default async function NewsletterPage() {
               </h2>
             </div>
 
-            {/* Placeholder for future editions */}
             <div className="glass p-12 glow-border text-center max-w-lg mx-auto">
-              <span className="text-5xl mb-4 block">📬</span>
+              <Mail className="w-12 h-12 text-[--accent]/40 mx-auto mb-4" strokeWidth={1} />
               <h3 className="text-xl font-bold mb-3 text-white/80">
                 A primeira edição está sendo preparada
               </h3>
@@ -237,7 +222,6 @@ export default async function NewsletterPage() {
           </div>
         </section>
 
-        {/* ═══ Footer CTA ═══ */}
         <section className="relative py-24 px-4 sm:px-8 border-t border-[--border] bg-white/[0.02]">
           <div className="max-w-2xl mx-auto text-center">
             <span className="text-xs uppercase tracking-[0.2em] text-[--accent] font-medium">

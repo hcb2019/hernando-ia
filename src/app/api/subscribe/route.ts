@@ -29,7 +29,7 @@ export async function POST(request: NextRequest) {
 
     if (!isNew) {
       return NextResponse.json({
-        message: "Você já está inscrito! Primeira edição quarta-feira 10h. 🚀",
+        message: "Você já está inscrito! Primeira edição quarta-feira 10h.",
         alreadySubscribed: true,
       });
     }
@@ -68,7 +68,7 @@ export async function POST(request: NextRequest) {
       body: JSON.stringify({
         from: "Hernando.ia <newsletter@hernandoia.com>",
         to: sub.email,
-        subject: "🚀 Bem-vindo(a) à Hernando.ia!",
+        subject: "Bem-vindo(a) a Hernando.ia!",
         html: htmlBody,
       }),
     });
@@ -82,7 +82,7 @@ export async function POST(request: NextRequest) {
     }
 
     return NextResponse.json({
-      message: "Email de confirmação enviado! Verifique sua caixa de entrada. 📧",
+      message: "Email de confirmação enviado! Verifique sua caixa de entrada.",
     });
   } catch (err) {
     console.error("Subscribe error:", err);
