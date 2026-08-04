@@ -14,6 +14,7 @@ import {
   type GitHubEvent,
   type GitHubStats,
 } from "@/lib/github";
+import { Star, GitFork, GitCommit, GitPullRequest, CircleDot, MessageSquare, Tag, Plus, Dot } from "lucide-react";
 
 // ── Props ───────────────────────────────────────────────────────────────
 
@@ -341,25 +342,25 @@ export default function GitHubSection({
                 className="border border-[--border] p-3 flex items-center gap-3 text-sm"
               >
                 <div className="w-8 h-8 border border-[--border] flex items-center justify-center flex-shrink-0">
-                  <span className="text-xs font-bold text-[--accent]">
-                    {event.type === "PushEvent"
-                      ? "⬆"
-                      : event.type === "WatchEvent"
-                      ? "★"
-                      : event.type === "ForkEvent"
-                      ? "⑂"
-                      : event.type === "CreateEvent"
-                      ? "+"
-                      : event.type === "PullRequestEvent"
-                      ? "⟳"
-                      : event.type === "IssuesEvent"
-                      ? "◉"
-                      : event.type === "IssueCommentEvent"
-                      ? "💬"
-                      : event.type === "ReleaseEvent"
-                      ? "🏷"
-                      : "•"}
-                  </span>
+                  {event.type === "PushEvent" ? (
+                    <GitCommit className="w-3.5 h-3.5 text-[--accent]" />
+                  ) : event.type === "WatchEvent" ? (
+                    <Star className="w-3.5 h-3.5 text-[--accent]" />
+                  ) : event.type === "ForkEvent" ? (
+                    <GitFork className="w-3.5 h-3.5 text-[--accent]" />
+                  ) : event.type === "CreateEvent" ? (
+                    <Plus className="w-3.5 h-3.5 text-[--accent]" />
+                  ) : event.type === "PullRequestEvent" ? (
+                    <GitPullRequest className="w-3.5 h-3.5 text-[--accent]" />
+                  ) : event.type === "IssuesEvent" ? (
+                    <CircleDot className="w-3.5 h-3.5 text-[--accent]" />
+                  ) : event.type === "IssueCommentEvent" ? (
+                    <MessageSquare className="w-3.5 h-3.5 text-[--accent]" />
+                  ) : event.type === "ReleaseEvent" ? (
+                    <Tag className="w-3.5 h-3.5 text-[--accent]" />
+                  ) : (
+                    <Dot className="w-3.5 h-3.5 text-[--accent]" />
+                  )}
                 </div>
                 <div className="flex-1 min-w-0">
                   <span className="text-[--foreground] font-medium">

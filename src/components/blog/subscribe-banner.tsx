@@ -1,6 +1,7 @@
 "use client";
 
 import { useSearchParams } from "next/navigation";
+import { CheckCircle2, XCircle } from "lucide-react";
 
 /**
  * Shows a success/error banner when redirected from subscription confirmation.
@@ -13,16 +14,18 @@ export default function SubscribeBanner() {
 
   if (subscribed === "success") {
     return (
-      <div className="mb-8 p-4 rounded-lg border border-green-500/30 bg-green-500/10 text-green-400 text-center">
-        ✅ Inscrição confirmada! Você receberá a próxima newsletter no seu email.
+      <div className="mb-8 p-4 rounded-lg border border-green-500/30 bg-green-500/10 text-green-400 text-center flex items-center justify-center gap-2">
+        <CheckCircle2 className="w-4 h-4 flex-shrink-0" />
+        Inscrição confirmada! Você receberá a próxima newsletter no seu email.
       </div>
     );
   }
 
   if (subscribed === "error") {
     return (
-      <div className="mb-8 p-4 rounded-lg border border-red-500/30 bg-red-500/10 text-red-400 text-center">
-        ❌ Link de confirmação inválido ou expirado. Tente se inscrever novamente.
+      <div className="mb-8 p-4 rounded-lg border border-red-500/30 bg-red-500/10 text-red-400 text-center flex items-center justify-center gap-2">
+        <XCircle className="w-4 h-4 flex-shrink-0" />
+        Link de confirmação inválido ou expirado. Tente se inscrever novamente.
       </div>
     );
   }

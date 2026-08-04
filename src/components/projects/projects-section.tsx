@@ -2,6 +2,10 @@
 
 import Image from "next/image";
 import ScrollReveal from "@/components/ui/scroll-reveal";
+import {
+  Film, Apple, Car, TrendingUp, Brain, Zap, UtensilsCrossed,
+  Smartphone, Rocket, FolderGit2, type LucideIcon
+} from "lucide-react";
 
 // ── Props ───────────────────────────────────────────────────────────────
 
@@ -23,60 +27,60 @@ interface ProjectsSectionProps {
   instagramReach?: number;
 }
 
-// ── Repo → project card mapping (emoji/icon customization) ──────────────
+// ── Repo → project card mapping ──────────────────────────────────────────
 
 interface ProjectMeta {
-  emoji: string;
+  Icon: LucideIcon;
   tags: string[];
   status: string;
-  priority: number; // lower = shown first
+  priority: number;
 }
 
 const PROJECT_META: Record<string, ProjectMeta> = {
   "ufokko": {
-    emoji: "🎬",
+    Icon: Film,
     tags: ["FastAPI", "React", "MongoDB", "Marketplace"],
     status: "PRODUÇÃO",
     priority: 1,
   },
   "arenabite": {
-    emoji: "🥗",
+    Icon: Apple,
     tags: ["Next.js", "TypeScript", "IA", "SaaS"],
     status: "EM DEV",
     priority: 2,
   },
   "gold-carbon": {
-    emoji: "🚗",
+    Icon: Car,
     tags: ["Next.js", "TypeScript", "BYD", "Carbono"],
     status: "EM DEV",
     priority: 3,
   },
   "popularizei": {
-    emoji: "📈",
+    Icon: TrendingUp,
     tags: ["Next.js", "TypeScript", "IA", "Growth"],
     status: "EM DEV",
     priority: 4,
   },
   "hernando-ia": {
-    emoji: "🧠",
+    Icon: Brain,
     tags: ["Next.js", "Tailwind", "Blog", "IA"],
     status: "ATIVO",
     priority: 5,
   },
   "claude-code-skills": {
-    emoji: "⚡",
+    Icon: Zap,
     tags: ["Claude Code", "Python", "Skills", "Open Source"],
     status: "ATIVO",
     priority: 6,
   },
   "nutri-talita": {
-    emoji: "🥑",
+    Icon: UtensilsCrossed,
     tags: ["Next.js", "Sanity", "CMS", "TypeScript"],
     status: "ATIVO",
     priority: 7,
   },
   "videomakers-app-antigo": {
-    emoji: "📱",
+    Icon: Smartphone,
     tags: ["React Native", "Expo", "Firebase", "Legado"],
     status: "ARQUIVADO",
     priority: 8,
@@ -84,29 +88,23 @@ const PROJECT_META: Record<string, ProjectMeta> = {
 };
 
 const DEFAULT_META: ProjectMeta = {
-  emoji: "🚀",
+  Icon: FolderGit2,
   tags: ["Open Source"],
   status: "EM DEV",
   priority: 99,
 };
 
 function getProjectMeta(repo: GitHubRepo): ProjectMeta {
-  // Try exact name match
   if (PROJECT_META[repo.name.toLowerCase()]) {
     return PROJECT_META[repo.name.toLowerCase()];
   }
-  // Try partial match on name
   for (const [key, meta] of Object.entries(PROJECT_META)) {
     if (repo.name.toLowerCase().includes(key) || key.includes(repo.name.toLowerCase())) {
       return meta;
     }
   }
-  // Generate tags from language
   const tags = repo.language ? [repo.language] : [];
-  return {
-    ...DEFAULT_META,
-    tags,
-  };
+  return { ...DEFAULT_META, tags };
 }
 
 // ── Helpers ─────────────────────────────────────────────────────────────
@@ -136,12 +134,11 @@ export default function ProjectsSection({
   instagramPosts = 109,
   instagramReach = 292000,
 }: ProjectsSectionProps) {
-  // Filter out archived/videomakers repos from main display, sort by priority
   const activeRepos = repos
     .filter((r) => getProjectMeta(r).status !== "ARQUIVADO")
     .sort((a, b) => getProjectMeta(a).priority - getProjectMeta(b).priority);
 
-  const visibleRepos = activeRepos.slice(0, 9); // max 9 cards (3x3 grid)
+  const visibleRepos = activeRepos.slice(0, 9);
 
   return (
     <section id="projetos" className="relative py-32 px-6">
@@ -165,6 +162,7 @@ export default function ProjectsSection({
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-px bg-[--border]">
           {visibleRepos.map((repo, i) => {
             const meta = getProjectMeta(repo);
+            const IconComponent = meta.Icon;
             return (
               <ScrollReveal key={repo.name} delay={i * 100}>
                 <a
@@ -173,7 +171,6 @@ export default function ProjectsSection({
                   rel="noopener noreferrer"
                   className="bg-[--background] p-8 flex flex-col gap-5 group card-invert transition-colors duration-300 block h-full"
                 >
-                  {/* Status badge */}
                   <div className="flex justify-end">
                     <span
                       className={`text-[10px] font-bold uppercase tracking-[0.12em] px-2.5 py-1 border ${
@@ -189,7 +186,7 @@ export default function ProjectsSection({
                   </div>
 
                   <div className="flex items-center gap-3">
-                    <span className="text-3xl">{meta.emoji}</span>
+                    <IconComponent className="w-7 h-7 text-[--accent]" strokeWidth={1.5} />
                     <h3 className="text-xl font-bold uppercase tracking-tighter card-invert-text group-hover:text-[--accent-foreground]">
                       {repo.name.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())}
                     </h3>
