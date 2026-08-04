@@ -210,6 +210,7 @@ export default function Home() {
         <div className="section-divider" />
 
         <ProjectsSection
+          repos={ghRepos}
           instagramFollowers={igFollowers}
           instagramPosts={igPosts}
           instagramReach={igReach}

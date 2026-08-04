@@ -4,55 +4,60 @@ import { SITE } from "@/lib/seo";
 export default function robots(): MetadataRoute.Robots {
   return {
     rules: [
-      // ── Allow AI/search bots EXPLICITLY (must come before wildcard)
-      // Cloudflare injects AI crawler blocks at the top of robots.txt.
-      // If these bots are still blocked, disable "AI Crawlers Block" in
-      // Cloudflare Dashboard: Security > Bots > AI Crawlers
+      {
+        userAgent: "*",
+        allow: "/",
+        disallow: [
+          "/api/",
+          "/admin/",
+          "/_next/",
+        ],
+      },
+      // AI crawlers — allow for AI search visibility (GEO optimization)
       {
         userAgent: "GPTBot",
         allow: "/",
+        disallow: ["/api/", "/admin/"],
       },
       {
         userAgent: "ChatGPT-User",
         allow: "/",
+        disallow: ["/api/", "/admin/"],
       },
       {
         userAgent: "Google-Extended",
         allow: "/",
-      },
-      {
-        userAgent: "PerplexityBot",
-        allow: "/",
-      },
-      {
-        userAgent: "Claude-Web",
-        allow: "/",
+        disallow: ["/api/", "/admin/"],
       },
       {
         userAgent: "anthropic-ai",
         allow: "/",
+        disallow: ["/api/", "/admin/"],
       },
       {
-        userAgent: "Bytespider",
+        userAgent: "Claude-Web",
         allow: "/",
+        disallow: ["/api/", "/admin/"],
       },
       {
-        userAgent: "Applebot-Extended",
+        userAgent: "PerplexityBot",
         allow: "/",
-      },
-      {
-        userAgent: "Diffbot",
-        allow: "/",
+        disallow: ["/api/", "/admin/"],
       },
       {
         userAgent: "cohere-ai",
         allow: "/",
+        disallow: ["/api/", "/admin/"],
       },
-      // ── Default: allow all, block API and Next.js internals
       {
-        userAgent: "*",
+        userAgent: "Bytespider",
         allow: "/",
-        disallow: ["/api/", "/_next/"],
+        disallow: ["/api/", "/admin/"],
+      },
+      {
+        userAgent: "Diffbot",
+        allow: "/",
+        disallow: ["/api/", "/admin/"],
       },
     ],
     sitemap: `${SITE.url}/sitemap.xml`,

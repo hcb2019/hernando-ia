@@ -5,69 +5,109 @@ import ScrollReveal from "@/components/ui/scroll-reveal";
 
 // ── Props ───────────────────────────────────────────────────────────────
 
+interface GitHubRepo {
+  name: string;
+  full_name: string;
+  html_url: string;
+  description: string | null;
+  language: string | null;
+  stargazers_count: number;
+  forks_count: number;
+  updated_at: string;
+}
+
 interface ProjectsSectionProps {
+  repos: GitHubRepo[];
   instagramFollowers?: number;
   instagramPosts?: number;
   instagramReach?: number;
 }
 
-// ── Projects data ───────────────────────────────────────────────────────
+// ── Repo → project card mapping (emoji/icon customization) ──────────────
 
-const projects = [
-  {
-    name: "UFOKKO",
-    url: "https://ufokko.com.br",
-    icon: "/images/projects/ufokko.png",
-    iconWidth: 40,
-    iconHeight: 40,
-    description:
-      "Marketplace que conecta clientes a videomakers profissionais. Sistema completo com pagamento escrow, chat real-time, avaliacoes e geolocalizacao.",
+interface ProjectMeta {
+  emoji: string;
+  tags: string[];
+  status: string;
+  priority: number; // lower = shown first
+}
+
+const PROJECT_META: Record<string, ProjectMeta> = {
+  "ufokko": {
+    emoji: "🎬",
     tags: ["FastAPI", "React", "MongoDB", "Marketplace"],
-    status: "PRODUCAO",
+    status: "PRODUÇÃO",
+    priority: 1,
   },
-  {
-    name: "ARENABITE",
-    url: "https://arenabite.lovable.app",
-    icon: "/images/projects/arenabite.png",
-    iconWidth: 36,
-    iconHeight: 36,
-    description:
-      "Nutricao tatica com IA para atletas de Beach Tennis e Volei de Praia. Scanner de IA analisa refeicoes por foto e monta timeline nutricional preditiva.",
-    tags: ["React", "TypeScript", "IA", "SaaS"],
+  "arenabite": {
+    emoji: "🥗",
+    tags: ["Next.js", "TypeScript", "IA", "SaaS"],
     status: "EM DEV",
+    priority: 2,
   },
-  {
-    name: "POPULARIZEI",
-    url: "https://popularizei.vercel.app",
-    icon: "/images/projects/popularizei.png",
-    iconWidth: 120,
-    iconHeight: 28,
-    description:
-      "Plataforma IA para crescer no Instagram. Analise de perfil, scripts palavra por palavra com gatilhos mentais, jornada Fear-to-Fame.",
+  "gold-carbon": {
+    emoji: "🚗",
+    tags: ["Next.js", "TypeScript", "BYD", "Carbono"],
+    status: "EM DEV",
+    priority: 3,
+  },
+  "popularizei": {
+    emoji: "📈",
     tags: ["Next.js", "TypeScript", "IA", "Growth"],
     status: "EM DEV",
+    priority: 4,
   },
-  {
-    name: "NUTRI TALITA",
-    url: "https://nutri-talita.vercel.app",
-    icon: null,
-    emoji: "🥗",
-    description:
-      "Site profissional de nutricao com Sanity CMS. Conteudo gerenciado, design responsivo e otimizado para SEO.",
+  "hernando-ia": {
+    emoji: "🧠",
+    tags: ["Next.js", "Tailwind", "Blog", "IA"],
+    status: "ATIVO",
+    priority: 5,
+  },
+  "claude-code-skills": {
+    emoji: "⚡",
+    tags: ["Claude Code", "Python", "Skills", "Open Source"],
+    status: "ATIVO",
+    priority: 6,
+  },
+  "nutri-talita": {
+    emoji: "🥑",
     tags: ["Next.js", "Sanity", "CMS", "TypeScript"],
     status: "ATIVO",
+    priority: 7,
   },
-  {
-    name: "VIDEOMAKERS APP",
-    url: "https://github.com/hcb2019/videomakers-app-antigo",
-    icon: null,
+  "videomakers-app-antigo": {
     emoji: "📱",
-    description:
-      "App mobile React Native para marketplace de videomakers. Versao legada — Expo + Firebase + React Navigation.",
     tags: ["React Native", "Expo", "Firebase", "Legado"],
     status: "ARQUIVADO",
+    priority: 8,
   },
-];
+};
+
+const DEFAULT_META: ProjectMeta = {
+  emoji: "🚀",
+  tags: ["Open Source"],
+  status: "EM DEV",
+  priority: 99,
+};
+
+function getProjectMeta(repo: GitHubRepo): ProjectMeta {
+  // Try exact name match
+  if (PROJECT_META[repo.name.toLowerCase()]) {
+    return PROJECT_META[repo.name.toLowerCase()];
+  }
+  // Try partial match on name
+  for (const [key, meta] of Object.entries(PROJECT_META)) {
+    if (repo.name.toLowerCase().includes(key) || key.includes(repo.name.toLowerCase())) {
+      return meta;
+    }
+  }
+  // Generate tags from language
+  const tags = repo.language ? [repo.language] : [];
+  return {
+    ...DEFAULT_META,
+    tags,
+  };
+}
 
 // ── Helpers ─────────────────────────────────────────────────────────────
 
@@ -91,10 +131,18 @@ function formatReach(n: number): string {
 // ── Component ───────────────────────────────────────────────────────────
 
 export default function ProjectsSection({
+  repos,
   instagramFollowers = 1145,
   instagramPosts = 109,
   instagramReach = 292000,
 }: ProjectsSectionProps) {
+  // Filter out archived/videomakers repos from main display, sort by priority
+  const activeRepos = repos
+    .filter((r) => getProjectMeta(r).status !== "ARQUIVADO")
+    .sort((a, b) => getProjectMeta(a).priority - getProjectMeta(b).priority);
+
+  const visibleRepos = activeRepos.slice(0, 9); // max 9 cards (3x3 grid)
+
   return (
     <section id="projetos" className="relative py-32 px-6">
       <div className="max-w-6xl mx-auto">
@@ -109,74 +157,66 @@ export default function ProjectsSection({
             </h2>
             <p className="text-lg text-[--muted-foreground] max-w-2xl">
               Produtos e ferramentas que aplicam IA para resolver problemas reais —
-              do mercado de video a nutricao, do growth ao open source.
+              do mercado de vídeo à nutrição, do growth ao open source.
             </p>
           </div>
         </ScrollReveal>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-px bg-[--border]">
-          {projects.map((project, i) => (
-            <ScrollReveal key={project.name} delay={i * 100}>
-              <a
-                href={project.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="bg-[--background] p-8 flex flex-col gap-5 group card-invert transition-colors duration-300 block h-full"
-              >
-                {/* Status badge */}
-                <div className="flex justify-end">
-                  <span
-                    className={`text-[10px] font-bold uppercase tracking-[0.12em] px-2.5 py-1 border ${
-                      project.status === "PRODUCAO"
-                        ? "border-[--accent] text-[--accent]"
-                        : project.status === "ARQUIVADO"
-                        ? "border-[--border] text-[--muted-foreground]/40"
-                        : "border-[--border] text-[--muted-foreground]"
-                    }`}
-                  >
-                    {project.status}
-                  </span>
-                </div>
-
-                <div className="flex items-center gap-3">
-                  {project.icon ? (
-                    <Image
-                      src={project.icon}
-                      alt={project.name}
-                      width={project.iconWidth}
-                      height={project.iconHeight}
-                      className="object-contain"
-                      unoptimized
-                    />
-                  ) : (
-                    <span className="text-3xl">{project.emoji}</span>
-                  )}
-                  <h3 className="text-xl font-bold uppercase tracking-tighter card-invert-text group-hover:text-[--accent-foreground]">
-                    {project.name}
-                  </h3>
-                </div>
-
-                <p className="text-sm text-[--muted-foreground] leading-relaxed flex-grow card-invert-muted">
-                  {project.description}
-                </p>
-
-                <div className="flex flex-wrap gap-2">
-                  {project.tags.map((tag) => (
+          {visibleRepos.map((repo, i) => {
+            const meta = getProjectMeta(repo);
+            return (
+              <ScrollReveal key={repo.name} delay={i * 100}>
+                <a
+                  href={repo.html_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="bg-[--background] p-8 flex flex-col gap-5 group card-invert transition-colors duration-300 block h-full"
+                >
+                  {/* Status badge */}
+                  <div className="flex justify-end">
                     <span
-                      key={tag}
-                      className="text-[10px] uppercase tracking-[0.08em] px-2.5 py-1 border border-[--border] text-[--muted-foreground]"
+                      className={`text-[10px] font-bold uppercase tracking-[0.12em] px-2.5 py-1 border ${
+                        meta.status === "PRODUÇÃO"
+                          ? "border-[--accent] text-[--accent]"
+                          : meta.status === "ARQUIVADO"
+                            ? "border-[--border] text-[--muted-foreground]/40"
+                            : "border-[--border] text-[--muted-foreground]"
+                      }`}
                     >
-                      {tag}
+                      {meta.status}
                     </span>
-                  ))}
-                </div>
+                  </div>
 
-                <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-tighter text-[--muted-foreground] opacity-0 group-hover:opacity-100 transition-opacity">
-                  {project.status === "ARQUIVADO" ? "VER CODIGO →" : "VISITAR PROJETO →"}
-                </div>
-              </a>
-            </ScrollReveal>
-          ))}
+                  <div className="flex items-center gap-3">
+                    <span className="text-3xl">{meta.emoji}</span>
+                    <h3 className="text-xl font-bold uppercase tracking-tighter card-invert-text group-hover:text-[--accent-foreground]">
+                      {repo.name.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())}
+                    </h3>
+                  </div>
+
+                  <p className="text-sm text-[--muted-foreground] leading-relaxed flex-grow card-invert-muted">
+                    {repo.description || "Projeto em desenvolvimento."}
+                  </p>
+
+                  <div className="flex flex-wrap gap-2">
+                    {meta.tags.map((tag) => (
+                      <span
+                        key={tag}
+                        className="text-[10px] uppercase tracking-[0.08em] px-2.5 py-1 border border-[--border] text-[--muted-foreground]"
+                      >
+                        {tag}
+                      </span>
+                    ))}
+                  </div>
+
+                  <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-tighter text-[--muted-foreground] opacity-0 group-hover:opacity-100 transition-opacity">
+                    {meta.status === "ARQUIVADO" ? "VER CÓDIGO →" : "VISITAR PROJETO →"}
+                  </div>
+                </a>
+              </ScrollReveal>
+            );
+          })}
         </div>
 
         {/* Instagram social proof */}

@@ -18,27 +18,19 @@ Escalar e otimizar uma arquitetura multi-agente não significa necessariamente c
 
 📰 Fonte: **KDnuggets** — 3 ago 2026
 
-# Guia para Economizar Uso de Tokens com IA Multiagente - KDnuggets
+Expandir e otimizar uma arquitetura multiagente não significa necessariamente custos proporcionais maiores, se você souber implementar corretamente estas quatro estratégias para economizar o uso de tokens. Por Iván Palomares Carrascosa, Especialista em Conteúdo Técnico da KDnuggets, em 3 de agosto de 2026, em Inteligência Artificial.
 
---> Blog Principais Posts Sobre Temas Carreira em IA Visão Computacional Engenharia de Dados Ciência de Dados Modelos de Linguagem Machine Learning MLOps PLN Programação Python SQL Datasets Eventos Recursos Cheat Sheets Recomendações Tech Briefs Anuncie Participe da Newsletter
-
-# Guia para Economizar Uso de Tokens com IA Multiagente
-
-Expandir e otimizar uma arquitetura multiagente não significa necessariamente custos proporcionais maiores, se você souber implementar corretamente estas quatro estratégias para economizar o uso de tokens. Por Iván Palomares Carrascosa, Especialista em Conteúdo Técnico da KDnuggets, em 3 de agosto de 2026, em Inteligência Artificial
-
---> # Introdução
+## Introdução
 
 Quando múltiplos agentes de IA são conectados para cooperar e lidar com fluxos de trabalho complexos, o volume total de tokens — elementos ou unidades de texto, por assim dizer — pode facilmente disparar. Tudo soma: desde registros de memória até especificações detalhadas de ferramentas, instruções do sistema e muito mais. Eventualmente, isso resulta em execuções mais lentas e esgotamento do orçamento computacional. Consequentemente, gerenciar o uso de tokens é vital para desenvolvedores e profissionais de IA nos dias de hoje. A boa notícia, porém, é a seguinte: expandir e otimizar uma arquitetura multiagente não significa necessariamente custos proporcionais, se você souber implementar corretamente algumas estratégias para economizar o uso de tokens. Este artigo apresenta e demonstra quatro delas em ação.
 
-# Quatro Estratégias Essenciais para Economizar Uso de Tokens
+## Quatro Estratégias Essenciais para Economizar Tokens
 
-Abaixo estão quatro práticas recomendadas comumente adotadas para otimizar soluções de IA multiagente enquanto se maximiza a eficiência no uso de tokens.
+Abaixo estão quatro práticas recomendadas comumente adotadas para otimizar soluções de IA multiagente enquanto se maximiza a eficiência no uso de tokens:
 
-Estratégias para economizar uso de tokens em sistemas de IA multiagente
+### 1. Cache Estático de Instruções (Cache por Correspondência de Prefixo)
 
-// 1. Uso de Cache Estático de Instruções (Cache por Correspondência de Prefixo)
-
-Considere esta estratégia como a regra do "não se repita". Os grandes modelos de linguagem (LLMs), parte indispensável dos agentes de IA modernos, investem muita energia de processamento relendo os mesmos prompts de sistema em turnos sucessivos. O cache de prefixo, que consiste em armazenar pares chave-valor, ajuda
+Considere esta estratégia como a regra do "não se repita". Os grandes modelos de linguagem (LLMs), parte indispensável dos agentes de IA modernos, investem muita energia de processamento relendo os mesmos prompts de sistema em turnos sucessivos. O cache de prefixo, que consiste em armazenar pares chave-valor, ajuda a eliminar essa redundância e reduzir significativamente o consumo de tokens.
 
 
 ## Por Que Importa
@@ -57,10 +49,10 @@ Pra startup BR, cada token é um real saindo do bolso. Essa otimização não é
 
 ## Takeaways
 
-1. **Large language models (LLMs), an indispensable part of modern AI agents, invest much processing energy re-reading the same system prompts in successiv**
-2. **There's good news, though: scaling up and streamlining a multi-agent architecture doesn't necessarily entail equal scaling of costs if you know how to**
-3. **# Four Key Strategies for Saving Token Usage Below are four commonly adopted best practices to streamline multi-agent AI solutions while optimizing th**
-4. **Separe hype de realidade** — nem todo anúncio bilionário se traduz em produto funcional. Espere os resultados.
+1. **Cache de prefixo** — Armazene pares chave-valor para evitar reprocessar prompts de sistema idênticos a cada turno
+2. **Roteamento inteligente** — Direcione tarefas para o modelo mais adequado (nem tudo precisa do GPT-4)
+3. **Prompts enxutos** — Remova instruções redundantes e contexto desnecessário
+4. **Separe hype de realidade** — Nem todo anúncio bilionário se traduz em produto funcional. Espere os resultados.
 
 ## FAQ
 
