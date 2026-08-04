@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-06-29T12:00:12.602534+00:00",
+  "updated_at": "2026-08-04T12:30:07.282846+00:00",
   "github": {
     "user": {
       "login": "hcb2019",
@@ -8,7 +8,7 @@
       "html_url": "https://github.com/hcb2019",
       "bio": null,
       "location": null,
-      "public_repos": 4,
+      "public_repos": 5,
       "followers": 0,
       "following": 0
     },
@@ -21,17 +21,17 @@
         "language": "MDX",
         "stargazers_count": 0,
         "forks_count": 0,
-        "updated_at": "2026-06-29T11:46:17Z"
+        "updated_at": "2026-08-04T09:03:41Z"
       },
       {
-        "name": "gold-carbon",
-        "full_name": "hcb2019/gold-carbon",
-        "html_url": "https://github.com/hcb2019/gold-carbon",
-        "description": "Gold Carbon — Seu BYD vale dinheiro. Transforme km rodados em créditos de carbono.",
+        "name": "instachat",
+        "full_name": "hcb2019/instachat",
+        "html_url": "https://github.com/hcb2019/instachat",
+        "description": "Automação open source para Instagram e inteligência de audiência para Reels",
         "language": "TypeScript",
         "stargazers_count": 0,
-        "forks_count": 0,
-        "updated_at": "2026-06-28T20:19:38Z"
+        "forks_count": 1,
+        "updated_at": "2026-07-30T22:54:49Z"
       },
       {
         "name": "Ufokko",
@@ -41,7 +41,47 @@
         "language": "JavaScript",
         "stargazers_count": 0,
         "forks_count": 0,
-        "updated_at": "2026-06-22T20:08:49Z"
+        "updated_at": "2026-07-26T13:55:02Z"
+      },
+      {
+        "name": "telegram-trader",
+        "full_name": "hcb2019/telegram-trader",
+        "html_url": "https://github.com/hcb2019/telegram-trader",
+        "description": "Bot de trade de criptomoedas integrado ao Telegram",
+        "language": null,
+        "stargazers_count": 0,
+        "forks_count": 0,
+        "updated_at": "2026-07-15T23:46:04Z"
+      },
+      {
+        "name": "hype-commerce",
+        "full_name": "hcb2019/hype-commerce",
+        "html_url": "https://github.com/hcb2019/hype-commerce",
+        "description": null,
+        "language": "TypeScript",
+        "stargazers_count": 0,
+        "forks_count": 0,
+        "updated_at": "2026-07-14T22:57:55Z"
+      },
+      {
+        "name": "arenabite",
+        "full_name": "hcb2019/arenabite",
+        "html_url": "https://github.com/hcb2019/arenabite",
+        "description": "Nutricao tatica com IA para atletas. Scanner de refeicoes por foto, timeline nutricional preditiva e planos personalizados.",
+        "language": "TypeScript",
+        "stargazers_count": 0,
+        "forks_count": 0,
+        "updated_at": "2026-07-09T18:40:58Z"
+      },
+      {
+        "name": "gold-carbon",
+        "full_name": "hcb2019/gold-carbon",
+        "html_url": "https://github.com/hcb2019/gold-carbon",
+        "description": "Gold Carbon — Seu BYD vale dinheiro. Transforme km rodados em créditos de carbono.",
+        "language": "TypeScript",
+        "stargazers_count": 0,
+        "forks_count": 0,
+        "updated_at": "2026-07-06T15:27:19Z"
       },
       {
         "name": "claude-code-skills",
@@ -52,16 +92,6 @@
         "stargazers_count": 0,
         "forks_count": 0,
         "updated_at": "2026-06-08T22:53:44Z"
-      },
-      {
-        "name": "arenabite",
-        "full_name": "hcb2019/arenabite",
-        "html_url": "https://github.com/hcb2019/arenabite",
-        "description": "Nutricao tatica com IA para atletas. Scanner de refeicoes por foto, timeline nutricional preditiva e planos personalizados.",
-        "language": "TypeScript",
-        "stargazers_count": 0,
-        "forks_count": 0,
-        "updated_at": "2026-06-26T10:58:23Z"
       },
       {
         "name": "popularizei",
@@ -82,32 +112,22 @@
         "stargazers_count": 0,
         "forks_count": 0,
         "updated_at": "2026-06-04T18:13:30Z"
-      },
-      {
-        "name": "videomakers-app-antigo",
-        "full_name": "hcb2019/videomakers-app-antigo",
-        "html_url": "https://github.com/hcb2019/videomakers-app-antigo",
-        "description": "App mobile React Native para marketplace de videomakers. Versao legada do Ufokko - Expo + Firebase + React Navigation.",
-        "language": "JavaScript",
-        "stargazers_count": 0,
-        "forks_count": 0,
-        "updated_at": "2026-06-04T18:13:31Z"
       }
     ],
     "stats": {
-      "repos": 8,
+      "repos": 11,
       "stars": 0,
       "followers": 0,
-      "forks": 0
+      "forks": 1
     },
     "events": [],
-    "updated_at": "2026-06-29T12:00:12.602534+00:00"
+    "updated_at": "2026-08-04T12:30:07.282846+00:00"
   },
   "instagram": {
-    "followers": 1435,
-    "posts": 140,
+    "followers": 1573,
+    "posts": 153,
     "account_type": "MEDIA_CREATOR",
-    "reach_30d": 373215,
-    "updated_at": "2026-06-29T12:00:12.602534+00:00"
+    "reach_30d": 56965,
+    "updated_at": "2026-08-04T12:30:07.282846+00:00"
   }
 }
