@@ -1,0 +1,81 @@
+---
+title: "Pequenos Modelos de Linguagem com a biblioteca transformers do Hugging Face + smolLM3"
+date: "2026-08-09"
+excerpt: "Pequenos Modelos de Linguagem com a bibl: Rodar um modelo de 70B em produção é caro e, para muitas tarefas, desnecessário. Se você está construindo um pipeline focado, um modelo de 3B bem treinado vai igualar ou superar o de 70B na sua tarefa específica, por uma fração do custo."
+tags: [IA, Inteligência Artificial, KDnuggets, Tarde]
+readingTime: 4
+sponsored: false
+premium: false
+---
+
+![Imagem: KDnuggets](https://www.kdnuggets.com/wp-content/uploads/kdn-small-language-models-with-hugging-face-transformers-library-smollm3-feature.png)
+
+*Imagem: [KDnuggets](https://www.kdnuggets.com/small-language-models-with-hugging-face-transformers-library-smollm3)*
+
+Rodar um modelo de 70B em produção é caro e, para muitas tarefas, desnecessário. Se você está construindo um pipeline focado, um modelo de 3B bem treinado vai igualar ou superar o de 70B na sua tarefa específica por uma fração do custo.
+
+## O Que Aconteceu
+
+📰 Fonte: **KDnuggets** — 7 ago 2026
+
+# Modelos de Linguagem Pequenos com a Biblioteca transformers do Hugging Face + smolLM3
+
+## Blog | Principais Publicações | Sobre | Temas | IA | Carreira em Tecnologia | Visão Computacional | Engenharia de Dados | Ciência de Dados | Modelos de Linguagem | Aprendizado de Máquina | MLOps | NLP | Programação | Python | SQL | Conjuntos de Dados | Eventos | Recursos | Cheat Sheets | Recomendações | Briefings Técnicos | Anuncie | Assine a Newsletter
+
+# Modelos de Linguagem Pequenos com a Biblioteca transformers do Hugging Face + smolLM3
+
+Executar um modelo de 70B em produção é caro e, para muitas tarefas, desnecessário. Se você está construindo um pipeline focado, um modelo de 3B bem treinado vai igualar ou superar o de 70B na sua tarefa específica por uma fração do custo.
+
+Por Shittu Olumide, Especialista em Conteúdo Técnico, em 7 de agosto de 2026, em Modelos de Linguagem
+
+## Pequeno, Mas Poderoso
+
+Executar um modelo de 70B em produção pode ser caro, lento e, para muitas tarefas, desnecessário. Se você está construindo um pipeline específico — como um classificador de documentos ou um assistente de suporte multilíngue — um modelo de 3B bem treinado vai igualar ou superar o desempenho do de 70B na sua tarefa específica por uma fração do custo.
+
+O modelo de 3B cabe inteiramente em uma única GPU de consumo. Ele carrega em segundos. Não custa nada por token. E em hardware limitado, é a única opção que funciona de fato. Esse é o verdadeiro argumento a favor dos modelos de linguagem pequenos (SLMs).
+
+Este artigo utiliza o SmolLM3, o principal modelo de 3B do Hugging Face, lançado em 8 de julho de 2025, como modelo de trabalho ao longo de todo o texto. É o SLM mais tecnicamente interessante disponível na escala de 3B atualmente, treinado com 11,2 trilhões de tokens, com suporte a janela de contexto de 128k, raciocínio de modo duplo, chamada nativa de ferramentas, seis idiomas e licença Apache 2.0, com o blueprint completo de treinamento publicado junto aos pesos.
+
+O projeto que percorre todas as seções: um roteador de tickets de suporte ao cliente multilíngue que classifica os tickets recebidos por categoria, detecta o idioma do ticket, gera uma resposta no mesmo idioma e sinaliza saídas de baixa confiança para escalonamento humano.
+
+Ao final, você terá um pipeline funcional que pode adaptar para suas próprias necessidades.
+
+
+## Por Que Importa
+
+Este desenvolvimento tem peso no ecossistema de IA atual. Embora não seja um evento sísmico, contribui para tendências maiores que estão moldando o setor. Profissionais de tecnologia devem monitorar os desdobramentos nas próximas semanas.
+## Minha Opinião
+
+Papo reto: 70B pra tarefa específica é desperdício. O smolLM3 de 3B bem fine-tunado resolve 90% dos casos reais, e roda até em GPU de dev aqui no Brasil sem penhorar o rim. A galera fica obcecada com benchmark de modelo gigante, mas esquece que latência e custo por request é que quebram startup.
+
+O truque é pipeline: modelo pequeno pra extração, outro pra classificação, e só escala quando precisa. Com Hugging Face, dá pra fazer isso em uma tarde. Se você depende de API cara pra tudo, tá pagando imposto de preguiça técnica. Testa o smolLM3 antes de chorar por falta de verba.
+## Fontes
+
+- [KDnuggets](https://www.kdnuggets.com/small-language-models-with-hugging-face-transformers-library-smollm3) — 7 ago 2026
+- Categoria: Agregador especializado
+- Curadoria: pipeline hernandoia.com (score: 73/100)
+
+## Takeaways
+
+1. **Research from the SmolLM2 paper (arxiv, February 2025) showed that at the 1B&mdash;3B scale, carefully curated training data consistently outperforms **
+2. **SmolLM3 takes that further: 11.2 trillion training tokens across a staged curriculum &mdash; web, code, math, and reasoning data &mdash; plus 140 bill**
+3. **# Why Small Language Models Deserve More Attention The parameter-count fixation in AI is understandable but misleading**
+4. **Separe hype de realidade** — nem todo anúncio bilionário se traduz em produto funcional. Espere os resultados.
+
+## FAQ
+
+### O que é Small, Language e por que isso importa?
+
+Running a 70B model in production is expensive, and for many tasks, unnecessary. If you're building a focused pipeline, a well-trained 3B model will match or beat the 70B on your specific task at a fraction of the cost.
+
+### Como Small impacta o mercado de IA em 2026?
+
+Baseado na cobertura de KDnuggets, essa movimentação reflete uma tendência maior de consolidação e aceleração no setor de inteligência artificial, com impactos diretos em infraestrutura, modelos de negócio e adoção empresarial.
+
+### O que desenvolvedores e empresas devem saber sobre If?
+
+As principais implicações práticas envolvem acesso a novos modelos, mudanças de preço de APIs, e possíveis parcerias que alteram o cenário competitivo. Recomendação: acompanhe os anúncios oficiais e teste as ferramentas assim que disponíveis.
+
+### Qual a relevância dessa notícia para o Brasil?
+
+O mercado brasileiro de IA está em crescimento acelerado. Iniciativas como essa impactam diretamente a disponibilidade de tecnologia, preços de APIs e oportunidades para startups locais que constroem sobre essas plataformas.
