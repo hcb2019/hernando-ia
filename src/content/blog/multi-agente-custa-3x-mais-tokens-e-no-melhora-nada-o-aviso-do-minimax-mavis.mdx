@@ -1,0 +1,49 @@
+---
+title: "Multi-agente custa 3x mais tokens e não melhora nada — o aviso do MiniMax Mavis"
+slug: "multi-agente-custa-3x-mais-tokens-minimax-mavis"
+date: "2026-08-03"
+author: "@hernando.ia"
+excerpt: "O MiniMax Mavis mostra com números o que todo time de agentes precisava ler: multi-agente desestruturado custa de 2,1x a 3,4x mais tokens sem ganho de acurácia. Consenso é caro — e papel distinto é tudo."
+tags: ["multi-agente", "minimax", "mavis", "agentes-ia", "custo-tokens", "arquitetura-ia"]
+featured: true
+---
+
+Todo mundo tá colocando "agente" no produto. E quando o resultado não melhora, a resposta padrão é sempre a mesma: **"bota mais um agente pra supervisionar"**. Pois o MiniMax Mavis acaba de dar o número que todo mundo deveria ter lido antes de fazer isso: debate multi-agente desestruturado custa de **2,1x a 3,4x mais tokens** e não ganha nada em acurácia. Consenso é caro. Agora tem preço.
+
+## O Que Aconteceu
+
+O KDnuggets fez o que raramente se faz: em vez de repetir release note, pegou o post de arquitetura que o MiniMax publicou em maio e **testou as claims na API real**.
+
+Contexto rápido: o agente do MiniMax, lançado em meados de 2025, foi renomeado pra **Mavis** em maio de 2026 e reconstruído em torno de **Agent Teams** — um Líder, Workers e um Verifier. Virou ferramenta diária pra mais da metade do próprio time do MiniMax em dois meses de uso interno, segundo eles.
+
+O modelo novo, o **M3**, tem atenção esparsa própria, contexto de até **1 milhão de tokens** e entrada multimodal nativa. E um detalhe que pouca gente notou: **a API fala o formato de mensagens da Anthropic diretamente**. Se você já usou o SDK do Claude, o MiniMax é familiar na hora.
+
+Mas o dado que importa não é o modelo. É o que eles chamam de **Cost of Consensus**: colocar modelos homogêneos pra debater entre si pode custar de 2,1x a 3,4x o token de um único agente corrigindo a própria saída — **sem melhora de acurácia, e às vezes com resultado pior**. O próprio post do MiniMax admite o que quase nenhum lab admite: isso só compensa em tarefas longas e verificáveis.
+
+## Por Que Importa
+
+Esse número deveria estar colado na parede de todo time que tá "arquiteturando" agentes hoje. A indústria inteira repetiu o mesmo erro nos últimos anos: pegar uma task simples, jogar cinco LLMs numa sala e chamar de orquestração. Os benchmarks de marketing mostram o multi-agente lindo; **a conta real aparece na fatura de tokens**.
+
+O padrão que funciona é outro: **papéis heterogêneos e um verificador** — exatamente o Leader/Worker/Verifier do Mavis, ou os Teammates isolados do Claude Code. Multi-agente não é upgrade automático; é uma decisão de design com custo explícito.
+
+E olha o contraste do momento: o Congresso americano gastou **~US$ 100 mil em ChatGPT** no último ano — 90% de todo o orçamento de IA da Câmara. A adoção institucional disparou, todo mundo comprou a IA. Mas a arquitetura de agentes ainda é terra de ninguém, e a maioria das implementações por aí é só um monte de LLM conversando sem design.
+
+## Minha Opinião
+
+Vou ser direto: **multi-agente virou o microservices de 2026**. Mesma energia de "vamos separar em 12 serviços" — complexidade explodindo, latência subindo, e ninguém consegue explicar o ganho real. A diferença é que microservice pelo menos escala. Multi-agente desestruturado nem isso faz: você multiplica custo e não divide trabalho — só duplica o mesmo modelo argumentando com ele mesmo.
+
+A regra que eu uso: **agente novo só entra se tiver papel distinto** — ferramenta diferente, contexto diferente, critério de verificação diferente. Se for o mesmo LLM "debatendo" com ele mesmo, é teatro. E o Cost of Consensus cobra caro pelo ingresso.
+
+E o bônus do M3 falando o formato da Anthropic: a camada de API de agentes tá convergindo pra um padrão de facto. Pra dev, isso é ótimo — portabilidade de verdade, sem rewrite quando o fornecedor mudar de ideia.
+
+## Takeaways
+
+- **Mede antes de orquestrar.** Se um agente com loop de auto-correção resolve, essa é a resposta. Multi-agente não é upgrade automático.
+- Multi-agente só compensa em **tarefa longa e verificável**, com papéis distintos (Leader/Worker/Verifier ou similar).
+- Modelo homogêneo debatendo com ele mesmo = **2,1x–3,4x de tokens sem ganho de acurácia**. Consenso tem preço.
+- APIs compatíveis com o formato Anthropic viraram atalho de portabilidade. Testa antes de comprar lock-in.
+
+## Fontes
+
+- [Does MiniMax Agent Actually Make Work Easier? — KDnuggets](https://www.kdnuggets.com/does-minimax-agent-actually-make-work-easier)
+- [Congress's favorite AI tool? ChatGPT — TechCrunch](https://techcrunch.com/2026/08/03/congresss-favorite-ai-tool-chatgpt/)
