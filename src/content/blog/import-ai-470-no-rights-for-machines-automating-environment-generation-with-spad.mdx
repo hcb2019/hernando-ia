@@ -1,0 +1,68 @@
+---
+title: "Import ai 470: no rights for machines; automating environment generation with spade; and building better gpu kernels with hawkeye"
+date: "2026-08-25"
+excerpt: "Import ai 470: Why this matters - part of RSI: This is basically a form of fancy synthetic data generation, letting researchers use whatever powerful model they have to hand to generate a more diverse set of training environments for another model to train against."
+tags: [IA, Inteligência Artificial, Chips, Import AI (Jack Clark), Manhã]
+readingTime: 4
+sponsored: false
+premium: false
+---
+
+![Imagem: Import AI (Jack Clark)](https://substackcdn.com/image/fetch/$s_!3yYS!,w_40,h_40,c_fill,f_auto,q_auto:good,fl_progressive:steep/https%3A%2F%2Fsubstack-post-media.s3.amazonaws.com%2Fpublic%2Fimages%2Fd6d17996-2bef-40a4-abe3-be72a0e8a227_258x258.png)
+
+*Imagem: [Import AI (Jack Clark)](https://importai.substack.com/p/import-ai-470-no-rights-for-machines)*
+
+Segundo o Import AI (Jack Clark), why this matters - part of RSI: This is basically a form of fancy synthetic data generation, letting researchers use whatever powerful model they have to hand to generate a more diverse set of training environments for another model to train against.
+
+## O Que Aconteceu
+
+📰 Fonte: **Import AI (Jack Clark)** — 24 ago 2026
+
+Why this matters - part of RSI: This is basically a form of fancy synthetic data generation, letting researchers use whatever powerful model they have to hand to generate a more diverse set of training environments for another model to train against.
+
+How it works : SPADE has an LLM alternate between generating executable training environments (e.g., puzzles where a system needs to solve a simulated genetic problem in a biology lab) and having an LLM try to solve them.
+
+SPADE has two key roles for the model being used: Environment Designer; writes complete, long-horizon training environments as executable code.
+
+- Each model is tuned via GRPO for 400 rollouts of 25 environments each, then assessed against a variety of benchmarks including AIME, GPQA, LCB, and environments within Reasoning Gym.
+- This kind of technique makes it a lot cheaper to build big, broad datasets to use to train models on.
+- “By representing environments as Python programs with a Gym-style interface, the framework unifies single-turn reasoning and multi-turn agentic tasks, and turns environment design into a learnable, RL-trained component of post-training, enabling continual open-ended self-improvement,” they write.
+- Results - helps AI agents write good kernels, even for newer and less well-understood hardware : “We evaluate Hawkeye on porting PyTorch workloads to high-performance kernels across NVIDIA Ampere, Hopper, Blackwell, and AMD MI350, and across BF16, FP8, NVFP4, and MXFP4 precisions,” they write.
+
+
+## Por Que Importa
+
+Este desenvolvimento tem peso no ecossistema de IA atual. Embora não seja um evento sísmico, contribui para tendências maiores que estão moldando o setor. Profissionais de tecnologia devem monitorar os desdobramentos nas próximas semanas.
+## Minha Opinião
+
+Mais uma peça no tabuleiro da IA. O que me chama atenção aqui não é só o anúncio em si, mas o que ele representa como tendência. Estamos vendo o mercado amadurecer em tempo real — e o Brasil precisa participar dessa conversa, não só como consumidor, mas como produtor de tecnologia.
+## Fontes
+
+- [Import AI (Jack Clark)](https://importai.substack.com/p/import-ai-470-no-rights-for-machines) — 24 ago 2026
+- Categoria: Fonte independente
+- Curadoria: pipeline hernandoia.com (score: 86/100)
+
+## Takeaways
+
+1. **Why this matters - part of RSI: This is basically a form of fancy synthetic data generation, letting researchers use whatever powerful model they have**
+2. **How it works : SPADE has an LLM alternate between generating executable training environments (e.g., puzzles where a system needs to solve a simulated**
+3. **SPADE has two key roles for the model being used: Environment Designer; writes complete, long-horizon training environments as executable code**
+4. **Separe hype de realidade** — nem todo anúncio bilionário se traduz em produto funcional. Espere os resultados.
+
+## FAQ
+
+### O que é Import, AI e por que isso importa?
+
+Differential acceleration of cyber, math, and AI
+
+### Como Import impacta o mercado de IA em 2026?
+
+Baseado na cobertura de Import AI (Jack Clark), essa movimentação reflete uma tendência maior de consolidação e aceleração no setor de inteligência artificial, com impactos diretos em infraestrutura, modelos de negócio e adoção empresarial.
+
+### O que desenvolvedores e empresas devem saber sobre Import?
+
+As principais implicações práticas envolvem acesso a novos modelos, mudanças de preço de APIs, e possíveis parcerias que alteram o cenário competitivo. Recomendação: acompanhe os anúncios oficiais e teste as ferramentas assim que disponíveis.
+
+### Qual a relevância dessa notícia para o Brasil?
+
+O mercado brasileiro de IA está em crescimento acelerado. Iniciativas como essa impactam diretamente a disponibilidade de tecnologia, preços de APIs e oportunidades para startups locais que constroem sobre essas plataformas.
