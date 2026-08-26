@@ -19,164 +19,128 @@ import Footer from "@/components/layout/footer";
 import { generatePageMeta, SITE } from "@/lib/seo";
 
 export const metadata: Metadata = generatePageMeta({
-  title: "6 ferramentas para agentes de IA",
+  title: "Como instalar ferramentas para agentes de IA",
   description:
-    "Guia direto para instalar Pipecat, Cline, Postiz, CrewAI, Browser Use e Firecrawl usando seu próprio agente de IA.",
+    "Guia simples para instalar e usar Pipecat, Cline, Postiz, CrewAI, Browser Use e Firecrawl com seu agente de IA.",
   path: "/ferramentas-agentes-ia",
   ogImage:
-    "/api/og?title=6+ferramentas+para+agentes+de+IA&subtitle=Guia+direto+para+instalar+com+seu+agente",
+    "/api/og?title=Como+instalar+ferramentas+de+IA&subtitle=Passo+a+passo+para+quem+está+começando",
   tags: [
-    "agentes de IA",
+    "como instalar agentes de IA",
     "ferramentas de IA",
     "automação",
     "Cline",
     "CrewAI",
     "Browser Use",
-    "Firecrawl",
   ],
 });
 
 type Tool = {
   name: string;
-  repo: string;
-  description: string;
-  use: string;
-  goodFor: string;
-  attention: string;
-  prompt: string;
+  oneLine: string;
   docs: string;
+  installPrompt: string;
+  usePrompt: string;
   Icon: typeof Bot;
 };
 
 const tools: Tool[] = [
   {
     name: "Pipecat",
-    repo: "pipecat-ai/pipecat",
-    description: "Framework open source para agentes de voz e aplicações de IA em tempo real.",
-    use: "Use quando seu agente precisa ouvir, responder por voz ou conversar em tempo real.",
-    goodFor: "Atendimento por voz, assistentes de áudio e experiências multimodais.",
-    attention: "Normalmente envolve provedor de voz, modelo de IA e infraestrutura para rodar com estabilidade.",
-    prompt:
-      "Quero criar um agente de voz com Pipecat. Leia a documentação oficial, avalie meu computador ou VPS, monte um ambiente isolado com uv e me entregue um exemplo mínimo funcionando. Antes de usar qualquer serviço pago, me mostre as opções e o custo.",
+    oneLine: "Cria agentes que conversam por voz em tempo real.",
     docs: "https://github.com/pipecat-ai/pipecat",
+    installPrompt:
+      "Quero instalar Pipecat para testar um agente de voz. Leia a documentação oficial, veja se meu computador ou VPS atende aos requisitos, crie um ambiente isolado e rode um exemplo mínimo. Explique cada etapa de forma simples. Antes de usar qualquer serviço pago, me mostre as opções e os custos.",
+    usePrompt:
+      "O Pipecat já está instalado. Me ajude a criar um agente que recebe minha voz, responde em português e funciona apenas em ambiente de teste. Me diga quais informações você precisa antes de começar.",
     Icon: Mic,
   },
   {
     name: "Cline",
-    repo: "cline/cline",
-    description: "Agente de programação que trabalha dentro do editor e mostra cada alteração para você revisar.",
-    use: "Use para criar, corrigir e entender projetos de código com assistência de IA.",
-    goodFor: "Sites, automações, correção de bugs e tarefas de desenvolvimento.",
-    attention: "Você precisa configurar um modelo de IA e acompanhar permissões, comandos e alterações de código.",
-    prompt:
-      "Quero instalar e configurar o Cline no meu editor. Identifique meu editor, instale a extensão oficial, me explique como conectar um provedor de modelo e deixe o modo de revisão ativado. Não altere nenhum projeto sem me mostrar o plano primeiro.",
+    oneLine: "Coloca um agente de programação dentro do seu editor de código.",
     docs: "https://docs.cline.bot/getting-started/installing-cline",
+    installPrompt:
+      "Quero instalar o Cline no meu computador. Descubra qual editor eu uso, instale a extensão oficial e me guie para configurar um modelo de IA. Não altere nenhum arquivo de projeto antes de me mostrar o plano.",
+    usePrompt:
+      "Estou usando o Cline. Analise este projeto e me explique, em linguagem simples, como ele funciona. Depois, me sugira três melhorias pequenas. Não faça alterações sem minha aprovação.",
     Icon: Code2,
   },
   {
     name: "Postiz",
-    repo: "gitroomhq/postiz-app",
-    description: "Ferramenta de agendamento e gestão de conteúdo para redes sociais, com opção de hospedar por conta própria.",
-    use: "Use para organizar calendário, preparar posts e centralizar a publicação em redes sociais.",
-    goodFor: "Times de conteúdo, rotina de posts e operação com várias redes.",
-    attention: "A instalação própria pede Docker, banco de dados e conexão autorizada com cada rede social.",
-    prompt:
-      "Quero avaliar o Postiz para organizar posts nas redes sociais. Leia a documentação oficial de self-hosting, verifique se meu VPS tem Docker e recursos suficientes e me entregue um plano de instalação. Não publique nada e não conecte redes sem minha autorização.",
+    oneLine: "Organiza e agenda conteúdo para redes sociais.",
     docs: "https://docs.postiz.com/quickstart",
+    installPrompt:
+      "Quero avaliar o Postiz para organizar conteúdo nas redes sociais. Leia a documentação oficial, veja se meu VPS tem Docker e recursos suficientes e me apresente um plano de instalação passo a passo. Não conecte nenhuma rede social sem minha autorização.",
+    usePrompt:
+      "O Postiz já está pronto. Me ensine a criar um calendário de testes com três posts. Não publique nada. Quero apenas deixar os posts salvos como rascunho para eu revisar.",
     Icon: CalendarDays,
   },
   {
     name: "CrewAI",
-    repo: "crewAIInc/crewAI",
-    description: "Framework em Python para organizar vários agentes de IA com funções e tarefas definidas.",
-    use: "Use quando uma tarefa grande pode ser dividida entre pesquisa, análise, escrita e revisão.",
-    goodFor: "Pesquisa estruturada, operações com múltiplos agentes e fluxos repetíveis.",
-    attention: "Não substitui uma boa definição de processo. Você ainda precisa decidir o objetivo, os dados e quem aprova o resultado.",
-    prompt:
-      "Quero testar CrewAI em um projeto simples. Verifique minha versão do Python, crie um ambiente com uv, siga a instalação oficial e monte um exemplo pequeno com dois agentes. Explique onde entram as chaves de API e não coloque nenhuma chave no código ou no Git.",
+    oneLine: "Organiza vários agentes de IA trabalhando em uma tarefa.",
     docs: "https://docs.crewai.com/en/installation",
+    installPrompt:
+      "Quero instalar CrewAI do jeito mais simples possível. Verifique minha versão do Python, crie um ambiente isolado e siga a documentação oficial. Monte um exemplo pequeno com dois agentes e explique o que cada um faz. Nunca coloque chaves de API no código ou no Git.",
+    usePrompt:
+      "Quero usar CrewAI para pesquisar um tema e transformar a pesquisa em um resumo. Crie um fluxo simples com um agente pesquisador e outro revisor. Primeiro me mostre o plano e só depois execute.",
     Icon: UsersRound,
   },
   {
     name: "Browser Use",
-    repo: "browser-use/browser-use",
-    description: "Biblioteca para dar acesso controlado à web para agentes de IA.",
-    use: "Use quando o agente precisa navegar, ler páginas ou executar uma tarefa online permitida.",
-    goodFor: "Pesquisa na web, testes de sites e automações guiadas no navegador.",
-    attention: "Automação de navegador exige limites claros. Nunca entregue senhas ao agente e revise ações que enviam, publicam ou compram algo.",
-    prompt:
-      "Quero usar Browser Use no meu agente. Siga a documentação oficial com uv, conecte em um navegador de teste e faça uma demonstração segura apenas de leitura. Antes de permitir logins, envios ou compras, me peça confirmação explícita.",
+    oneLine: "Permite que um agente navegue na web de forma controlada.",
     docs: "https://github.com/browser-use/browser-use",
+    installPrompt:
+      "Quero instalar Browser Use para testes seguros de navegação. Siga a documentação oficial, crie um ambiente isolado e faça uma demonstração apenas de leitura em um site público. Não faça login, não envie formulários e não use nenhuma senha.",
+    usePrompt:
+      "Use Browser Use apenas para pesquisar estas três páginas públicas e me devolver uma tabela com título, resumo e link. Não faça login, não clique em botões de compra e não envie dados.",
     Icon: Globe2,
   },
   {
     name: "Firecrawl",
-    repo: "firecrawl/firecrawl",
-    description: "API para pesquisar, extrair e preparar conteúdo da web para fluxos de IA.",
-    use: "Use quando você precisa transformar páginas em conteúdo mais fácil de pesquisar e processar.",
-    goodFor: "Bases de conhecimento, pesquisa em escala e extração de conteúdo público.",
-    attention: "A versão self-hosted é uma operação maior. Ela usa serviços de apoio e precisa respeitar termos dos sites e limites de acesso.",
-    prompt:
-      "Quero avaliar Firecrawl para extrair conteúdo público para uma base de conhecimento. Leia o guia oficial de self-hosting, confira os requisitos de Docker e recursos, e me apresente a arquitetura mínima. Não faça coleta em massa nem contorne bloqueios de sites.",
+    oneLine: "Extrai conteúdo público da web para pesquisa e bases de conhecimento.",
     docs: "https://docs.firecrawl.dev/contributing/self-host",
+    installPrompt:
+      "Quero avaliar Firecrawl para uma base de conhecimento. Leia o guia oficial de self-hosting, verifique os requisitos de Docker e recursos e me mostre a arquitetura mínima. Não faça coleta em massa e não tente contornar bloqueios de sites.",
+    usePrompt:
+      "Use Firecrawl apenas nestas URLs públicas para criar um resumo por página. Respeite os termos dos sites, limite a coleta às URLs que eu fornecer e me mostre o resultado antes de salvar qualquer dado.",
     Icon: Flame,
   },
 ];
 
-const pageJsonLd = {
+const jsonLd = {
   "@context": "https://schema.org",
-  "@type": "ItemList",
-  name: "Ferramentas para agentes de IA",
+  "@type": "HowTo",
+  name: "Como instalar ferramentas para agentes de IA",
   description:
-    "Guia em português para entender e instalar ferramentas de agentes de IA com apoio de um agente de programação.",
+    "Guia simples para usar um agente de programação na instalação e no primeiro teste de ferramentas de IA.",
   url: `${SITE.url}/ferramentas-agentes-ia`,
-  itemListElement: tools.map((tool, index) => ({
-    "@type": "ListItem",
-    position: index + 1,
-    name: tool.name,
-    url: tool.docs,
-  })),
-};
-
-const faqJsonLd = {
-  "@context": "https://schema.org",
-  "@type": "FAQPage",
-  mainEntity: [
+  step: [
     {
-      "@type": "Question",
-      name: "Preciso instalar todas as ferramentas?",
-      acceptedAnswer: {
-        "@type": "Answer",
-        text: "Não. Escolha a ferramenta pelo problema. Cline ajuda a programar, Browser Use navega na web, CrewAI organiza múltiplos agentes, Postiz ajuda no calendário social, Pipecat trabalha com voz e Firecrawl extrai conteúdo da web.",
-      },
+      "@type": "HowToStep",
+      name: "Escolha uma ferramenta",
+      text: "Comece pela ferramenta que resolve o problema que você tem agora.",
     },
     {
-      "@type": "Question",
-      name: "Posso pedir para um agente de IA instalar essas ferramentas?",
-      acceptedAnswer: {
-        "@type": "Answer",
-        text: "Sim. Diga o objetivo, peça para ele seguir a documentação oficial, criar um ambiente isolado e mostrar o plano antes de executar. Revise permissões, integrações, custos e qualquer ação externa.",
-      },
+      "@type": "HowToStep",
+      name: "Envie o prompt de instalação",
+      text: "Copie o prompt da ferramenta e envie para seu agente de programação.",
     },
     {
-      "@type": "Question",
-      name: "Essas ferramentas são gratuitas?",
-      acceptedAnswer: {
-        "@type": "Answer",
-        text: "Grande parte é open source, mas o uso pode exigir computador ou VPS, modelos de IA, serviços de voz, banco de dados ou APIs. Confirme os custos e limites atuais na documentação oficial antes de colocar em produção.",
-      },
+      "@type": "HowToStep",
+      name: "Faça um teste seguro",
+      text: "Use o prompt de primeiro uso e só conecte contas ou dados reais depois de revisar.",
     },
   ],
 };
 
-function PromptBox({ prompt }: { prompt: string }) {
+function Prompt({ label, text }: { label: string; text: string }) {
   return (
-    <div className="mt-6 border border-[--border] bg-black/20 p-4">
+    <div className="border border-[--border] bg-black/20 p-4">
       <div className="mb-3 flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.16em] text-[--accent]">
         <Terminal className="h-3.5 w-3.5" strokeWidth={1.5} />
-        Prompt para copiar no seu agente
+        {label}
       </div>
-      <p className="text-sm leading-6 text-white/75">{prompt}</p>
+      <p className="text-sm leading-6 text-white/70">{text}</p>
     </div>
   );
 }
@@ -186,38 +150,34 @@ export default function FerramentasAgentesIaPage() {
     <>
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(pageJsonLd) }}
-      />
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }}
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
       <Navbar />
       <main className="min-h-screen bg-[#08081a] pt-20">
         <div className="fixed inset-0 grid-bg opacity-[0.025] pointer-events-none" />
 
-        <section className="relative overflow-hidden border-b border-[--border] px-4 py-18 sm:px-8 sm:py-24">
+        <section className="relative overflow-hidden border-b border-[--border] px-4 py-16 sm:px-8 sm:py-22">
           <div className="absolute -right-24 -top-40 h-[420px] w-[420px] rounded-full bg-[--accent] opacity-[0.07] blur-[120px]" />
           <div className="relative mx-auto max-w-5xl">
             <Link
               href="/"
-              className="mb-10 inline-flex items-center gap-2 text-xs text-white/45 hover:text-[--accent]"
+              className="mb-9 inline-flex items-center gap-2 text-xs text-white/45 hover:text-[--accent]"
             >
               Hernando.ia
               <ChevronRight className="h-3.5 w-3.5" strokeWidth={1.5} />
               Ferramentas
             </Link>
-            <div className="grid gap-10 lg:grid-cols-[1.25fr_.75fr] lg:items-end">
+            <div className="grid gap-8 lg:grid-cols-[1.2fr_.8fr] lg:items-end">
               <div>
-                <p className="mb-5 text-xs font-semibold uppercase tracking-[0.18em] text-[--accent]">
-                  Guia rápido para agentes de IA
+                <p className="mb-4 text-xs font-semibold uppercase tracking-[0.18em] text-[--accent]">
+                  Chegou pelo Reels?
                 </p>
                 <h1 className="max-w-3xl text-4xl font-bold leading-[0.96] tracking-[-0.05em] text-white sm:text-6xl">
-                  6 ferramentas que deixam seu agente mais capaz.
+                  Instale uma ferramenta de IA mesmo sem saber programar.
                 </h1>
               </div>
               <p className="max-w-md text-base leading-7 text-white/55">
-                Você não precisa instalar tudo. Escolha o problema, copie o prompt e peça para seu agente seguir a documentação oficial.
+                Escolha uma ferramenta abaixo. Copie o prompt de instalação e envie para o seu agente de IA.
               </p>
             </div>
           </div>
@@ -226,9 +186,9 @@ export default function FerramentasAgentesIaPage() {
         <section className="relative border-b border-[--border] bg-white/[0.025] px-4 py-7 sm:px-8">
           <div className="mx-auto grid max-w-5xl gap-5 sm:grid-cols-3">
             {[
-              ["1", "Escolha uma ferramenta", "Comece pelo problema que quer resolver."],
-              ["2", "Copie o prompt", "Dê um objetivo claro para o seu agente."],
-              ["3", "Revise antes de usar", "Confirme permissões, custos e integrações."],
+              ["1", "Escolha", "Comece por uma ferramenta."],
+              ["2", "Instale", "Envie o primeiro prompt ao agente."],
+              ["3", "Teste", "Use o segundo prompt em modo seguro."],
             ].map(([number, title, text]) => (
               <div key={number} className="flex gap-4">
                 <span className="text-2xl font-bold text-[--accent]">{number}</span>
@@ -241,25 +201,16 @@ export default function FerramentasAgentesIaPage() {
           </div>
         </section>
 
-        <section className="relative px-4 py-16 sm:px-8 sm:py-24">
+        <section className="relative px-4 py-14 sm:px-8 sm:py-20">
           <div className="mx-auto max-w-5xl">
-            <div className="mb-10 max-w-2xl">
-              <h2 className="text-3xl font-bold tracking-[-0.04em] text-white sm:text-4xl">
-                Qual delas você precisa agora?
-              </h2>
-              <p className="mt-3 text-white/50">
-                Leia em menos de um minuto. Depois, use o prompt pronto no Cline, Claude Code, Codex ou outro agente que você usa.
-              </p>
-            </div>
-
+            <h2 className="mb-8 text-3xl font-bold tracking-[-0.04em] text-white sm:text-4xl">
+              Escolha pelo que você quer fazer.
+            </h2>
             <div className="grid gap-4 md:grid-cols-2">
               {tools.map((tool) => {
                 const Icon = tool.Icon;
                 return (
-                  <article
-                    key={tool.name}
-                    className="group border border-[--border] bg-white/[0.02] p-6 transition-colors hover:border-[--accent]/60 hover:bg-white/[0.045]"
-                  >
+                  <article key={tool.name} className="border border-[--border] bg-white/[0.02] p-6">
                     <div className="flex items-start justify-between gap-5">
                       <div className="flex items-center gap-3">
                         <div className="grid h-10 w-10 place-items-center border border-[--accent]/35 bg-[--accent]/10 text-[--accent]">
@@ -267,7 +218,7 @@ export default function FerramentasAgentesIaPage() {
                         </div>
                         <div>
                           <h3 className="text-xl font-bold tracking-[-0.035em] text-white">{tool.name}</h3>
-                          <p className="mt-0.5 font-mono text-[10px] text-white/35">{tool.repo}</p>
+                          <p className="mt-1 text-sm text-white/50">{tool.oneLine}</p>
                         </div>
                       </div>
                       <a
@@ -280,29 +231,17 @@ export default function FerramentasAgentesIaPage() {
                         <ExternalLink className="h-4 w-4" strokeWidth={1.5} />
                       </a>
                     </div>
-                    <p className="mt-5 text-sm leading-6 text-white/60">{tool.description}</p>
-                    <dl className="mt-6 space-y-4 border-t border-[--border] pt-5 text-sm">
-                      <div>
-                        <dt className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[--accent]">Use se você quer</dt>
-                        <dd className="mt-1 leading-6 text-white/70">{tool.use}</dd>
-                      </div>
-                      <div>
-                        <dt className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[--accent]">Funciona bem para</dt>
-                        <dd className="mt-1 leading-6 text-white/70">{tool.goodFor}</dd>
-                      </div>
-                      <div>
-                        <dt className="text-[10px] font-semibold uppercase tracking-[0.14em] text-white/40">Atenção</dt>
-                        <dd className="mt-1 leading-6 text-white/45">{tool.attention}</dd>
-                      </div>
-                    </dl>
-                    <PromptBox prompt={tool.prompt} />
+                    <div className="mt-6 grid gap-3">
+                      <Prompt label="1. Instalar" text={tool.installPrompt} />
+                      <Prompt label="2. Usar depois de instalar" text={tool.usePrompt} />
+                    </div>
                     <a
                       href={tool.docs}
                       target="_blank"
                       rel="noreferrer"
                       className="mt-5 inline-flex items-center gap-2 text-xs font-semibold text-[--accent] hover:text-white"
                     >
-                      Ver documentação oficial
+                      Abrir documentação oficial
                       <ExternalLink className="h-3.5 w-3.5" strokeWidth={1.5} />
                     </a>
                   </article>
@@ -312,49 +251,26 @@ export default function FerramentasAgentesIaPage() {
           </div>
         </section>
 
-        <section className="relative border-y border-[--border] bg-[--accent] px-4 py-14 text-[--accent-foreground] sm:px-8">
-          <div className="mx-auto grid max-w-5xl gap-8 md:grid-cols-[auto_1fr] md:items-center">
-            <ShieldCheck className="h-12 w-12" strokeWidth={1.3} />
+        <section className="relative border-y border-[--border] bg-[--accent] px-4 py-12 text-[--accent-foreground] sm:px-8">
+          <div className="mx-auto grid max-w-5xl gap-6 md:grid-cols-[auto_1fr] md:items-center">
+            <ShieldCheck className="h-11 w-11" strokeWidth={1.3} />
             <div>
-              <h2 className="text-2xl font-bold tracking-[-0.04em] sm:text-3xl">Regra simples antes de instalar</h2>
+              <h2 className="text-2xl font-bold tracking-[-0.04em]">Antes de usar em contas reais</h2>
               <p className="mt-2 max-w-3xl text-sm leading-6 text-black/70 sm:text-base">
-                Peça um plano antes da execução. Não envie senhas, não exponha chaves de API e não deixe o agente publicar, comprar ou conectar contas sem sua confirmação.
+                Não envie senhas. Não exponha chaves de API. E não deixe o agente publicar, comprar ou conectar contas sem você confirmar.
               </p>
             </div>
           </div>
         </section>
 
-        <section className="relative px-4 py-16 sm:px-8 sm:py-20">
-          <div className="mx-auto grid max-w-5xl gap-10 lg:grid-cols-[.7fr_1.3fr]">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[--accent]">Dúvidas rápidas</p>
-              <h2 className="mt-3 text-3xl font-bold tracking-[-0.04em] text-white">Antes de sair instalando</h2>
-            </div>
-            <div className="space-y-5">
-              <div className="border-l-2 border-[--accent] pl-5">
-                <h3 className="font-semibold text-white">Preciso de todas?</h3>
-                <p className="mt-2 text-sm leading-6 text-white/55">Não. Comece com uma. Escolha pelo problema que você quer resolver agora.</p>
-              </div>
-              <div className="border-l-2 border-[--accent] pl-5">
-                <h3 className="font-semibold text-white">Isso tem custo?</h3>
-                <p className="mt-2 text-sm leading-6 text-white/55">Muitas são open source. Mesmo assim, podem exigir modelo de IA, API, VPS, banco de dados ou serviço de voz. Confirme os custos atuais antes de usar em produção.</p>
-              </div>
-              <div className="border-l-2 border-[--accent] pl-5">
-                <h3 className="font-semibold text-white">Qual agente pode instalar?</h3>
-                <p className="mt-2 text-sm leading-6 text-white/55">Um agente de programação com acesso ao terminal e ao projeto. O importante é pedir ambiente isolado, documentação oficial e um teste antes de liberar para uso real.</p>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        <section className="relative border-t border-[--border] px-4 py-16 text-center sm:px-8">
+        <section className="relative px-4 py-14 text-center sm:px-8 sm:py-18">
           <div className="mx-auto max-w-2xl">
             <Bot className="mx-auto h-9 w-9 text-[--accent]" strokeWidth={1.4} />
             <h2 className="mt-5 text-3xl font-bold tracking-[-0.045em] text-white sm:text-4xl">
-              Agente não é mágica. É processo bem definido.
+              Comece pequeno. Teste. Depois evolua.
             </h2>
             <p className="mx-auto mt-4 max-w-xl text-white/55">
-              Comece pequeno, teste em ambiente seguro e só depois conecte dados ou contas reais.
+              Você não precisa entender tudo antes. Só precisa pedir um plano, acompanhar a instalação e validar o primeiro teste.
             </p>
             <Link
               href="/blog"
