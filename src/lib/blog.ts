@@ -231,7 +231,7 @@ export function getBlogPost(slug: string, lang: Lang = 'pt'): BlogPostWithConten
  * Returns all unique tags across blog posts, sorted by frequency (descending).
  */
 export function getAllTags(lang: Lang = 'pt'): { tag: string; count: number }[] {
-  const posts = getBlogPosts(lang)
+  const posts = getBlogPosts(lang).filter((post) => !post.noindex)
   const tagMap = new Map<string, number>()
 
   for (const post of posts) {
@@ -249,7 +249,7 @@ export function getAllTags(lang: Lang = 'pt'): { tag: string; count: number }[] 
  * Returns blog posts filtered by a specific tag.
  */
 export function getBlogPostsByTag(tag: string): BlogPost[] {
-  return getBlogPosts().filter((post) => post.tags.includes(tag))
+  return getBlogPosts().filter((post) => !post.noindex && post.tags.includes(tag))
 }
 
 /**
@@ -261,7 +261,7 @@ export function getRelatedPosts(
   currentTags: string[],
   limit = 3
 ): BlogPost[] {
-  const allPosts = getBlogPosts().filter((p) => p.slug !== currentSlug)
+  const allPosts = getBlogPosts().filter((p) => p.slug !== currentSlug && !p.noindex)
 
   if (allPosts.length === 0) return []
 
