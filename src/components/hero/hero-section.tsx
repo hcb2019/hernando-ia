@@ -71,12 +71,12 @@ export default function HeroSection({ followers, projects, yearsXP }: HeroSectio
 
         {/* Subtitle */}
         <p className="mt-4 text-lg uppercase tracking-[0.3em] text-[--muted-foreground] sm:text-xl md:text-2xl">
-          CRIADOR DO HERNANDO.IA
+          PROJETOS EM CONSTRUÇÃO
         </p>
 
         {/* Tagline */}
         <p className="mt-6 max-w-xl text-base leading-relaxed text-[--muted-foreground] sm:text-lg">
-          Projetos, automações e conteúdo sobre inteligência artificial na prática.
+          Automações, conteúdos e testes com inteligência artificial.
         </p>
 
         {/* CTA Buttons — sharp rectangles, uppercase */}
