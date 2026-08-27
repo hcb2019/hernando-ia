@@ -94,7 +94,9 @@ function loadLiveStats(): LiveStats {
 // ── Page ────────────────────────────────────────────────────────────────
 
 export default function Home() {
-  const posts = getBlogPosts();
+  // The home must use the same public-post rule as /blog: content withdrawn
+  // for PT-BR review must not reappear here.
+  const posts = getBlogPosts().filter((post) => !post.noindex);
   const stats = loadLiveStats();
 
   // ── Dynamic values from live-stats ────────────────────────────────

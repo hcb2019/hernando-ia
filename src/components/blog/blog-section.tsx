@@ -24,8 +24,8 @@ export default function BlogSection({ posts }: BlogSectionProps) {
               <span className="text-[--accent]">ARTIGOS</span>
             </h2>
             <p className="text-lg text-[--muted-foreground] max-w-xl">
-              Reflexoes sobre engenharia de IA, startups e construcao do futuro.
-              Tutoriais, insights e bastidores de produtos reais.
+              Projetos, automações e aprendizados sobre IA na prática.
+              Bastidores de produtos que estou construindo.
             </p>
           </div>
         </ScrollReveal>
