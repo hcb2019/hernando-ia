@@ -35,7 +35,7 @@ export const viewport: Viewport = {
 
 export const metadata: Metadata = {
   title: {
-    default: "Hernando.ia | AI Engineer & Entrepreneur",
+    default: "Hernando.ia | Projetos com IA",
     template: `%s | ${SITE.name}`,
   },
   description: SITE.description,
@@ -59,7 +59,7 @@ export const metadata: Metadata = {
   keywords: [...SITE.keywords],
   category: "Technology",
   openGraph: {
-    title: "Hernando.ia | AI Engineer & Entrepreneur",
+    title: "Hernando.ia | Projetos com IA",
     description: SITE.description,
     url: SITE.url,
     siteName: SITE.name,
@@ -70,7 +70,7 @@ export const metadata: Metadata = {
         url: `${SITE.url}${SITE.ogImage}`,
         width: 1200,
         height: 630,
-        alt: "Hernando.ia — AI Engineer & Entrepreneur",
+        alt: "Hernando.ia — Projetos e IA na prática",
       },
     ],
   },

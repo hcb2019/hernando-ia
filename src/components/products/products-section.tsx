@@ -24,11 +24,11 @@ const products = [
     status: "EM BREVE",
   },
   {
-    title: "CONSULTORIA",
+    title: "EXPERIMENTOS",
     description:
-      "Mentoria e consultoria em AI Engineering, arquitetura de SaaS e estrategia de produto para o mercado brasileiro.",
+      "Testes e protótipos para explorar formas práticas de usar IA em projetos e no dia a dia.",
     Icon: Target,
-    status: "DISPONIVEL",
+    status: "EM CONSTRUÇÃO",
   },
 ];
 
@@ -45,8 +45,8 @@ export default function ProductsSection() {
               <span className="text-[--accent]">PRODUTOS</span> EM CONSTRUCAO
             </h2>
             <p className="text-lg text-[--muted-foreground] max-w-2xl">
-              Ferramentas, conhecimento e consultoria para alavancar tua carreira e
-              negocio com inteligencia artificial.
+              Ferramentas, guias e experimentos que estou criando para explorar
+              inteligência artificial na prática.
             </p>
           </div>
         </ScrollReveal>
@@ -80,7 +80,7 @@ export default function ProductsSection() {
                 <div className="text-xs font-bold uppercase tracking-tighter text-[--muted-foreground] opacity-0 group-hover:opacity-100 transition-opacity">
                   {product.status === "DISPONIVEL"
                     ? "FALAR COM HERNANDO"
-                    : "LISTA DE ESPERA"}
+                    : "ACOMPANHAR PROJETO"}
                 </div>
               </div>
             </ScrollReveal>

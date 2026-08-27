@@ -42,8 +42,7 @@ export default function Footer() {
             <span className="text-[--muted-foreground]">.IA</span>
           </h3>
           <p className="text-[--muted-foreground] text-sm leading-relaxed">
-            AI Engineer &amp; Entrepreneur. Conhecimento especifico, alavancagem
-            e responsabilidade — construindo o futuro com inteligencia artificial.
+            Projetos e IA na prática. Criado por Hernando Candido.
           </p>
         </div>
         <div>

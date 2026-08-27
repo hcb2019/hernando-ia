@@ -8,7 +8,7 @@ import { Camera, GitFork, BriefcaseBusiness, Mail, ArrowRight, Globe, Shield } f
 export const metadata: Metadata = generatePageMeta({
   title: "Sobre Hernando",
   description:
-    "AI Engineer, empreendedor e criador do Hernando.ia. Conheça minha trajetória em IA, startups e construção de produtos digitais.",
+    "Projetos, automações e conteúdos sobre inteligência artificial na prática. Um espaço criado por Hernando Candido para testar, construir e compartilhar IA de forma simples.",
   path: "/sobre",
   ogImage: "/images/og-default.png",
 });
@@ -24,7 +24,7 @@ export default function AboutPage() {
               Sobre Hernando
             </h1>
             <p className="text-white/50 text-lg">
-              AI Engineer, empreendedor e criador do ecossistema Hernando.ia
+              Projetos, automações e IA na prática.
             </p>
           </header>
 
@@ -34,16 +34,15 @@ export default function AboutPage() {
                 Quem sou
               </h2>
               <p>
-                Sou engenheiro de IA com mais de 10 anos de experiência em
-                tecnologia. Construo produtos digitais, automatizo processos
-                complexos e escrevo sobre o que aprendo no caminho.
+                Sou Hernando Candido, criador do Hernando.ia. Aqui eu transformo
+                curiosidade em projetos: testo ferramentas, crio automações e
+                compartilho o que descubro sobre inteligência artificial de um jeito
+                direto.
               </p>
               <p>
-                Minha missão é transformar inteligência artificial em
-                ferramentas que funcionam no mundo real — não em PowerPoint.
-                Cada projeto que construo nasce de uma necessidade concreta:
-                automatizar o repetitivo, escalar o que funciona e eliminar o
-                que não agrega.
+                O foco é simples: tirar a IA da conversa e levar para algo que
+                possa ser usado, melhorado e compartilhado. Aqui você encontra
+                projetos próprios, testes e aprendizados reais do caminho.
               </p>
             </section>
 
@@ -53,18 +52,18 @@ export default function AboutPage() {
               </h2>
               <ul className="list-disc ml-6 space-y-2">
                 <li>
-                  Crio agentes de IA autônomos para negócios reais
+                  Crio e testo projetos com inteligência artificial
                 </li>
                 <li>
                   Desenvolvo e mantenho o ecossistema Hernando.ia (blog,
                   newsletter, produtos)
                 </li>
                 <li>
-                  Produzo conteúdo sobre IA, engenharia de software e
-                  empreendedorismo
+                  Produzo conteúdo sobre IA, tecnologia e o processo de construir
+                  projetos
                 </li>
                 <li>
-                  Consultoria em automação e implementação de IA para empresas
+                  Registro aprendizados, testes e ajustes de forma aberta
                 </li>
               </ul>
             </section>
@@ -180,9 +179,8 @@ export default function AboutPage() {
                 Contato
               </h2>
               <p>
-                Precisa de um engenheiro de IA pra implementar agentes
-                autônomos, automatizar processos ou trocar uma ideia sobre
-                tecnologia?
+                Quer acompanhar projetos, trocar uma ideia ou conhecer o que estou
+                construindo com IA?
               </p>
               <a
                 href="mailto:contato@hernandoia.com"

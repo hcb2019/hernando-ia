@@ -164,7 +164,7 @@ export default function Home() {
     { value: formatCount(igFollowers), label: "SEGUIDORES IG" },
     { value: String(ghRepoCount), label: "PROJETOS ATIVOS" },
     { value: heroYears, label: "ANOS DE XP" },
-    { value: "AI", label: "ENGINEER" },
+    { value: "IA", label: "NA PRÁTICA" },
     { value: "BR", label: "BRASIL" },
     { value: String(igPosts), label: "POSTS IG" },
     { value: formatReach(igReach), label: "ALCANCE 30D" },
@@ -176,7 +176,7 @@ export default function Home() {
       <main>
         {/* H1 for SEO — rendered server-side (HeroSection is client-side) */}
         <h1 className="sr-only">
-          Hernando.ia — AI Engineer &amp; Entrepreneur | Blog, Portfolio e Cérebro Digital sobre IA
+          Hernando.ia — Projetos, automações e IA na prática
         </h1>
         <HeroSection
           followers={heroFollowers}

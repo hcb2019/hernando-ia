@@ -71,13 +71,12 @@ export default function HeroSection({ followers, projects, yearsXP }: HeroSectio
 
         {/* Subtitle */}
         <p className="mt-4 text-lg uppercase tracking-[0.3em] text-[--muted-foreground] sm:text-xl md:text-2xl">
-          AI ENGINEER &amp; ENTREPRENEUR
+          CRIADOR DO HERNANDO.IA
         </p>
 
         {/* Tagline */}
         <p className="mt-6 max-w-xl text-base leading-relaxed text-[--muted-foreground] sm:text-lg">
-          Construindo o futuro com inteligencia artificial — conhecimento
-          especifico, alavancagem e execucao que expandem o que e possivel.
+          Projetos, automações e conteúdo sobre inteligência artificial na prática.
         </p>
 
         {/* CTA Buttons — sharp rectangles, uppercase */}
@@ -115,7 +114,7 @@ export default function HeroSection({ followers, projects, yearsXP }: HeroSectio
           {[
             { label: "SEGUIDORES", value: followers },
             { label: "PROJETOS", value: projects },
-            { label: "ANOS XP", value: yearsXP },
+            { label: "ANOS NA TI", value: yearsXP },
           ].map((stat) => (
             <div
               key={stat.label}

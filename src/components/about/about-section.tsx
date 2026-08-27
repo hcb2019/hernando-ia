@@ -31,10 +31,10 @@ export default function AboutSection() {
                 <span className="text-[--accent]">HERNANDO</span> CANDIDO
               </h3>
               <p className="text-[--muted-foreground] leading-relaxed text-sm sm:text-base card-invert-muted">
-                Engenheiro de Software Senior e empreendedor focado em
-                Inteligencia Artificial aplicada. Construo produtos, automacoes
-                e agentes de IA que resolvem problemas reais — do esporte a moda,
-                da infraestrutura ao mercado brasileiro.
+                Este é o espaço onde reúno o que estou criando com IA: projetos,
+                automações, testes e conteúdos simples para quem quer entender melhor
+                essa tecnologia. Mostro o processo, os bastidores e as ideias que
+                podem virar algo útil no mundo real.
               </p>
               <p className="text-[--muted-foreground]/70 text-sm mt-3 card-invert-muted">
                 Rio de Janeiro, Brasil
