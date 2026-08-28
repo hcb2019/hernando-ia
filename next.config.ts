@@ -41,7 +41,7 @@ const nextConfig: NextConfig = {
           {
             key: "Content-Security-Policy",
             value:
-              "default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://vercel.live; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self' data:; connect-src 'self' https:; frame-src https:",
+              "default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://vercel.live https://acscdn.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self' data:; connect-src 'self' https:; frame-src https:",
           },
           {
             key: "Permissions-Policy",
@@ -49,8 +49,17 @@ const nextConfig: NextConfig = {
           },
         ],
       },
-      // Blog pages: CDN-cacheable for 1h (ISR) — critical for SEO
-      // Without this, Next.js sends cache-control: no-store on dynamic pages
+      // Blog index + posts: CDN-cacheable for 1h (ISR) — critical for SEO.
+      // `/blog` itself must be listed separately: `/blog/(.*)` does not match it.
+      {
+        source: "/blog",
+        headers: [
+          {
+            key: "Cache-Control",
+            value: "public, max-age=3600, s-maxage=3600, stale-while-revalidate=86400",
+          },
+        ],
+      },
       {
         source: "/blog/(.*)",
         headers: [

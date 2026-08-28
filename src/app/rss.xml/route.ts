@@ -4,7 +4,7 @@ import { SITE } from "@/lib/seo";
 // RSS 2.0 feed for blog aggregation and AI crawlers
 
 export async function GET() {
-  const posts = getBlogPosts();
+  const posts = getBlogPosts().filter((post) => !post.noindex);
 
   const items = posts
     .map(

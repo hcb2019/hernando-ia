@@ -5,7 +5,7 @@ import { SITE } from "@/lib/seo";
 // Includes the complete text of all blog posts for LLM ingestion.
 
 export async function GET() {
-  const posts = getBlogPosts();
+  const posts = getBlogPosts().filter((post) => !post.noindex);
 
   const sections: string[] = [
     `# ${SITE.name} — Full Content`,

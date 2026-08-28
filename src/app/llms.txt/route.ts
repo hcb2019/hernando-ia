@@ -5,7 +5,7 @@ import { SITE } from "@/lib/seo";
 // Provides a concise, machine-readable summary for LLMs, AI crawlers, and search engines.
 
 export async function GET() {
-  const posts = getBlogPosts();
+  const posts = getBlogPosts().filter((post) => !post.noindex);
 
   const lines = [
     `# ${SITE.name}`,

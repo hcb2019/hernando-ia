@@ -23,5 +23,5 @@
 
 | # | Gap | Norma | Ação |
 |---|---|---|---|
-| G10 | Sem banner de cookies | Art. 7º, I | Não crítico — site não usa cookies não-essenciais |
+| G10 | Banner de publicidade e registro de preferência | Art. 7º, I; Art. 8º, §2º | ✅ Implementado em 28/08/2026; confirmar DPA/transferência da Adcash na revisão anual |
 | G11 | Sem RIPD | Art. 38 | Não obrigatório — tratamento é baixo risco |

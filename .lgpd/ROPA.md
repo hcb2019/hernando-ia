@@ -13,3 +13,4 @@
 | 5 | Access logs | IP (efêmero) | Segurança | Legítimo interesse (Art. 7, IX) | Vercel, Cloudflare | Sim (Global) |
 | 6 | DSAR requests | Email | Direitos do titular | Obrigação legal (Art. 18) | Redis Cloud (US) | Sim (EUA) |
 | 7 | Consent log | Email, IP, timestamp | Comprovação | Obrigação legal (Art. 8, §2) | Redis Cloud (US) | Sim (EUA) |
+| 8 | Publicidade opcional | Preferência, IP, User-Agent, identificadores online | Entrega e medição de anúncios; prova de escolha | Consentimento (Art. 7, I) | Adcash; Redis Cloud (US) para o registro | Sim (infraestrutura do fornecedor) |

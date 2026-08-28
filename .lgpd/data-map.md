@@ -46,3 +46,4 @@
 | Redis Cloud | Email do assinante | Armazenamento | ❌ Pendente |
 | GitHub | Nenhum (só link) | Avatar | N/A |
 | Instagram | Nenhum (só link) | Social proof | N/A |
+| Adcash | IP, identificadores online e dados de navegação, após opt-in | Entrega e medição de publicidade | ⚠️ Verificar DPA/termos antes de renovação anual |

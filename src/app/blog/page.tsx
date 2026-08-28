@@ -1,5 +1,5 @@
 import { getBlogPosts, getAllTags, getBlogPostsByTag } from "@/lib/blog";
-import { t, formatDate, LANGUAGES, type Lang } from "@/lib/translations";
+import { t, LANGUAGES, type Lang } from "@/lib/translations";
 import { generatePageMeta } from "@/lib/seo";
 import BlogCard from "@/components/blog/blog-card";
 import NewsletterForm from "@/components/blog/newsletter-form";
@@ -17,6 +17,9 @@ export const metadata: Metadata = generatePageMeta({
     "Reflexões sobre engenharia de IA, startups e construção do futuro. Tutoriais, insights e bastidores de produtos reais.",
   path: "/blog",
 });
+
+// searchParams makes this route dynamic; ISR keeps the index cacheable for crawlers.
+export const revalidate = 3600;
 
 function parseLang(raw: string | string[] | undefined): Lang {
   if (typeof raw === "string") {

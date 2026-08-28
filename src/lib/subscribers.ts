@@ -14,8 +14,8 @@ export interface Subscriber {
 // ── Consent Record (LGPD Art. 8, §2) ──────────────────────────────
 
 export interface ConsentRecord {
-  email: string;
-  action: "subscribe" | "confirm" | "unsubscribe";
+  email?: string;
+  action: "subscribe" | "confirm" | "unsubscribe" | "advertising_accepted" | "advertising_declined";
   timestamp: string;
   ip: string;
   userAgent: string;

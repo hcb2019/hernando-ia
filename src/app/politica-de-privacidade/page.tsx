@@ -23,7 +23,7 @@ export default function PrivacyPolicyPage() {
               Política de Privacidade
             </h1>
             <p className="text-white/40 text-sm">
-              Última atualização: 29 de junho de 2026
+              Última atualização: 28 de agosto de 2026
             </p>
           </header>
 
@@ -41,11 +41,11 @@ export default function PrivacyPolicyPage() {
                 </li>
                 <li className="flex items-center gap-2">
                   <ShieldBan className="w-4 h-4 text-accent/60 flex-shrink-0" />
-                  <strong className="text-white/80">Não usamos</strong> cookies de rastreamento, analytics, nem anúncios
+                  A publicidade da <strong className="text-white/80">Adcash</strong> só é ativada se você aceitar
                 </li>
                 <li className="flex items-center gap-2">
                   <Lock className="w-4 h-4 text-accent/60 flex-shrink-0" />
-                  Seus dados <strong className="text-white/80">nunca</strong> são vendidos ou compartilhados com terceiros para marketing
+                  Não vendemos seus dados pessoais. A publicidade é opcional e pode ser recusada ou revogada
                 </li>
                 <li className="flex items-center gap-2">
                   <Mail className="w-4 h-4 text-accent/60 flex-shrink-0" />
@@ -103,8 +103,8 @@ export default function PrivacyPolicyPage() {
                     </tr>
                     <tr className="border-b border-border/50">
                       <td className="py-2 pr-4">Navegação</td>
-                      <td className="py-2 pr-4">Nenhum dado pessoal</td>
-                      <td className="py-2">—</td>
+                      <td className="py-2 pr-4">Preferência de publicidade, IP e identificadores online</td>
+                      <td className="py-2">Registrar sua escolha e, se autorizada, entregar publicidade</td>
                     </tr>
                   </tbody>
                 </table>
@@ -140,6 +140,11 @@ export default function PrivacyPolicyPage() {
                       <td className="py-2 pr-4">Segurança</td>
                       <td className="py-2 pr-4">IP (efêmero)</td>
                       <td className="py-2">Legítimo interesse (Art. 7º, IX)</td>
+                    </tr>
+                    <tr className="border-b border-border/50">
+                      <td className="py-2 pr-4">Publicidade</td>
+                      <td className="py-2 pr-4">Preferência, IP e identificadores online</td>
+                      <td className="py-2">Consentimento (Art. 7º, I)</td>
                     </tr>
                   </tbody>
                 </table>
@@ -186,12 +191,18 @@ export default function PrivacyPolicyPage() {
                       <td className="py-2 pr-4">Email</td>
                       <td className="py-2">EUA</td>
                     </tr>
+                    <tr className="border-b border-border/50">
+                      <td className="py-2 pr-4">Adcash</td>
+                      <td className="py-2 pr-4">Entrega e medição de publicidade</td>
+                      <td className="py-2 pr-4">IP, identificadores online e dados de navegação, somente após opt-in</td>
+                      <td className="py-2">Conforme a infraestrutura do fornecedor</td>
+                    </tr>
                   </tbody>
                 </table>
               </div>
               <p className="mt-4 text-white/50">
-                <strong>Não compartilhamos</strong> seus dados com terceiros para fins de
-                marketing, publicidade ou qualquer finalidade comercial. Não vendemos dados.
+                Não vendemos seus dados. Quando você autoriza publicidade, a Adcash trata dados
+                necessários para entregar e medir anúncios conforme a própria política de privacidade.
               </p>
             </section>
 
@@ -236,10 +247,15 @@ export default function PrivacyPolicyPage() {
                       <td className="py-2 pr-4">5 anos</td>
                       <td className="py-2">Art. 8º, §2º + Res. 15/2024</td>
                     </tr>
-                    <tr>
+                    <tr className="border-b border-border/50">
                       <td className="py-2 pr-4">Logs de acesso</td>
                       <td className="py-2 pr-4">Até 1 hora</td>
                       <td className="py-2">Padrão Vercel/Cloudflare</td>
+                    </tr>
+                    <tr>
+                      <td className="py-2 pr-4">Escolha de publicidade</td>
+                      <td className="py-2 pr-4">Até a revogação ou por até 12 meses</td>
+                      <td className="py-2">Comprovação e gestão do consentimento</td>
                     </tr>
                   </tbody>
                 </table>
@@ -276,16 +292,17 @@ export default function PrivacyPolicyPage() {
                 8. Cookies
               </h2>
               <p>
-                Este site <strong>não utiliza cookies não-essenciais</strong>. Não usamos:
+                Usamos cookies e tecnologias semelhantes estritamente necessários para o site funcionar.
+                A Adcash, usada para publicidade, só é carregada após seu <strong>consentimento explícito</strong>.
               </p>
-              <ul className="list-disc ml-6 mt-3 space-y-1 text-white/50">
-                <li>Google Analytics ou qualquer serviço de analytics</li>
-                <li>Pixel do Facebook/Instagram ou rastreadores de redes sociais</li>
-                <li>Cookies de publicidade ou remarketing</li>
-              </ul>
               <p className="mt-4 text-white/50">
-                O único cookie possível é o de sessão da Cloudflare, de natureza
-                estritamente técnica e necessária para proteção contra bots.
+                Você pode recusar sem perder o acesso ao conteúdo. Para revogar uma escolha já feita,
+                use o botão <strong>“Gerenciar publicidade”</strong> disponível no site; a revogação vale
+                no próximo carregamento de página. Consulte também a{" "}
+                <a className="text-accent hover:underline" href="https://adcash.com/legal/" target="_blank" rel="noreferrer">
+                  política da Adcash
+                </a>
+                .
               </p>
             </section>
 

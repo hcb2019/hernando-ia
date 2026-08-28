@@ -11,8 +11,8 @@
 | F0 — Setup .lgpd/ | ✅ Concluído |
 | F1 — Data mapping | ✅ Concluído |
 | F2 — Legal basis | ✅ Concluído |
-| F3 — Privacy policy | ⏸ Aguardando aprovação |
-| F4 — Cookies | ✅ (sem cookies não-essenciais) |
+| F3 — Privacy policy | ✅ Atualizada para publicidade opcional em 28/08/2026 |
+| F4 — Cookies | ✅ Opt-in granular para publicidade; bloqueada antes do aceite |
 | F5 — Newsletter consent | ⚠️ Precisa double opt-in |
 | F6 — DSAR workflow | ❌ Pendente |
 | F7 — Encarregado | ❌ Pendente |
@@ -29,6 +29,8 @@
 | Email | Envio de newsletter | Consentimento | Resend | US |
 | IP (logs) | Segurança | Legítimo interesse (Art. 7º, IX) | Vercel | US |
 | IP (logs) | CDN/Segurança | Legítimo interesse | Cloudflare | Global |
+| Preferência de publicidade, IP e User-Agent | Registrar opt-in/recusa e comprovar consentimento | Consentimento (Art. 7º, I; Art. 8º, §2º) | Redis Cloud | US |
+| IP, identificadores online e dados de navegação (após opt-in) | Entrega e medição de publicidade | Consentimento (Art. 7º, I) | Adcash | Conforme infraestrutura do fornecedor |
 
 ## Próximos Passos (Prioridade)
 
