@@ -22,7 +22,8 @@ export const SITE = {
     "blog tech",
   ],
   locale: "pt_BR",
-  ogImage: "/images/og-default.png",
+  ogImage: "/images/og-hernandoia-v2.png",
+  ogImageAlt: "Hernando.ia — Inteligência artificial na prática",
   twitterHandle: "@hernandoia",
   author: {
     name: "Hernando",
@@ -69,11 +70,13 @@ export function generatePageMeta({
   noindex = false,
 }: PageMeta): Metadata {
   const url = path ? `${SITE.url}${path}` : SITE.url;
+  const usesDefaultOgImage = !ogImage;
   const imageUrl = ogImage
     ? ogImage.startsWith("http")
       ? ogImage
       : `${SITE.url}${ogImage}`
     : `${SITE.url}${SITE.ogImage}`;
+  const imageAlt = usesDefaultOgImage ? SITE.ogImageAlt : title;
 
   return {
     title,
@@ -99,7 +102,7 @@ export function generatePageMeta({
           url: imageUrl,
           width: 1200,
           height: 630,
-          alt: title,
+          alt: imageAlt,
         },
       ],
       ...(publishedTime && { publishedTime }),
@@ -110,7 +113,14 @@ export function generatePageMeta({
       card: "summary_large_image",
       title,
       description,
-      images: [imageUrl],
+      images: [
+        {
+          url: imageUrl,
+          width: 1200,
+          height: 630,
+          alt: imageAlt,
+        },
+      ],
       ...(SITE.twitterHandle.startsWith("@") && {
         creator: SITE.twitterHandle,
         site: SITE.twitterHandle,

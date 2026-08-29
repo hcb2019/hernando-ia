@@ -10,7 +10,6 @@ export const metadata: Metadata = generatePageMeta({
   description:
     "Projetos, automações e conteúdos sobre inteligência artificial na prática. Um espaço criado por Hernando Candido para testar, construir e compartilhar IA de forma simples.",
   path: "/sobre",
-  ogImage: "/images/og-default.png",
 });
 
 export default function AboutPage() {
