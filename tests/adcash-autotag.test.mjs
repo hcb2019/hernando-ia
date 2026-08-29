@@ -24,6 +24,10 @@ test("offers explicit opt-in, decline, and revocation before an Adcash tag loads
   assert.match(consent, /runAutoTag/);
   assert.match(consent, /\/api\/consent/);
   assert.match(consent, /Gerenciar publicidade/);
+  assert.match(consent, /useState/);
+  assert.match(consent, /role="dialog"/);
+  assert.match(consent, /Preferências de publicidade/);
+  assert.match(consent, /Revogar publicidade/);
 });
 
 test("documents Adcash advertising and consent choices in the privacy policy", () => {
