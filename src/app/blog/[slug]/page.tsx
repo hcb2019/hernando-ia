@@ -1,4 +1,4 @@
-import { getBlogPost, getBlogPosts, getRelatedPosts } from "@/lib/blog";
+import { getBlogPost, getBlogPosts, getRelatedPosts, resolveBlogPostLanguage } from "@/lib/blog";
 import { t, formatDate, type Lang, LANGUAGES } from "@/lib/translations";
 import { generateBlogPostMeta, JSONLD } from "@/lib/seo";
 import { getSubscriberCount } from "@/lib/subscribers";
@@ -28,7 +28,7 @@ function parseLang(raw: string | string[] | undefined): Lang {
 export async function generateMetadata({ params, searchParams }: PageProps): Promise<Metadata> {
   const { slug } = await params;
   const sp = await searchParams;
-  const lang = parseLang(sp.lang);
+  const lang = resolveBlogPostLanguage(slug, parseLang(sp.lang));
   const post = getBlogPost(slug, lang);
   if (!post) return { title: "Post não encontrado | Hernando.ia" };
 
@@ -47,7 +47,7 @@ export function generateStaticParams() {
 export default async function BlogPostPage({ params, searchParams }: PageProps) {
   const { slug } = await params;
   const sp = await searchParams;
-  const lang = parseLang(sp.lang);
+  const lang = resolveBlogPostLanguage(slug, parseLang(sp.lang));
 
   const post = getBlogPost(slug, lang);
 

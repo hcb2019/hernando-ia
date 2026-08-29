@@ -138,6 +138,14 @@ function hasTranslation(slug: string, lang: Lang): boolean {
          existsSync(join(BLOG_DIR, `${slug}${suffix}.md`))
 }
 
+/**
+ * Returns the language of the content that will actually be served.
+ * Query variants without a real translation must canonicalize to Portuguese.
+ */
+export function resolveBlogPostLanguage(slug: string, requestedLang: Lang): Lang {
+  return hasTranslation(slug, requestedLang) ? requestedLang : 'pt'
+}
+
 // ── Core utilities ────────────────────────────────────────────────
 
 const BLOG_DIR = join(process.cwd(), 'src', 'content', 'blog')
