@@ -1,0 +1,122 @@
+---
+title: "Quantização de LLM: como escolher 4-bit, 8-bit, GPTQ e AWQ"
+date: "2026-08-29"
+description: "Guia prático para decidir entre 4-bit, 8-bit, GPTQ e AWQ ao colocar um LLM em produção, sem confundir memória menor com desempenho garantido."
+author: "@hernando.ia"
+tags: [LLM, Quantização, Inferência, Modelos Locais, MLOps, GPTQ, AWQ]
+sponsored: false
+premium: false
+---
+
+# Quantização de LLM: como escolher 4-bit, 8-bit, GPTQ e AWQ
+
+**Resposta curta:** quantizar um LLM reduz a precisão usada para guardar seus pesos e, com isso, diminui o consumo de memória. É uma boa decisão quando o modelo cabe mal no hardware disponível ou quando o custo de servir inferência está alto. Mas **4-bit não é um botão mágico de “modelo menor e igual”**: a escolha precisa passar por qualidade no seu caso de uso, compatibilidade do runtime e medição de latência.
+
+O assunto voltou à pauta com um guia da KDnuggets sobre quantização e pruning. A notícia é passageira; a necessidade não é. Sempre que um time sai do notebook e tenta colocar um modelo em produção, aparece a mesma pergunta: como reduzir custo sem transformar a resposta em loteria?
+
+![Prévia do repositório bitsandbytes, biblioteca usada para carregar modelos com quantização](https://opengraph.githubassets.com/1/bitsandbytes-foundation/bitsandbytes)
+
+*Imagem: prévia pública do repositório `bitsandbytes`. Antes de usar um artefato de modelo em produção, valide a licença e a origem do checkpoint.*
+
+## O que muda quando um LLM é quantizado
+
+Pesos de um modelo são números. Em vez de mantê-los em formatos de maior precisão, a quantização os representa com menos bits. Menos bits por peso normalmente significam menos memória para carregar o checkpoint.
+
+A documentação do [Hugging Face Transformers](https://huggingface.co/docs/transformers/main/en/quantization/bitsandbytes) descreve `bitsandbytes` como uma biblioteca para trabalhar com modelos grandes em recursos mais limitados. Ela oferece carregamento em 8-bit e 4-bit, além de recursos voltados a fine-tuning com QLoRA.
+
+Só que memória não é a única variável. O modelo também precisa rodar em um backend compatível, manter qualidade no seu conjunto de tarefas e entregar a latência que o produto promete. **Checkpoint menor não prova inferência mais rápida.** Em especial, sparsity e formatos específicos só viram ganho real quando o hardware e os kernels sabem explorá-los.
+
+## 4-bit ou 8-bit: uma decisão de risco, não de moda
+
+Use esta regra como ponto de partida, não como benchmark universal:
+
+| Cenário | Primeiro teste razoável | O que validar antes de decidir |
+|---|---|---|
+| Produto já está no limite de VRAM | 4-bit | Qualidade em tarefas reais, estabilidade e latência fim a fim |
+| Você quer reduzir memória com menor mudança inicial | 8-bit | Custo, throughput e eventuais regressões em casos críticos |
+| Fine-tuning com recursos limitados | 4-bit com QLoRA/NF4 | Se os parâmetros treináveis, dados e hardware são compatíveis |
+| Serviço de produção com SLA | Formato suportado pelo runtime escolhido | P95/P99, throughput, qualidade e plano de rollback |
+
+A documentação do Transformers aponta que **NF4** é um tipo de dado de 4-bit adequado para pesos de modelos-base usados em treinamento de 4-bit. Ela também alerta que certos módulos podem exigir tratamento diferente e que a desquantização pode trazer perda de qualidade. Isso é o tipo de detalhe que uma comparação de benchmark genérica não captura.
+
+## Quando GPTQ e AWQ entram na conversa
+
+**GPTQ** e **AWQ** são métodos de quantização pós-treinamento. Em vez de treinar um modelo do zero, eles usam informação de calibração para reduzir a precisão tentando preservar o comportamento mais importante.
+
+O paper de [GPTQ](https://arxiv.org/abs/2210.17323) propõe quantização pós-treinamento para modelos generativos. A ideia prática é simples: se você precisa de um checkpoint quantizado para um runtime que já o suporta, GPTQ é uma opção conhecida para avaliar.
+
+Já o paper de [AWQ](https://arxiv.org/abs/2306.00978) descreve uma abordagem *activation-aware*: ela busca preservar canais de peso relevantes observando ativações. O ponto não é declarar um vencedor universal. É entender que **o formato do checkpoint e o motor de inferência fazem parte da mesma decisão**.
+
+Antes de baixar um arquivo “4-bit” qualquer, responda:
+
+1. O meu servidor suporta esse formato sem conversão extra?
+2. Tenho um conjunto de prompts, documentos e saídas esperadas para comparar a qualidade?
+3. O modelo precisa só responder texto, ou usar ferramenta, código, JSON estruturado e contexto longo?
+4. Como volto para a versão anterior se a taxa de erro subir?
+
+## Pruning é outra conversa
+
+Pruning remove pesos ou estruturas do modelo; quantização reduz a precisão da representação. Dá para combinar as duas técnicas, mas elas não resolvem o mesmo problema.
+
+Os trabalhos [SparseGPT](https://arxiv.org/abs/2301.00774) e [Wanda](https://arxiv.org/abs/2306.11695) estudam pruning de LLMs sem o ciclo tradicional completo de retreinamento. Isso é útil para pesquisa e para stacks que conseguem aproveitar sparsity. Para a maior parte dos times, porém, o primeiro passo operacional é mais simples: medir um checkpoint quantizado em um runtime suportado antes de adicionar outra variável ao sistema.
+
+**Não confunda “50% dos pesos zerados” com “metade da latência”.** Se o kernel não explora aquele padrão de sparsity, o ganho pode ficar no tamanho ou até virar custo adicional de engenharia.
+
+## Um roteiro seguro para testar quantização em produção
+
+### 1. Defina a métrica do produto
+
+Não comece pelo número de bits. Comece pelo que não pode piorar: acurácia de extração, taxa de JSON válido, sucesso de ferramenta, resolução de tickets ou aceitação humana. Escolha uma amostra representativa e congele-a como teste de regressão.
+
+### 2. Meça a base
+
+Registre memória, tempo até o primeiro token, latência total, throughput e qualidade do checkpoint original. Sem base, toda economia posterior é impressão.
+
+### 3. Faça uma variante por vez
+
+Teste 8-bit e uma alternativa 4-bit compatível com seu runtime. Não misture novo modelo, novo prompt, novo RAG e nova quantização na mesma semana. Se algo piorar, você precisa saber o que causou.
+
+### 4. Separe qualidade de infraestrutura
+
+Uma resposta pior pode vir da quantização, mas também de uma janela de contexto diferente, de uma configuração de amostragem ou do pipeline de recuperação. Compare com os mesmos prompts, temperatura, ferramentas e dados.
+
+### 5. Publique com observabilidade e rollback
+
+Comece por uma fatia de tráfego ou um ambiente controlado. Monitore erro de ferramenta, saída inválida, abandono e avaliação humana. Mantenha o checkpoint anterior disponível para reversão.
+
+Esse cuidado conversa com o que já discutimos em [modelos locais](/blog/pixelrag-processos-e-modelos-locais-a-ia-ficou-mais-barata-mais-perigosa-e-mais): custo menor é bom, mas não autoriza tirar a medição do processo. Para cargas maiores, o debate de [custo por token](/blog/como-o-stack-de-software-de-inferncia-da-nvidia-impulsiona-o-menor-custo-por-tok) também só faz sentido quando você mede a pilha inteira, e não apenas o tamanho do arquivo.
+
+## Minha opinião
+
+Eu acho que a maior armadilha da quantização é tratá-la como compra de hardware: escolhe a especificação mais agressiva e espera o milagre. Não é assim.
+
+Para um time pequeno, **um modelo 8-bit que passa nos testes e tem rollback vale mais que um 4-bit “otimizado” que começa a falhar justamente nos documentos, ferramentas ou saídas estruturadas que pagam a conta**. A economia precisa sobreviver ao produto real.
+
+A boa notícia é que a barreira caiu. Hoje dá para testar formatos, medir memória e comparar respostas sem transformar isso num projeto de pesquisa. O trabalho sério é ter uma avaliação mínima antes de comemorar o gráfico de VRAM.
+
+## FAQ
+
+### Quantizar um LLM sempre deixa a resposta pior?
+
+Não necessariamente de forma perceptível no seu caso de uso. A quantização introduz aproximação, então a pergunta certa é: qual regressão aparece nas tarefas que importam para o produto? Compare uma amostra fixa e avalie respostas, uso de ferramentas e formato de saída antes de promover a variante.
+
+### GPTQ e AWQ são modelos diferentes?
+
+Não. São métodos usados para produzir ou representar versões quantizadas de um modelo. A compatibilidade depende do checkpoint e do motor de inferência. Verifique a documentação do runtime que você realmente usa, em vez de escolher pelo nome mais citado.
+
+### Pruning substitui quantização?
+
+Não. Pruning remove pesos ou estruturas; quantização usa menos bits para representar pesos. Podem ser combinados, mas o benefício de pruning depende muito do suporte de hardware e kernel. Para começar, quantização costuma ter um caminho operacional mais direto.
+
+## Schema recomendado
+
+Use `Article` para o conteúdo e `FAQPage` para as três perguntas acima, inseridos como JSON-LD no corpo RSC da rota do post. Não use `generateMetadata().other` para tentar renderizar uma tag `<script>`.
+
+## Fontes
+
+- [Hugging Face Transformers — bitsandbytes e quantização](https://huggingface.co/docs/transformers/main/en/quantization/bitsandbytes)
+- [GPTQ: Accurate Post-Training Quantization for Generative Pre-trained Transformers — arXiv](https://arxiv.org/abs/2210.17323)
+- [AWQ: Activation-aware Weight Quantization for LLM Compression and Acceleration — arXiv](https://arxiv.org/abs/2306.00978)
+- [SparseGPT: Massive Language Models Can Be Accurately Pruned in One-Shot — arXiv](https://arxiv.org/abs/2301.00774)
+- [Wanda: A Simple and Effective Pruning Approach for Large Language Models — arXiv](https://arxiv.org/abs/2306.11695)
+- [KDnuggets — Quantization and Pruning Methods to Make Your LLM Leaner](https://www.kdnuggets.com/quantization-and-pruning-methods-to-make-your-llm-leaner)
