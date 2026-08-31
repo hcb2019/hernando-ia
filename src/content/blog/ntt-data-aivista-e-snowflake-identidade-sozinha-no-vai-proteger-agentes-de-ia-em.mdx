@@ -1,58 +1,144 @@
 ---
-title: "**NTT DATA AIVista e Snowflake: Identidade sozinha não vai proteger agentes de IA empresariais**"
-date: "2026-07-30"
-excerpt: "**NTT DATA AIVista e Snowflake: Apresentado por NTT DATA AIVista
-
-A pesquisa de junho da VentureBeat revelou que 69% das empresas ainda operam agentes de IA que compartilham credenciais, uma prática associada a maiores taxas de incidentes de segurança."
-tags: [IA, Inteligência Artificial, Agentes de IA, VentureBeat, Noite]
-readingTime: 4
+title: "Segurança de agentes de IA: identidade, permissões e controles de runtime"
+date: "2026-08-31"
+description: "Como dar identidade própria, permissões mínimas e controles de runtime a agentes de IA sem transformar uma API key compartilhada em risco operacional."
+author: "@hernando.ia"
+tags: [Segurança de IA, Agentes de IA, Zero Trust, IAM, Governança, Runtime]
 sponsored: false
 premium: false
 ---
 
-Apresentado pela NTT DATA AIVista. A pesquisa de junho da VentureBeat revelou que 69% das empresas ainda operam agentes de IA que compartilham credenciais, uma prática associada a maiores taxas de incidentes de segurança.
+# Segurança de agentes de IA: identidade, permissões e controles de runtime
 
-## O Que Aconteceu
+**Resposta curta:** um agente de IA não fica seguro só porque passou pelo login. Ele precisa de uma identidade própria, credenciais de curta duração e permissões limitadas à tarefa atual. Sem isso, uma credencial compartilhada transforma um erro de raciocínio, uma injeção de prompt ou uma memória contaminada em acesso difícil de atribuir e revogar.
 
-Fonte: **VentureBeat** — 30 jul 2026
+O ponto não é inventar uma camada de segurança exótica. É trazer disciplina de identidade e autorização para um software que agora escolhe ferramentas, consulta dados e executa passos em sequência.
 
-Presented by NTT DATA AIVista VentureBeat’s June research found that 69% of enterprises are still running AI agents that share credentials, a practice associated with higher rates of security incident
+## Autenticação não resolve a ação seguinte
 
+Autenticação responde **quem está tentando entrar**. Autorização responde **o que essa identidade pode fazer agora**.
 
-## Por Que Importa
+Em um agente, as duas perguntas não podem ficar misturadas. Um bot pode estar legitimamente conectado ao CRM e, ainda assim, não ter motivo para exportar a base inteira, alterar campos financeiros ou chamar uma API externa com dados do cliente.
 
-Este desenvolvimento tem peso no ecossistema de IA atual. Embora não seja um evento sísmico, contribui para tendências maiores que estão moldando o setor. Profissionais de tecnologia devem monitorar os desdobramentos nas próximas semanas.
-## Minha Opinião
+O NIST descreve zero trust como uma mudança de defesa baseada em perímetro para uma defesa focada em usuários, ativos e recursos. Para agentes, a tradução prática é simples: não confie em uma sessão longa só porque ela foi válida no início. Confira contexto, escopo e política antes de cada ação relevante.
 
-Tá, 69% das empresas ainda compartilham credenciais entre agentes de IA? Isso é amadorismo puro. Não adianta ter Snowflake ou AIVista se a base é frágil. Segurança de agente não é sobre identidade isolada, é sobre contexto e permissões granulares.
+## O erro clássico: uma chave compartilhada para tudo
 
-Pra startup brasileira, o recado é direto: resolver isso agora é diferencial competitivo. Quem esperar regulamentação ou breach pra agir vai ficar pra trás. Implementem zero trust desde o MVP, não depois.
-## Fontes
+É comum começar um protótipo com uma única API key guardada no servidor. O problema aparece quando vários agentes, fluxos e pessoas passam a usar a mesma chave.
 
-- [VentureBeat](https://venturebeat.com/security/ntt-data-aivista-and-snowflake-identity-alone-wont-secure-enterprise-ai-agents) — 30 jul 2026
-- Categoria: Grande mídia
-- Curadoria: pipeline hernandoia.com (score: 82/100)
+Você perde quatro coisas importantes:
 
-## Takeaways
+1. **Atribuição:** não dá para saber qual agente executou uma ação.
+2. **Menor privilégio:** a mesma chave tende a ganhar permissões demais.
+3. **Revogação:** ao bloquear um fluxo problemático, você pode derrubar todos os outros.
+4. **Auditoria útil:** o log mostra uma credencial genérica, não a tarefa, o objetivo e o operador responsável.
 
-1. **Fique de olho no mercado** — mudanças como essa indicam tendências que vão impactar o ecossistema de IA nos próximos meses.
-2. **Avalie o impacto no Brasil** — como essa novidade afeta startups, desenvolvedores e empresas brasileiras que usam IA.
-3. **Separe hype de realidade** — nem todo anúncio bilionário se traduz em produto funcional. Espere os resultados.
+Para um teste local, isso pode ser uma concessão temporária. Para produção, vira dívida de segurança. O ideal é que cada agente ou workload tenha uma identidade própria, separada da identidade humana que aprovou a tarefa.
+
+## Arquitetura mínima para um agente agir com segurança
+
+Uma implementação prática não precisa começar com uma plataforma enorme. Ela precisa deixar explícita a cadeia abaixo:
+
+```text
+Tarefa aprovada
+  → identidade do agente/workload
+  → token curto, com escopo
+  → validação de política antes da ferramenta
+  → execução
+  → registro da decisão e do resultado
+```
+
+### 1. Dê uma identidade por agente
+
+O agente que organiza tickets não deve aparecer no log como o mesmo principal que atualiza contratos ou consulta pagamentos.
+
+Use uma identidade de workload, conta de serviço ou mecanismo equivalente do provedor. O nome deve permitir responder: **qual agente é este, em qual ambiente ele roda e quem é dono dele?**
+
+### 2. Emita credenciais curtas
+
+Token permanente é conveniente até vazar. Prefira credenciais de curta duração, renovadas apenas quando o agente precisa continuar a tarefa.
+
+A regra vale especialmente para integrações com CRM, e-mail, drive, banco de dados e serviços de deploy. Se um token escapar em log, memória ou prompt, o tempo de exposição é menor.
+
+### 3. Faça a permissão caber na tarefa
+
+“Agente pode acessar o CRM” é amplo demais. Transforme isso em regras observáveis:
+
+- pode **ler** o contato X para responder a um ticket;
+- pode **criar rascunho**, mas não enviar e-mail sem aprovação;
+- pode **atualizar** um campo específico, mas não exportar a base;
+- pode chamar apenas ferramentas aprovadas;
+- não pode passar dados sensíveis para um domínio externo.
+
+Esse modelo evita que uma ferramenta disponível vire uma permissão implícita para qualquer objetivo que o modelo invente durante a conversa.
+
+### 4. Aplique a política no runtime
+
+Não confie só no prompt “não faça isso”. O ponto de controle precisa estar entre o agente e a ferramenta.
+
+Antes de uma chamada, valide identidade, escopo, parâmetros, origem da tarefa, limite de ações e necessidade de aprovação humana. O modelo propõe; a camada de política decide se aquela proposta pode virar execução.
+
+Isso também ajuda contra injeção de prompt indireta. Um documento recuperado pode tentar induzir o agente a ignorar regras. Se a ferramenta bloqueia a ação fora do escopo, a instrução maliciosa não basta para obter acesso.
+
+## Controles que não podem ficar fora do desenho
+
+A lista abaixo é um bom ponto de partida para quem está colocando agentes em produção.
+
+| Controle | Pergunta operacional |
+|---|---|
+| **Allowlist de ferramentas** | Este agente realmente precisa desta ferramenta? |
+| **Limite de ações e custo** | Quantas chamadas ou qual orçamento ele pode consumir nesta tarefa? |
+| **Validação de parâmetros** | O agente está tentando exportar, apagar ou alterar algo fora do objetivo? |
+| **Aprovação humana** | A ação é irreversível, financeira, externa ou envolve dados sensíveis? |
+| **Logs correlacionáveis** | Consigo ligar decisão, ferramenta, usuário aprovador, dados acessados e resultado? |
+| **Kill switch e revogação** | Consigo parar um agente e invalidar seu acesso sem derrubar o sistema inteiro? |
+
+A OWASP trata aplicações agênticas como sistemas que planejam, agem e tomam decisões em fluxos complexos. Isso é exatamente o motivo para limites técnicos existirem fora do texto do prompt.
+
+## O que registrar para investigar um incidente
+
+Log não é despejar a conversa inteira em um banco. Registre o mínimo necessário para reconstruir a decisão sem guardar segredos ou dados pessoais além do necessário.
+
+Para cada ação relevante, guarde: ID da tarefa, identidade do agente, ferramenta chamada, escopo concedido, decisão de política, hora, resultado e referência para a aprovação humana quando existir.
+
+Evite gravar tokens, senhas, conteúdo integral de documentos privados e prompts contendo dados sensíveis. Além de reduzir risco de vazamento, isso segue o princípio de minimização de dados.
+
+O perfil de IA generativa do NIST recomenda monitoramento contínuo, revisão periódica e responsabilidades organizacionais claras. Na prática: alguém precisa ser dono de cada agente, revisar exceções e saber quem acionar quando uma automação sai do esperado.
+
+## Checklist antes de liberar um agente
+
+1. Cada agente tem identidade própria e um responsável definido.
+2. Nenhum token permanente ou segredo aparece em prompt, memória, log ou código do cliente.
+3. As permissões são separadas por ferramenta, ação e dado.
+4. Ações irreversíveis, externas ou sensíveis exigem aprovação explícita.
+5. Há limites de custo, tentativas e tempo de execução.
+6. O runtime registra decisões sem armazenar segredo desnecessário.
+7. Existe um caminho testado para revogar acesso e interromper o agente.
+8. O fluxo foi testado com dados falsos e tentativas de abuso antes de tocar produção.
+
+## Minha opinião
+
+Muita empresa está discutindo qual modelo usar enquanto entrega para o agente uma credencial com acesso maior do que o de vários funcionários. Aí o problema deixa de ser “o modelo alucinou” e vira uma falha de engenharia previsível.
+
+Não precisa esperar ter um time de segurança gigante. Começa separando identidade, encurtando tokens e colocando uma barreira real antes das ferramentas. Isso não mata a autonomia do agente; impede que autonomia vire acesso sem dono.
 
 ## FAQ
 
-### O que é NTT, DATA e por que isso importa?
+### Um token por agente é suficiente?
 
-Presented by NTT DATA AIVista VentureBeat’s June research found that 69% of enterprises are still running AI agents that share credentials, a practice associated with higher rates of security incident
+Não sozinho. O token identifica o agente, mas ainda precisa ter curta duração, escopo limitado e ser avaliado pela política antes da ação. Identidade sem autorização contextual continua permitindo privilégio excessivo.
 
-### Como NTT impacta o mercado de IA em 2026?
+### API key compartilhada pode ser usada no MVP?
 
-Baseado na cobertura de VentureBeat, essa movimentação reflete uma tendência maior de consolidação e aceleração no setor de inteligência artificial, com impactos diretos em infraestrutura, modelos de negócio e adoção empresarial.
+Somente como exceção temporária, em ambiente isolado e sem dados reais. Antes de produção, troque por identidade de workload e credenciais revogáveis. O custo de fazer isso cedo é muito menor do que investigar um incidente sem rastreabilidade.
 
-### O que desenvolvedores e empresas devem saber sobre Vista?
+### Qual é a diferença entre autenticação e autorização em agentes?
 
-As principais implicações práticas envolvem acesso a novos modelos, mudanças de preço de APIs, e possíveis parcerias que alteram o cenário competitivo. Recomendação: acompanhe os anúncios oficiais e teste as ferramentas assim que disponíveis.
+Autenticação prova a identidade do agente. Autorização decide se essa identidade pode executar uma ação específica, naquele recurso, com aqueles parâmetros e naquele momento. Um sistema seguro precisa das duas camadas.
 
-### Qual a relevância dessa notícia para o Brasil?
+## Fontes
 
-O mercado brasileiro de IA está em crescimento acelerado. Iniciativas como essa impactam diretamente a disponibilidade de tecnologia, preços de APIs e oportunidades para startups locais que constroem sobre essas plataformas.
+- [NIST SP 800-207 — Zero Trust Architecture](https://csrc.nist.gov/pubs/sp/800/207/final)
+- [NIST AI Risk Management Framework](https://www.nist.gov/itl/ai-risk-management-framework)
+- [NIST AI 600-1 — Generative AI Profile](https://nvlpubs.nist.gov/nistpubs/ai/NIST.AI.600-1.pdf)
+- [OWASP Top 10 for Agentic Applications 2026](https://genai.owasp.org/resource/owasp-top-10-for-agentic-applications/)
