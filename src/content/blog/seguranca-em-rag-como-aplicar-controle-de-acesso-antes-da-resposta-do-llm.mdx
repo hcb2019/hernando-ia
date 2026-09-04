@@ -1,0 +1,88 @@
+---
+title: "Segurança em RAG: como aplicar controle de acesso antes da resposta do LLM"
+date: "2026-09-03"
+description: "Entenda como impedir vazamento de documentos em sistemas RAG aplicando autorização na recuperação, filtros por identidade, validação de fontes e auditoria."
+author: "@hernando.ia"
+tags: [RAG, Segurança de IA, Controle de Acesso, LLM, Base Vetorial, Agentes de IA]
+sponsored: false
+premium: false
+---
+
+<!-- Schema recomendado: TechArticle + FAQPage. Atualizar se os mecanismos de ACL/RBAC do provedor escolhido mudarem de API ou saírem de preview. -->
+
+# Segurança em RAG: como aplicar controle de acesso antes da resposta do LLM
+
+**Resposta curta:** um RAG seguro precisa checar a permissão **antes** de um trecho de documento entrar no prompt do LLM. Filtrar a resposta depois não resolve: se o modelo recebeu um contrato, prontuário ou planilha que o usuário não podia abrir, o vazamento já começou.
+
+![Diagrama de fluxo RAG: pergunta do usuário, busca em índice e resposta fundamentada](https://learn.microsoft.com/en-us/azure/foundry/media/index-retrieve/rag-pattern.png)
+
+*Imagem: fluxo conceitual de RAG da documentação Microsoft Learn. O ponto de controle de acesso fica na etapa de recuperação, antes de o contexto ser enviado ao modelo.*
+
+RAG é ótimo para responder com dados privados e atualizados. O risco é tratar a base vetorial como se fosse só um detalhe técnico. Ela é uma camada de acesso a dados. Se a busca devolver conteúdo de outra área, outro cliente ou outro nível de sigilo, o chatbot pode transformar uma falha de autorização em uma resposta aparentemente normal.
+
+A documentação da Microsoft para RAG é direta: aplique controle de acesso no momento da recuperação e trate o conteúdo recuperado como entrada não confiável. A [OWASP](https://genai.owasp.org/llmrisk/llm082025-vector-and-embedding-weaknesses/) também alerta para vazamento entre contextos quando grupos diferentes compartilham uma base de embeddings sem separação e permissão adequadas.
+
+## O princípio: recuperar só o que o usuário pode ver
+
+A pergunta certa não é “o modelo pode responder isso?”. É: **“quais trechos este usuário pode recuperar para esta pergunta, neste momento?”**
+
+Esse controle precisa acontecer na consulta ao índice. Na prática, cada documento ou chunk precisa carregar metadados de autorização: tenant, área, classificação, grupo ou outro identificador compatível com a política da empresa.
+
+Quando a pessoa pergunta algo, o backend obtém a identidade dela e adiciona o filtro correspondente à busca. Só depois os resultados permitidos entram no contexto do LLM.
+
+A [documentação de controle por documento do Azure AI Search](https://learn.microsoft.com/en-us/azure/search/search-document-level-access-overview) descreve esse padrão com filtros de segurança: identidades de usuários ou grupos ficam nos documentos indexados, e a consulta exclui os resultados sem correspondência. O produto também oferece integrações de ACL/RBAC em cenários específicos; algumas delas estão marcadas como preview, então não trate preview como garantia de arquitetura de longo prazo.
+
+## Arquitetura mínima para controle de acesso em RAG
+
+Não precisa começar com uma plataforma complexa. Mas precisa deixar as responsabilidades claras.
+
+| Etapa | O que fazer | Erro que evita |
+|---|---|---|
+| Ingestão | Classificar documento e gravar metadados de tenant, grupo e sensibilidade | Indexar conteúdo sem dono ou nível de acesso |
+| Indexação | Preservar metadados no chunk, não só no arquivo original | Um trecho perder a permissão quando é separado do documento |
+| Consulta | Derivar a identidade no servidor e aplicar filtro no índice | Confiar em `tenantId` enviado pelo navegador |
+| Prompt | Enviar apenas passagens autorizadas e indicar suas fontes | “Esconder” depois algo que já chegou ao modelo |
+| Resposta | Exibir citação para o documento recuperado e registrar a consulta | Não conseguir investigar acesso indevido |
+| Revogação | Sincronizar mudanças de permissão com o índice | Ex-funcionário continuar achando arquivos antigos |
+
+A regra mais importante é simples: **o LLM não decide permissão**. Ele interpreta texto e escolhe palavras. A decisão de acesso pertence ao backend e à sua política de autorização.
+
+## Filtro de busca não é detalhe de interface
+
+Um erro comum é fazer a busca ampla, mostrar poucos resultados na tela e supor que está tudo protegido. Em RAG, isso é insuficiente. O conteúdo retornado pela busca pode ser usado pelo modelo mesmo que você não o renderize para a pessoa.
+
+Também não adianta confiar apenas no prompt com algo como “não revele dados confidenciais”. Prompt é orientação comportamental, não controle de acesso. Uma instrução maliciosa em um documento recuperado, uma pergunta indireta ou uma falha no contexto podem mudar o resultado. Por isso, documentos e passagens recuperadas devem ser tratados como conteúdo não confiável, com validação na ingestão e regras claras para o agente.
+
+Para times com múltiplos clientes, a separação lógica por tenant deve estar no filtro de toda consulta. Para dados mais sensíveis, combine tenant, grupo e classificação. Se o modelo recebe dados de RH, financeiro e engenharia no mesmo índice, “semelhança semântica” não pode atravessar a fronteira de permissão.
+
+## Checklist antes de liberar o RAG para usuários
+
+1. **Todo chunk tem metadados de autorização?** Teste arquivos antigos e documentos reindexados.
+2. **A identidade vem de uma sessão validada no servidor?** Nunca aceite o escopo de acesso informado pelo cliente sem validação.
+3. **O filtro é obrigatório em todas as rotas de recuperação?** Inclua chat, busca, ações de agente e jobs em segundo plano.
+4. **Mudanças de grupo e revogações chegam ao índice?** Defina prazo e monitore o atraso de sincronização.
+5. **Há logs de consulta, documentos retornados e decisão de política?** Sem log, um incidente vira opinião contra opinião.
+6. **A base recebe somente fontes validadas?** A OWASP recomenda validar conhecimento antes da ingestão para reduzir envenenamento e instruções escondidas.
+
+Esse checklist complementa o guia de [segurança de agentes de IA](/blog/seguranca-de-agentes-de-ia-identidade-permissoes-e-controles-de-runtime): identidade e menor privilégio protegem as ações do agente; autorização na recuperação protege o que ele lê. E, depois de resolver acesso, vale otimizar o gasto seguindo o guia de [custos de inferência em RAG](/blog/reduzir-os-custos-de-inferencia-do-rag-em-6x-comeca-com-decidir-o-que-nunca-chega-ao-llm).
+
+## FAQ: controle de acesso em RAG
+
+### Um banco vetorial separado por cliente elimina todo risco?
+
+Ele reduz a superfície de erro, mas não elimina o problema. Ainda existem permissões internas, fontes contaminadas, credenciais excessivas e sincronização de revogação. A decisão deve considerar isolamento, custo operacional e o nível de sensibilidade dos dados.
+
+### Posso aplicar o filtro depois que o LLM gerar a resposta?
+
+Não como mecanismo principal. O modelo já pode ter recebido e usado o conteúdo indevido no prompt. A autorização precisa limitar os resultados da recuperação antes da geração.
+
+### Prompt injection substitui o controle de acesso?
+
+Não. Proteção contra prompt injection e controle de acesso resolvem riscos diferentes. Uma boa arquitetura usa ambos: filtra documentos por permissão, valida conteúdo na ingestão e limita o que o agente pode fazer com o contexto recuperado.
+
+## Fontes
+
+- [Microsoft Learn — Retrieval augmented generation (RAG) and indexes](https://learn.microsoft.com/en-us/azure/foundry/concepts/retrieval-augmented-generation)
+- [Microsoft Learn — Document-level access control in Azure AI Search](https://learn.microsoft.com/en-us/azure/search/search-document-level-access-overview)
+- [OWASP GenAI — LLM08:2025 Vector and Embedding Weaknesses](https://genai.owasp.org/llmrisk/llm082025-vector-and-embedding-weaknesses/)
+- [VentureBeat — caso de falha de recuperação em assistente Azure OpenAI](https://venturebeat.com/security/azure-openai-agent-passed-every-evaluation-served-files-user-couldnt-open)
