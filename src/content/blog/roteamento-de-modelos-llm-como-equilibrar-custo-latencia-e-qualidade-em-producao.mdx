@@ -1,0 +1,136 @@
+---
+title: "Roteamento de modelos LLM: como equilibrar custo, latência e qualidade em produção"
+date: "2026-09-06"
+description: "Aprenda a rotear tarefas entre modelos LLM econômicos e de fronteira com critérios, escalonamento, avaliação e observabilidade para agentes de IA em produção."
+author: "Hernando Candido"
+tags: [LLM, Agentes de IA, Roteamento de Modelos, Infraestrutura de IA, Custos]
+sponsored: false
+premium: false
+---
+
+# Roteamento de modelos LLM: como equilibrar custo, latência e qualidade em produção
+
+**Roteamento de modelos LLM é a regra que escolhe qual modelo atende cada etapa de um fluxo.** Em vez de mandar toda pergunta para o modelo mais caro, o sistema usa um modelo econômico quando a tarefa é previsível e sobe para um modelo de fronteira quando a complexidade ou o risco justificam.
+
+Isso não é só corte de custo. É uma decisão de produto: resposta rápida onde rapidez importa, mais capacidade onde errar custa caro e evidência para saber se a escolha funcionou.
+
+## Por que um modelo único vira gargalo
+
+É tentador escolher um modelo forte e usar em tudo. A integração fica simples no começo.
+
+Mas um agente real mistura tarefas bem diferentes: classificar uma solicitação, extrair campos, chamar uma ferramenta, resumir o resultado, decidir o próximo passo e resolver uma exceção. Tratar tudo como raciocínio profundo cria duas perdas: **latência desnecessária** e **custo sem retorno**.
+
+O oposto também falha. Mandar tarefa crítica para o modelo barato só porque o prompt parece curto troca economia por retrabalho, alucinação e risco operacional.
+
+A pergunta útil não é “qual LLM é melhor?”. É: **qual nível de capacidade esta etapa precisa para atingir o padrão de qualidade definido?**
+
+## O que é um roteador de modelos
+
+Um roteador fica entre a aplicação e os provedores de LLM. Ele recebe a requisição, escolhe um alvo e registra o resultado.
+
+A documentação do [NVIDIA NeMo Switchyard](https://nvidia-nemo.github.io/Switchyard/) descreve essa separação em três partes:
+
+1. **Cliente LLM:** como chegar ao provedor e falar o protocolo.
+2. **Alvo:** o modelo disponível naquele cliente.
+3. **Rota:** a política que decide qual alvo deve servir a chamada.
+
+Essa divisão importa porque desacopla a regra de negócio do nome do provedor. Seu código chama uma rota como `rapida` ou `analise-profunda`; a infraestrutura decide o modelo concreto por trás dela.
+
+## Quatro estratégias de roteamento para começar
+
+### 1. Rota fixa por tipo de tarefa
+
+A forma mais simples é declarar regras explícitas. Classificação, extração estruturada e checagem de progresso vão para um modelo econômico. Código complexo, análise de documento longo e decisão com impacto financeiro vão para um modelo mais capaz.
+
+É fácil de explicar e auditar. O limite é que uma mesma categoria pode conter casos simples e difíceis.
+
+### 2. Divisão controlada para teste
+
+Uma rota aleatória com pesos serve para experimento, não para adivinhação. Você pode enviar uma parcela controlada de tráfego para dois modelos e comparar qualidade, custo e latência na mesma distribuição de tarefas.
+
+A visão geral de algoritmos do Switchyard lista esse uso para **A/B tests, baselines e experimentos de custo**. Sem esse baseline, “economia” vira opinião de dashboard.
+
+### 3. Roteamento por etapa do agente
+
+Em fluxos com ferramentas, o estado da execução traz sinal melhor que o texto inicial. Depois de uma busca sem resultado, por exemplo, o agente pode precisar de um modelo mais capaz para reformular a estratégia. Depois de uma ferramenta que retornou dados limpos, talvez um modelo econômico baste para formatar a resposta.
+
+A documentação chama essa abordagem de *stage router*: a rota usa sinais de resultado de ferramenta e progresso do agente para decidir a maior parte dos turnos, sem adicionar uma chamada extra só para classificar.
+
+### 4. Começar barato e escalar quando houver evidência
+
+No escalonamento, a primeira tentativa usa o nível econômico. Um critério objetivo detecta baixa confiança, erro de validação, resposta incompleta ou necessidade de revisão; só então a tarefa segue para o modelo mais forte.
+
+Essa é uma boa política para casos em que a maioria das solicitações é simples, mas falhar em uma minoria seria caro. O cuidado é essencial: o critério de escalada precisa ser avaliado com exemplos reais. Se ele escala tarde demais, reduz custo e destrói qualidade. Se escala cedo demais, você voltou ao modelo único.
+
+## Como definir a política sem chute
+
+Comece com uma tabela pequena. Ela transforma preferência de modelo em contrato verificável.
+
+| Etapa | Sinal de complexidade | Modelo inicial | Quando escalar | Métrica principal |
+|---|---|---|---|---|
+| Classificação de intenção | categorias conhecidas e texto curto | econômico | baixa confiança ou categoria nova | acurácia por classe |
+| Extração estruturada | schema estável | econômico | JSON inválido ou campo crítico ausente | taxa de validação |
+| Busca e uso de ferramentas | resultado suficiente | econômico | falha repetida ou evidência contraditória | conclusão correta |
+| Análise ou planejamento | várias restrições e impacto alto | forte | não se aplica; já inicia forte | revisão humana / sucesso |
+| Resposta final | depende das evidências acumuladas | econômico ou forte | inconsistência com as fontes | precisão factual |
+
+A tabela não escolhe modelos por você. Ela obriga a equipe a declarar o que é “bom o bastante” antes de otimizar.
+
+## O que medir para não economizar no lugar errado
+
+O roteador deve registrar ao menos: rota escolhida, modelo efetivo, custo ou tokens, latência, resultado de validação, escalonamento e desfecho da tarefa.
+
+O post técnico da [NVIDIA sobre Switchyard](https://developer.nvidia.com/blog/route-ai-agent-workloads-across-models-with-nvidia-nemo-switchyard) informa que o servidor de referência registra modelo selecionado, justificativa da decisão, uso de tokens, latência e resultado das chamadas. Essa lista é uma boa base de observabilidade mesmo se você não usar a ferramenta.
+
+Não olhe somente o custo médio. Compare também:
+
+- **taxa de sucesso por tipo de tarefa**;
+- **taxa de escalonamento**, para descobrir regras frouxas ou agressivas;
+- **latência p95**, porque a média esconde as tarefas que travam a experiência;
+- **reabertura ou correção humana**, que revela economia falsa;
+- **custo por tarefa concluída**, não só custo por chamada.
+
+A NVIDIA cita um benchmark em que uma política de escalonamento reduziu custo em comparação a uma linha de base só com modelo de fronteira, com trade-off de acurácia. O dado é útil como evidência de que a abordagem pode funcionar, mas **não é uma promessa de economia para a sua aplicação**. Modelo, conjunto de tarefas, política e métrica mudam o resultado.
+
+## Onde isso encaixa na arquitetura de agentes
+
+Roteamento não substitui filtro, controle de acesso nem avaliação. Ele entra depois que você definiu o que pode chegar ao LLM e antes de executar a chamada.
+
+Se seu sistema usa RAG, comece evitando mandar contexto inútil ao modelo. O artigo [Segurança em RAG: como aplicar controle de acesso antes da resposta do LLM](/blog/seguranca-em-rag-como-aplicar-controle-de-acesso-antes-da-resposta-do-llm) cobre a etapa anterior: autorização e escopo da informação recuperada.
+
+Também vale escolher modelos que cabem no orçamento e no hardware. Para isso, use o guia de [quantização de LLM](/blog/quantizacao-de-llm-como-escolher-4-bit-8-bit-gptq-e-awq) como complemento. **Quantização decide como servir um modelo; roteamento decide quando usá-lo.**
+
+## Checklist para colocar em produção
+
+1. Liste as etapas do agente e marque quais têm risco alto.
+2. Crie um conjunto de casos reais com resultado esperado antes de mudar a rota.
+3. Comece com uma regra fixa e observável; não inicie com classificador opaco.
+4. Defina validações objetivas para escalada: schema, política, evidência ou revisão.
+5. Rode A/B controlado e compare custo **por tarefa concluída**.
+6. Tenha fallback claro quando um provedor, modelo ou ferramenta falhar.
+7. Revise a política quando sua distribuição de tarefas mudar.
+
+## FAQ
+
+### Quando vale usar roteamento de modelos LLM?
+
+Vale quando o fluxo tem tarefas de complexidade ou risco diferentes e já há volume suficiente para medir resultado. Se você ainda não sabe quais tarefas dão erro, crie observabilidade primeiro. Roteamento sem avaliação só automatiza palpite.
+
+### Todo agente precisa de um classificador LLM para rotear?
+
+Não. Regras por tipo de tarefa, validação de schema, resultado de ferramenta e contagem de tentativas são sinais mais simples e auditáveis. Use um classificador quando esses sinais não separam bem os casos, e meça o custo extra da própria classificação.
+
+### Roteamento reduz custo sem afetar qualidade?
+
+Pode reduzir, mas não por definição. A economia só é real se a taxa de sucesso, a precisão e o retrabalho permanecerem dentro da meta. Por isso a comparação deve ser feita por tarefa concluída e com um conjunto de avaliação representativo.
+
+## Schema recomendado
+
+Para esta página, o formato recomendado é `Article` com `headline`, `description`, `datePublished`, `dateModified`, `author` e `mainEntityOfPage`. As três perguntas do FAQ podem ser publicadas como `FAQPage` somente se as respostas estiverem visíveis na página e forem mantidas consistentes após atualizações.
+
+## Fontes
+
+- [Documentação oficial do NVIDIA NeMo Switchyard](https://nvidia-nemo.github.io/Switchyard/)
+- [Visão geral dos algoritmos de roteamento do Switchyard](https://nvidia-nemo.github.io/Switchyard/routing_algorithms/overview/)
+- [NVIDIA Technical Blog: Route AI Agent Workloads Across Models with NVIDIA NeMo Switchyard](https://developer.nvidia.com/blog/route-ai-agent-workloads-across-models-with-nvidia-nemo-switchyard)
+- [Repositório NVIDIA-NeMo/Switchyard no GitHub](https://github.com/NVIDIA-NeMo/Switchyard)
