@@ -1,0 +1,101 @@
+---
+title: "Como transformar um script Python em agente de IA sem perder controle"
+date: "2026-09-23"
+description: "Veja quando manter uma automação determinística e como expor funções Python como ferramentas de um agente com validação, aprovação humana e tracing."
+author: "Hernando Candido"
+tags: [Python, Agentes de IA, Automação, Function Tools, Segurança]
+sponsored: false
+premium: false
+---
+
+# Como transformar um script Python em agente de IA sem perder controle
+
+**Não transforme seu script inteiro em um agente. Mantenha a regra previsível no Python e entregue ao modelo apenas a decisão que depende de contexto.** Na prática, o script vira uma ou mais ferramentas pequenas; o agente escolhe quando chamá-las, e sua aplicação continua responsável por validar, autorizar e registrar efeitos.
+
+Isso evita o erro comum de trocar uma automação que funciona por um chat que “parece inteligente”, mas não é auditável. Um agente faz sentido quando o pedido chega em linguagem natural, muda de caso para caso e exige escolher uma sequência de ações. Se a entrada, a regra e a saída já são estáveis, continue com o script.
+
+## A fronteira entre automação e agente
+
+Um script é a melhor opção quando você conhece a sequência: buscar um arquivo, validar campos, gerar um relatório e enviar para uma fila. A vantagem é previsibilidade: para a mesma entrada, você consegue testar e esperar o mesmo comportamento.
+
+O agente entra antes ou entre essas etapas quando há ambiguidade real. Ele pode interpretar o que a pessoa quer, escolher entre ferramentas permitidas e resumir o resultado. Ele não deve inventar uma regra de negócio que sua função Python já consegue aplicar com segurança.
+
+Pense assim: **o modelo decide; a ferramenta executa; sua aplicação governa**.
+
+| Camada | Responsabilidade | Exemplo |
+|---|---|---|
+| Python determinístico | Regra, integração e efeito colateral | consultar pedido, recalcular estoque, criar um rascunho |
+| Agente | Interpretar objetivo e escolher a próxima ação | decidir se precisa consultar pedido ou pedir mais dados |
+| Controle da aplicação | Autorização, limite e auditoria | bloquear exclusão, exigir aprovação e registrar a chamada |
+
+## Comece expondo uma função pequena
+
+A documentação do [OpenAI Agents SDK](https://openai.github.io/openai-agents-python/) descreve agentes como modelos com instruções e ferramentas. Para funções Python, o SDK oferece *function tools*: a assinatura e a documentação da função podem virar um schema para o agente, com validação apoiada por Pydantic.
+
+Não comece com uma ferramenta chamada `fazer_tudo`. Prefira uma função com propósito estreito, entradas claras e retorno estruturado. Um exemplo seguro é consultar o status de um pedido; criar, cancelar ou cobrar deve ficar para uma etapa separada, com políticas próprias.
+
+```python
+from agents import function_tool
+
+@function_tool
+def consultar_pedido(codigo: str) -> dict:
+    """Retorna o status de um pedido pelo código informado."""
+    pedido = buscar_pedido_no_sistema(codigo)
+    return {"codigo": pedido.codigo, "status": pedido.status}
+```
+
+O ponto importante não é o decorator. É o contrato: a função recebe só o que precisa, não aceita instruções livres misturadas com parâmetros e devolve dados que o resto do fluxo consegue validar.
+
+## Não entregue efeito colateral sem uma trava
+
+Chamar uma API de leitura e apagar dados são riscos diferentes. Separe ferramentas de consulta das que alteram estado. Para uma ação irreversível, faça o agente preparar a intenção, mostre o que será feito e exija aprovação humana antes da execução.
+
+Os [tool guardrails do SDK](https://openai.github.io/openai-agents-python/guardrails/) podem validar ou bloquear uma chamada antes e depois da ferramenta rodar. Isso é útil, mas não substitui autorização no seu backend. A checagem de permissão precisa acontecer perto do recurso protegido, usando a identidade do usuário e a regra de negócio da aplicação.
+
+Uma política simples já reduz muito problema:
+
+1. **Permita por padrão somente leitura.**
+2. **Valide tipo, faixa e formato de cada argumento.**
+3. **Exija aprovação para pagamento, exclusão, envio externo e mudança de acesso.**
+4. **Aplique limite de chamadas e prazo de execução.**
+5. **Retorne erros explícitos; não deixe o modelo adivinhar se a ação funcionou.**
+
+Esse mesmo cuidado conversa com o princípio de autorização antes do uso de dados explicado em [Segurança em RAG](/blog/seguranca-em-rag-como-aplicar-controle-de-acesso-antes-da-resposta-do-llm). O fato de uma ferramenta estar disponível para o agente não significa que todo usuário pode acioná-la.
+
+## Tracing não é detalhe de produção
+
+Quando algo sai errado, “o agente alucinou” não é diagnóstico. Você precisa saber qual instrução recebeu, que ferramenta escolheu, quais argumentos mandou, que retorno obteve e em que ponto a regra bloqueou a execução.
+
+O [tracing do Agents SDK](https://openai.github.io/openai-agents-python/tracing/) registra gerações, chamadas de ferramentas, handoffs, guardrails e eventos customizados durante uma execução. Use esses registros para montar casos de teste reais: pedidos ambíguos, dados ausentes, permissão negada e falha da integração.
+
+Também vale registrar custo, latência e taxa de sucesso por ferramenta. Se uma etapa simples está consumindo o modelo mais caro, a solução pode ser uma função determinística ou uma política de escolha de capacidade, não um prompt maior. Esse é o mesmo raciocínio de [roteamento de modelos LLM](/blog/roteamento-de-modelos-llm-como-equilibrar-custo-latencia-e-qualidade-em-producao): capacidade deve acompanhar o risco da etapa.
+
+## Checklist antes de colocar no ar
+
+- A função faz uma coisa só e tem entradas validadas?
+- A autorização acontece no backend, não apenas na instrução do agente?
+- Ações com efeito colateral pedem aprovação humana quando necessário?
+- Há limite de chamadas, timeout e tratamento de falha?
+- Você consegue inspecionar uma execução completa sem expor dados sensíveis?
+
+## FAQ
+
+### Todo script Python precisa virar agente?
+
+Não. Se o fluxo já é determinístico, manter o script costuma ser mais barato, fácil de testar e confiável. Use um agente apenas onde a linguagem natural, a priorização ou a escolha entre caminhos trazem ganho real.
+
+### O agente pode executar ações sozinho?
+
+Pode, mas somente dentro de um escopo explícito. Comece por ferramentas de leitura, aplique autorização no serviço que protege o recurso e adicione aprovação humana para ações irreversíveis ou de alto impacto.
+
+## Schema recomendado
+
+Use `Article` para o post e `FAQPage` para as perguntas frequentes, inseridos no corpo do componente de página. Uma imagem só deve ser adicionada quando houver ilustração original ou licença verificável; este guia não reutiliza imagem de terceiros sem confirmação de uso.
+
+## Fontes
+
+- [OpenAI Agents SDK — visão geral](https://openai.github.io/openai-agents-python/)
+- [OpenAI Agents SDK — Tools](https://openai.github.io/openai-agents-python/tools/)
+- [OpenAI Agents SDK — Guardrails](https://openai.github.io/openai-agents-python/guardrails/)
+- [OpenAI Agents SDK — Tracing](https://openai.github.io/openai-agents-python/tracing/)
+- [KDnuggets — How to Turn a Python Script Into an AI Agent](https://www.kdnuggets.com/how-to-turn-a-python-script-into-an-ai-agent)
