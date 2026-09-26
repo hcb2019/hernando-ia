@@ -1,0 +1,151 @@
+---
+title: "Supabase com dados expostos: como configurar RLS e fechar suas tabelas"
+date: "2026-09-26"
+description: "Guia prático de Row Level Security no Supabase: grants, policies, testes com supabase test db e os erros que deixam sua tabela pública sem você perceber."
+author: "Hernando Candido"
+tags: [Supabase, Postgres, RLS, Segurança, Vibe Coding]
+sponsored: false
+premium: false
+---
+
+# Supabase com dados expostos: como configurar RLS e fechar suas tabelas
+
+**Uma tabela em schema exposto sem RLS é legível e gravável por qualquer role que tenha grant nela. Não existe "está no banco" como proteção: sem policy, quem decide o acesso é a permissão do role `anon` — e, por padrão, ela vem generosa.**
+
+Se seu app foi gerado rápido por uma ferramenta de IA e você nunca abriu a aba de policies, a chance de a sua tabela responder a uma requisição anônima com todas as linhas é alta. Não é teoria: é o padrão que aparece em auditoria atrás de auditoria.
+
+Abaixo está o caminho fechado em quatro passos — grants, policies, teste e advisor — com o SQL que a própria documentação do Supabase recomenda.
+
+## O caso que reacendeu o alerta
+
+A UpGuard encontrou cerca de **16 mil bancos de dados hospedados no Supabase com algum grau de dado pessoal exposto**: nomes, endereços, telefones e senhas, além de um número menor de tokens de autenticação. O achado foi reportado pelo [TechCrunch em 25 de setembro de 2026](https://techcrunch.com/2026/09/25/some-supabase-customers-are-publicly-exposing-reams-of-peoples-data-to-the-web/).
+
+Vale ser preciso no diagnóstico: **não é uma falha do Supabase**. É configuração ausente em aplicativos feitos rápido, muitos deles por vibe coding, onde ninguém ligou o RLS nem revisou os grants das tabelas.
+
+O roteiro se repete: a chave pública fica no front (como deve ficar), o PostgREST expõe a tabela na API e não existe policy nenhuma. Resultado: qualquer pessoa com a URL do projeto lê o que estiver ali.
+
+## Grants e policies são duas checagens diferentes
+
+Antes de escrever policy, entenda a ordem das coisas. O Postgres roda **dois testes** antes de um cliente tocar na tabela:
+
+- **Grants** decidem se o role pode executar a operação na tabela.
+- **Policies** decidem **quais linhas** aquela operação enxerga.
+
+A [documentação de Row Level Security do Supabase](https://supabase.com/docs/guides/database/postgres/row-level-security) é explícita: em projetos existentes, uma tabela nova no schema `public` já nasce com `select`, `insert`, `update` e `delete` concedidos para `anon`, `authenticated` e `service_role`.
+
+E aqui está o detalhe que derruba muita gente: **criar policy não devolve os grants**. Uma tabela protegida apenas por policies continua entregando caminho de escrita para o `anon` se o grant nunca foi revogado.
+
+```sql
+-- O que o role anon tem hoje na sua tabela
+select grantee, privilege_type
+from information_schema.role_table_grants
+where table_schema = 'public' and table_name = 'reports';
+```
+
+Se `anon` aparece com `INSERT`, `UPDATE` ou `DELETE` nessa lista e o app não precisa disso, sua superfície de ataque está aberta — mesmo com policy criada.
+
+## Como fechar uma tabela, em quatro passos
+
+O procedimento abaixo é o que a documentação chama de passo obrigatório para **toda tabela em schema exposto**. Rode no SQL Editor para ajuste pontual ou, melhor, em migration, para a mudança ser reproduzível entre ambientes.
+
+**1. Ligue o RLS.**
+
+```sql
+alter table public.reports enable row level security;
+```
+
+Feito isso, **nenhum dado sai pela API com chave pública até existir policy**. O padrão passa a ser negar.
+
+**2. Revogue os grants dos roles de cliente.**
+
+```sql
+revoke all on table public.reports from anon, authenticated;
+```
+
+**3. Devolva só o que cada role precisa.**
+
+```sql
+-- Usuários logados gerenciam seus relatórios. Visitante sem login não recebe nada.
+grant select, insert, update, delete on table public.reports to authenticated;
+```
+
+**4. Escreva uma policy por operação.**
+
+```sql
+create policy "Usuário lê apenas os próprios relatórios"
+on public.reports for select
+to authenticated
+using ( (select auth.uid()) = user_id );
+
+create policy "Usuário insere relatório em seu próprio nome"
+on public.reports for insert
+to authenticated
+with check ( (select auth.uid()) = user_id );
+```
+
+Pense na policy como um `WHERE` implícito em toda query. É por isso que RLS continua protegendo o dado mesmo quando ele é acessado por outra ferramenta — essa é a parte de defesa em profundidade que o Supabase destaca.
+
+Um detalhe operacional: **grant faltando gera erro `42501` antes de qualquer policy rodar**. Se a requisição falha e você acha que a policy deveria permitir, cheque os grants antes de mexer na policy.
+
+## Teste a policy, não confie na leitura do SQL
+
+Ler política e achar que está certo é o erro clássico. A documentação manda criar um arquivo de teste por tabela, com casos de permitir e negar para `select`, `insert`, `update` e `delete`, nos roles `anon` e `authenticated`.
+
+```bash
+supabase test new reports_rls.test
+supabase test db
+```
+
+O teste roda contra o banco e falha quando a policy deixa passar o que não deveria. Sem essa suíte passando, você não sabe o que suas policies realmente fazem — sabe apenas o que você pretendeu.
+
+Se você usa um agente para gerar SQL, esse é o mesmo princípio de trava que expliquei em [como transformar um script Python em agente de IA sem perder controle](/blog/como-transformar-um-script-python-em-agente-de-ia-sem-perder-controle): a regra crítica fica verificável, não na confiança.
+
+## As três armadilhas que mais aparecem
+
+**1. View ignora RLS por padrão.** Views são criadas como `security definer` pelo usuário `postgres`, então **elas passam por cima das policies** da tabela protegida. Uma view sobre uma tabela com RLS entrega tudo que as policies queriam esconder. Trate view como tabela: ela precisa da mesma atenção.
+
+**2. `to anon using (true)`.** Isso concede leitura de todas as linhas que o role alcança para qualquer visitante sem login. Use `true` só em dado que é realmente público — feed de avisos, catálogo, conteúdo institucional.
+
+**3. Chave secreta no cliente.** A chave publishable (`sb_publishable_...`) é feita para ir ao browser e só alcança o que o RLS permite. A chave secret (`sb_secret_...`) **ignora o RLS** e dá acesso total ao projeto: só em servidor, Edge Function ou job.
+
+Aliás, se um tutorial ou assistente de IA mandou você copiar uma chave longa começando com `eyJ`, ele está desatualizado: o Supabase está **aposentando as chaves `anon` e `service_role` até o fim de 2026**, substituindo por publishable e secret. As antigas seguem valendo até você desativá-las no dashboard.
+
+## Descubra o que já está aberto no seu projeto
+
+Você não precisa ler tabela por tabela para achar o problema. O **Security Advisor** do Supabase roda as checagens automaticamente, e os nomes dizem tudo:
+
+- `rls disabled in public` — tabela no schema exposto sem RLS ligado.
+- `policy exists rls disabled` — você escreveu policy, mas esqueceu de ligar o RLS nela.
+- `rls enabled no policy` — RLS ligado e nenhuma policy: ninguém lê nada.
+- `auth users exposed` — dados de autenticação alcançáveis pela API.
+- `security definer view` — view que pode furar o RLS.
+
+As mesmas checagens saem por CLI (`supabase db advisors`), por MCP (`get_advisors`) e pela Management API. Corrija, rode o advisor de novo e confirme que o achado sumiu.
+
+## FAQ
+
+### O Supabase é inseguro por causa disso?
+
+Não. O RLS é um recurso do Postgres e funciona bem quando é ligado. O problema relatado é de configuração em apps gerados rápido, onde ninguém aplicou as policies nem reviu os grants. É responsabilidade de quem publica, não do banco.
+
+### Preciso de RLS se meu app só acessa o banco pelo backend?
+
+Se a chave secreta existe apenas no servidor e a API pública nunca é exposta, o risco cai bastante. Ainda assim, ligar RLS e revogar grants desnecessários protege você de duas coisas comuns: vazamento de chave e código novo esquecendo a validação.
+
+### Como sei, hoje, se meu banco está exposto?
+
+Rode o Security Advisor no dashboard ou `supabase db advisors` na CLI. Depois faça o teste real: use a chave publishable, sem login, e tente um `select` na tabela que deveria ser privada. Se voltar linha, está aberto.
+
+## Schema recomendado
+
+Use `Article` para este post e `FAQPage` para as perguntas acima, inseridos no corpo do componente de página (o Next.js renderiza JSON-LD no RSC body). Para imagem de capa, use apenas ilustração original ou de licença verificável, com `alt` descrevendo o conteúdo — algo como "tabela do Supabase com RLS desligado exposta na API" — nunca imagem de terceiros sem confirmação de uso.
+
+Este guia é **Estável**: os conceitos de grants, policies e RLS são primitivos do Postgres e mudam devagar. Revisar quando o Supabase concluir a migração das chaves de API e quando a sintaxe do `supabase test db` mudar.
+
+## Fontes
+
+- [Supabase Docs — Row Level Security](https://supabase.com/docs/guides/database/postgres/row-level-security)
+- [Supabase Docs — API keys](https://supabase.com/docs/guides/api/api-keys)
+- [Supabase Docs — Database Linter / Security Advisor](https://supabase.com/docs/guides/database/database-linter)
+- [PostgreSQL 18 Docs — Row Security Policies](https://www.postgresql.org/docs/current/ddl-rowsecurity.html)
+- [TechCrunch — Some Supabase customers are publicly exposing reams of people's data to the web](https://techcrunch.com/2026/09/25/some-supabase-customers-are-publicly-exposing-reams-of-peoples-data-to-the-web/)
