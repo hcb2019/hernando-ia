@@ -1,0 +1,184 @@
+---
+title: "Checkout agêntico: como UCP, AP2 e ACP colocam agentes de IA na sua loja"
+date: "2026-09-27"
+description: "UCP, AP2 e ACP são as três camadas do checkout agêntico: descoberta e sessão de compra, prova criptográfica de intenção do usuário e checkout embutido em produtos de IA. Guia com o fluxo real, os headers e o que implementar no seu e-commerce."
+author: "Hernando Candido"
+tags: [Agentes de IA, Checkout, UCP, AP2, ACP, E-commerce, Protocolos]
+sponsored: false
+premium: false
+---
+
+# Checkout agêntico: como UCP, AP2 e ACP colocam agentes de IA na sua loja
+
+**Três protocolos estão dividindo o checkout agêntico: UCP (descoberta, catálogo e sessão de compra), AP2 (prova criptográfica de que o usuário autorizou aquela compra) e ACP (checkout embutido em produtos de IA, criado por Stripe, OpenAI e Meta). Eles não são concorrentes diretos: UCP e ACP respondem "como o agente fala com a loja"; AP2 responde "como provar que o humano mandou comprar".**
+
+Se você tem e-commerce e ainda trata "comprar com IA" como um botão bonito em cima da busca, chegou a hora de olhar a camada de baixo. O que muda a economia do negócio não é o botão — é **quem assina a intenção e quem responde quando o pedido sai errado**.
+
+Este guia destrincha as três camadas com o que está na documentação oficial: o fluxo real de uma sessão de checkout, os headers envolvidos, os mandatos criptográficos e o que implementar primeiro no seu backend.
+
+## O que aconteceu
+
+Em **26 de setembro de 2026**, o [TechCrunch relatou](https://techcrunch.com/2026/09/26/google-tests-buying-from-walmart-owned-flipkart-through-gemini-and-ai-mode-in-india/) que o Google começou a testar compra de produtos da **Flipkart** (empresa do Walmart) direto no **Gemini** e no **AI Mode**.
+
+No teste, usuários veem um botão **Buy** em alguns anúncios de produto e caem num checkout da própria Flipkart sem sair da interface de IA. O experimento é limitado a poucos usuários e a uma seleção pequena de itens — smartphones, eletrônicos e acessórios de celular — e o Google planeja ampliar em outubro, antes da temporada festiva indiana, segundo o TechCrunch.
+
+O Google não confirmou qual tecnologia roda no teste. Só que o terreno já está demarcado: em **11 de janeiro de 2026**, o Google publicou o [Universal Commerce Protocol (UCP)](https://developers.googleblog.com/under-the-hood-universal-commerce-protocol-ucp/) como padrão aberto para agentes interagirem com lojas durante toda a jornada de compra, e a **Flipkart está entre os parceiros que endossam o protocolo**.
+
+A leitura durável desse movimento: a disputa saiu de "qual modelo responde melhor" e entrou em "**quem controla o botão de pagar**".
+
+## Três camadas, três problemas diferentes
+
+A pergunta que separa os protocolos é: **o agente decide o que comprar, mas quem decide se pode pagar?**
+
+| Camada | Protocolo | Problema que resolve | Quem está por trás |
+|---|---|---|---|
+| Descoberta, catálogo, carrinho e sessão de checkout | **UCP** (Universal Commerce Protocol) | Fazer um agente descobrir o catálogo, montar carrinho e fechar pedido sem integração sob medida para cada superfície | Google, em colaboração com Shopify, Etsy, Wayfair, Target e Walmart, endossado por mais de 20 parceiros (Adyen, American Express, Best Buy, Flipkart, Macy's, Mastercard, Stripe, The Home Depot, Visa, Zalando) |
+| Autorização de pagamento | **AP2** (Agent Payments Protocol) | Provar com criptografia que o usuário autorizou *aquela* compra — e não que o agente alucinou | Google e mais de 60 organizações; a especificação passou a ser padronizada na FIDO Alliance em 28/04/2026 |
+| Checkout embutido em produtos de IA | **ACP** (Agentic Commerce Protocol) | Sessão de checkout e credencial de pagamento para agentes comprarem dentro de um app de IA | Stripe, OpenAI e Meta (código aberto, Apache 2.0) |
+
+As três convivem. O UCP declara que é **compatível com o AP2** para pagamento seguro, e a especificação do AP2 diz explicitamente que é agnóstica ao protocolo de comércio, projetada para ser compatível com o UCP.
+
+Traduzindo: **UCP diz o que está sendo comprado; AP2 prova quem autorizou; ACP é o pacote da Stripe para fazer o mesmo dentro de um produto de IA.**
+
+## Como funciona um checkout agêntico, na prática
+
+O walkthrough oficial do UCP mostra o caminho inteiro. Vale ler porque quase todo o desenho de segurança aparece nos detalhes.
+
+**1. Descoberta.** A loja publica um manifesto JSON em `/.well-known/ucp`. É ali que o agente descobre os serviços, as *capabilities* — `dev.ucp.shopping.checkout`, `dev.ucp.shopping.discount`, `dev.ucp.shopping.fulfillment` — e quais *payment handlers* a loja aceita.
+
+Sem manifesto, não existe compra por agente. É o novo `robots.txt` do comércio.
+
+**2. Sessão de checkout.** O agente cria a sessão:
+
+```bash
+curl -s -X POST "$SERVER_URL/checkout-sessions" \
+  -H 'Content-Type: application/json' \
+  -H 'UCP-Agent: profile="https://agent.example/profile"' \
+  -H 'request-signature: ...' \
+  -H 'idempotency-key: 0b50cc6b-19b2-42cd-afee-6a98e71eea87' \
+  -H 'request-id: 6d08ae4b-e7ea-44f4-846f-d7381919d4f2' \
+  -d '{"line_items":[{"item":{"id":"bouquet_roses","title":"Red Rose"},"quantity":1}],"currency":"USD"}'
+```
+
+Repare nos headers. **`UCP-Agent` identifica o perfil do agente, `request-signature` permite verificar autenticidade e `idempotency-key` evita que um retry do agente crie dois pedidos.** Isso não é enfeite de spec: é o que separa um agente de um script de fraude.
+
+**3. Atualização.** Com o `id` da sessão, o agente ajusta o carrinho — cupom, frete, quantidade — num `PUT /checkout-sessions/{id}`. No exemplo oficial, o cupom `10OFF` derruba o total de 3500 para 3150.
+
+**4. Autorização e conclusão.** A loja verifica a autorização e fecha o pedido. É aqui que o AP2 entra: o agente não fecha nada com o cartão do usuário na mão.
+
+## AP2: o mandato substitui o dedo no botão
+
+O AP2 foi anunciado pelo Google em **16 de setembro de 2025** e está na versão **0.2**. A ideia central é simples: como o usuário não está clicando, alguma coisa precisa provar que ele autorizou.
+
+Essa coisa é o **mandato** — uma credencial digital verificável (VDC), assinada e à prova de adulteração.
+
+O protocolo define cinco papéis:
+
+| Papel | Responsabilidade |
+|---|---|
+| **Shopping Agent** | Descobre produtos, monta o checkout e executa a compra |
+| **Credential Provider** | É a origem da credencial de pagamento e verifica se o agente está autorizado a usá-la |
+| **Merchant** | Fornece e completa o checkout; confere se o agente foi aprovado para aqueles itens |
+| **Merchant Payment Processor** | Processa o pagamento e confere se a credencial está escopada para aquele checkout |
+| **Trusted Surface** | Interface confiável onde o usuário dá consentimento e assina |
+
+São **dois mandatos, cada um em duas versões**: o *Checkout Mandate* (prova de que o agente pode comprar aquele carrinho) e o *Payment Mandate* (prova de que ele pode pagar aquele valor), nas formas **open** — as restrições que o usuário definiu antes do carrinho existir, como teto de gasto e instrumentos permitidos — e **closed** — a autorização fechada, amarrada ao carrinho final por hash criptográfico.
+
+Daí saem os dois modos de operação:
+
+- **Human Present (Direct):** o usuário vê o carrinho fechado e assina. É quase um checkout tradicional com assinatura.
+- **Human Not Present (Autonomous):** o usuário assina só as restrições (o mandato *open*) e o agente assina o fechado com a própria chave. Os mandatos abertos precisam trazer a chave pública do agente no claim `cnf`, e a recomendação é que o `exp` seja o menor tempo possível para concluir a tarefa.
+
+Três regras do spec que qualquer dev deveria levar para o código:
+
+1. **A verificação é sempre determinística.** O spec é explícito: quando o papel é agêntico, o próprio agente passa a ser um potencial atacante, e validação ou processamento têm que acontecer em código determinístico — nunca na confiança do LLM.
+2. **Trusted Surface não pode ser agêntica.** A camada que coleta o consentimento do usuário é o único papel que o spec obriga a ser não-agêntico. Faz sentido: é ela que colhe a assinatura.
+3. **Anti-replay nos mandatos abertos.** O agente não pode reapresentar um mandato aberto sem ter recebido um recibo de rejeição do anterior — a trava existe para impedir que um único mandato aberto aprove dois carrinhos diferentes.
+
+Quando algo dá errado, os mandatos e recibos (*Checkout Receipt* e *Payment Receipt*) formam uma trilha não-repudiável: em disputa, é possível reconstruir o que o usuário, o agente, a loja e o processador viram. E vale a honestidade técnica: **o spec define a evidência, não a regra de quem paga a conta** — a resolução de disputa em si está fora do escopo dele.
+
+## AP2, PIX e a parte que interessa ao Brasil
+
+Hoje o AP2 nasceu focado em métodos *pull*, principalmente **cartão de crédito e débito**. O roadmap declarado na documentação inclui carteiras digitais, pagamentos *push* por transferência bancária em tempo real e moedas digitais.
+
+E a documentação cita **PIX e UPI explicitamente** como exemplos desses pagamentos push.
+
+Ou seja: o desenho internacional já nasceu olhando para o nosso trilho. Quando isso chegar na prática, a conversão por agente no Brasil deixa de depender só de cartão — e é aí que a maior parte do comércio brasileiro realmente acontece.
+
+## Onde o ACP entra nessa história
+
+O **Agentic Commerce Protocol** é um padrão aberto criado por **Stripe, OpenAI e Meta**, licenciado em Apache 2.0, com especificação pública em `agenticcommerce.dev`. Ele define como agentes interagem com negócios para completar compras em nome de quem compra.
+
+Os blocos principais são **checkout agêntico** (criar, atualizar e completar sessões com carrinho e opções de entrega), **shared payment tokens** — credenciais de pagamento escopadas, para o agente nunca manipular o dado do cartão — e a integração por **REST ou MCP**, o que deixa a loja expor o mesmo checkout para agentes sem trocar o backend.
+
+Duas decisões de produto são bem explícitas na documentação da Stripe: a loja **continua sendo o merchant of record** (mantém controle sobre o que é vendido, como é apresentado e como é entregue) e as credenciais de pagamento reais **não são expostas ao agente**.
+
+E a estratégia é outra: o ACP nasceu junto com o **Instant Checkout do ChatGPT**, que estreou com vendedores dos EUA na Etsy e com lojas Shopify na sequência, segundo o anúncio da OpenAI.
+
+Enquanto o Google separa camadas abertas (UCP para comércio, AP2 para pagamento, padronização no FIDO), a Stripe empacota comércio + pagamento no mesmo protocolo. Nada garante que os dois mundos vão se integrar sozinhos — e é bom saber em qual deles o seu catálogo vai ser lido.
+
+## O que isso muda para quem programa
+
+Estes são os pontos que já valem para qualquer loja, independente de qual protocolo ganhar:
+
+**1. Catálogo legível por máquina não é opcional.** No caminho do Google, a implementação de referência exige conta ativa no **Merchant Center** e produtos elegíveis para checkout. Sem dado estruturado de produto, preço e estoque, seu catálogo fica fora da conta.
+
+**2. Publique sua superfície de descoberta.** Um manifesto em `/.well-known/ucp` (ou um servidor MCP) é o que declara o que você aceita: capabilities, handlers, endpoints.
+
+**3. Toda mutação precisa de chave de idempotência.** Agentes repetem requisição. Sem `idempotency-key`, repetição vira pedido duplicado e depois vira chargeback.
+
+**4. Verificação no servidor, nunca no modelo.** A regra do AP2 se aplica a tudo: a decisão de autorizar precisa ser código determinístico, com assinatura verificada, limite checado e carrinho travado por hash.
+
+**5. Entregue credencial escopada, não o cartão.** Token de pagamento com escopo, teto e validade curta. O agente nunca deve ver o número do cartão — nem no seu log.
+
+**6. Guarde a trilha de auditoria.** Mandato, recibo, `request-id` e correlação agente↔pedido. Sem isso, uma disputa vira discussão de palavra contra palavra, com a sua loja levando a pior.
+
+**7. Preço, estoque, imposto e desconto continuam seus.** Quem calcula o total é o seu backend. Deixar o agente calcular é abrir a porta para divergência de preço e briga com o consumidor.
+
+**8. Meça anomalia.** Um agente mal configurado compra errado, mas escala rápido. Alerta de volume, ticket fora do padrão e taxa de falha por agente deveriam existir antes de abrir o checkout para máquinas.
+
+Se você está começando esse tipo de integração hoje, os mesmos princípios que valem para [identidade e permissão de agentes](/blog/ntt-data-aivista-e-snowflake-identidade-sozinha-no-vai-proteger-agentes-de-ia-em) valem aqui: permissão mínima, escopo explícito e verificação fora do modelo. E se a sua dúvida é por onde começar do lado do agente, o caminho de [transformar um script em agente sem perder controle](/blog/como-transformar-um-script-python-em-agente-de-ia-sem-perder-controle) é o pré-requisito técnico desta conversa.
+
+## FAQ
+
+### UCP, AP2 e ACP são concorrentes?
+
+Parcialmente. UCP e AP2 são camadas complementares: o UCP cuida da jornada de compra e é declaradamente compatível com o AP2, que cuida da autorização de pagamento. O ACP compete com essa dupla dentro dos produtos da Stripe e da OpenAI, porque empacota comércio e pagamento num único protocolo.
+
+### O AP2 já funciona com PIX?
+
+Ainda não de forma nativa. A versão atual do AP2 trabalha principalmente com métodos *pull*, como cartão de crédito e débito. A documentação lista transferências em tempo real — citando UPI e PIX — no roadmap de pagamentos *push*.
+
+### Minha loja pequena precisa implementar isso agora?
+
+Não necessariamente. Mas três práticas que esses protocolos exigem já são ganho puro para qualquer e-commerce: catálogo estruturado, idempotência em toda operação de escrita e credencial de pagamento escopada em vez de dado de cartão circulando no sistema.
+
+### Quem paga a conta se o agente comprar errado?
+
+É justamente o problema que o AP2 ataca: mandatos e recibos assinados formam uma trilha não-repudiável do que cada parte viu e autorizou. O que o spec não define é a regra jurídica de responsabilidade na disputa — ele entrega a evidência; quem julga é o processo, o contrato e a bandeira.
+
+## Schema recomendado
+
+Use `Article` para este post, `FAQPage` para as perguntas acima e `BreadcrumbList` para a navegação, injetados no corpo do server component (o Next.js renderiza o JSON-LD a partir do RSC). Para imagem de capa, use apenas ilustração original ou com licença verificável, com `alt` descritivo — algo como "fluxo de checkout agêntico com manifesto UCP e mandatos AP2" — nunca arte de terceiros sem confirmação de uso.
+
+## Classificação editorial
+
+**Atualizável.** Os conceitos estruturais — descoberta por manifesto, sessão de checkout idempotente, mandato aberto e fechado, verificação determinística — tendem a durar. Já os detalhes mudam rápido. Revisar este post quando:
+
+- o AP2 publicar uma versão nova do spec (a atual é a 0.2) ou mudar os tipos de mandato;
+- a FIDO Alliance publicar as especificações do Payments Technical Working Group, onde AP2 e Verifiable Intent entraram como contribuições;
+- o AP2 passar a suportar pagamentos *push* (PIX e UPI) de forma nativa;
+- o UCP ou o ACP mudarem o formato de manifesto, os headers ou os modelos de token de pagamento.
+
+## Fontes
+
+- [Google Cloud Blog — Powering AI commerce with the new Agent Payments Protocol (AP2)](https://cloud.google.com/blog/products/ai-machine-learning/announcing-agents-to-payments-ap2-protocol)
+- [AP2 — Agent Payments Protocol, documentação oficial](https://ap2-protocol.org/)
+- [AP2 — especificação técnica v0.2 (GitHub)](https://github.com/google-agentic-commerce/AP2/blob/main/docs/ap2/specification.md)
+- [FIDO Alliance — FIDO Alliance to Develop Standards for Trusted AI Agent Interactions](https://www.fidoalliance.org/news/fido-alliance-to-develop-standards-for-trusted-ai-agent-interactions/)
+- [Google Developers Blog — Under the Hood: Universal Commerce Protocol (UCP)](https://developers.googleblog.com/under-the-hood-universal-commerce-protocol-ucp/)
+- [Google for Developers — Universal Commerce Protocol (UCP)](https://developers.google.com/merchant/ucp)
+- [Stripe Docs — Agentic Commerce Protocol](https://docs.stripe.com/agentic-commerce/acp)
+- [Agentic Commerce Protocol — especificação](https://agenticcommerce.dev/)
+- [OpenAI — Buy it in ChatGPT: Instant Checkout and the Agentic Commerce Protocol](https://openai.com/index/buy-it-in-chatgpt/)
+- [TechCrunch — Google tests buying from Walmart-owned Flipkart through Gemini and AI Mode in India](https://techcrunch.com/2026/09/26/google-tests-buying-from-walmart-owned-flipkart-through-gemini-and-ai-mode-in-india/)
