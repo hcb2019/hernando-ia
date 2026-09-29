@@ -1,0 +1,180 @@
+---
+title: "Modelos de mundo: o que são os world models que a AMD compra por US$ 8,2 bilhões"
+date: "2026-09-29"
+description: "Um world model aprende a estrutura estatística do espaço e do tempo, não do texto. A AMD anunciou a compra da World Labs por cerca de US$ 8,2 bilhões em ações: entenda a diferença entre renderer, simulator e planner, o que a World API já entrega para quem programa e como avaliar um modelo de mundo antes de apostar nele."
+author: "Hernando Candido"
+tags: [Modelos de Mundo, World Models, IA Espacial, Simulação, Robótica, AMD, World Labs, Spatial Intelligence]
+sponsored: false
+premium: false
+---
+
+# Modelos de mundo: o que são os world models que a AMD compra por US$ 8,2 bilhões
+
+**Um modelo de mundo (world model) aprende a estrutura estatística do espaço e do tempo — como a luz cai numa superfície, como um objeto responde a força — em vez da estrutura estatística do texto. Em 28 de setembro de 2026, a AMD anunciou um acordo definitivo para comprar a World Labs, o laboratório de spatial intelligence de Fei-Fei Li, numa transação de aproximadamente US$ 8,2 bilhões em ações. Este post explica o que é um world model na definição que o próprio campo usa, separa as três funções que costumam ser confundidas sob o mesmo nome, mostra o que já está disponível para quem programa e fecha com um checklist de avaliação antes de você apostar uma linha de código nisso.**
+
+Toda semana aparece um modelo novo e a pergunta prática é sempre a mesma: isso muda alguma coisa no que eu construo? Com world models, a resposta depende de uma distinção que quase ninguém faz.
+
+Renderer, simulator e planner não são três gerações da mesma tecnologia. São três saídas diferentes — pixels, estado e ação — e escolher a errada queima orçamento de treino e de GPU.
+
+Este post é o mapa dessa escolha.
+
+## O que aconteceu: a AMD compra a World Labs por US$ 8,2 bilhões
+
+Segundo o comunicado da própria AMD, publicado em 28/09/2026, a empresa assinou um acordo definitivo para adquirir a World Labs. É uma transação **all-stock de aproximadamente US$ 8,2 bilhões**, com fechamento esperado até o fim de 2026 e sujeito a aprovações regulatórias.
+
+A World Labs tem sede em São Francisco e desenvolve **modelos de spatial intelligence que geram, reconstroem e simulam ambientes 3D interativos** a partir de texto, imagem e vídeo, além de tecnologia para aprendizado e simulação de robôs.
+
+Do lado da AMD, a justificativa é direta: à medida que a IA avança em raciocínio, robótica, simulação e IA física, o perfil de carga sobre a infraestrutura fica mais diverso. Entender como esses workloads evoluem, nas palavras da AMD, ajuda a moldar o roadmap de chips.
+
+> "Construir plataformas de computação para a próxima geração de IA exige um entendimento profundo de como os modelos estão evoluindo."
+>
+> — **Dr. Lisa Su**, chair e CEO da AMD, no comunicado de 28/09/2026
+
+Fei-Fei Li passa a ser **executive vice president e chief scientist da AMD**, reportando diretamente a Lisa Su. Justin Johnson e Ben Mildenhall continuam liderando o time da World Labs dentro da AMD.
+
+Ela fundou o laboratório no início de 2024, com os dois como cofundadores. A relação com a AMD não começou agora: segundo o texto de anúncio dela, a parceria técnica profunda existe desde 2025, começando por **treino de modelos e otimização de inferência em GPUs AMD** — e Lisa Su foi investidora inicial da World Labs.
+
+## O que é um modelo de mundo, na definição que o campo usa
+
+A definição operacional que a World Labs publicou em 03/06/2026 é a mais útil que eu já vi:
+
+modelos de linguagem aprendem a estrutura estatística do **texto**; world models aprendem a estrutura estatística do **espaço e do tempo**. Como a luz cai numa superfície. Como um jardim aparece de um ângulo que nenhuma câmera capturou. Como os objetos respondem a força e seguem as leis da física.
+
+A origem do termo vem de antes de qualquer transformer. O ciclo é o mesmo que os livros de reinforcement learning desenham há décadas — o **POMDP**, processo de decisão de Markov parcialmente observável — e a expressão "modelo de mundo" nasceu nessa tradição.
+
+O ciclo tem quatro peças:
+
+- **agente** — pode ser uma pessoa, um robô ou um sistema de software;
+- **ação** — o que o agente faz;
+- **estado** — a descrição completa do que está acontecendo no mundo naquele instante: cada objeto, cada posição, cada velocidade;
+- **observação** — a visão parcial que chega ao agente: os fótons numa retina, as leituras de um sensor, os pixels de um frame.
+
+A World Labs rastreia a ideia até **Kenneth Craik, em 1943**, com a proposta de que a mente raciocina rodando "modelos em pequena escala" da realidade. O que mudou de lá para cá foi o substrato: redes neurais treinadas em escala.
+
+Isso resolve um problema prático de conversa. "World model" é um dos termos mais sobrecarregados da IA hoje: visão computacional, robótica, reinforcement learning e IA generativa dizem estar construindo world models, e cada um quer dizer uma coisa bem diferente. Um modelo de vídeo com chamas fisicamente impossíveis, um LLM improvisando um jogo jogável e um motor de física simulando combustão recebem o mesmo nome.
+
+**A diferença entre LLM e world model não é de qualidade, é de unidade de estado:**
+
+| | Modelo de linguagem (LLM) | Modelo de mundo (world model) |
+|---|---|---|
+| O que aprende | Estrutura estatística do texto | Estrutura estatística do espaço e do tempo |
+| Unidade de estado | Token | Objeto, posição, velocidade, geometria, física |
+| Tipos de saída | Texto, código, chamadas de ferramenta | Pixels, estado 3D, ações |
+| Erro típico | Alucinação plausível | Geometria que parece certa e não se sustenta |
+| Gargalo de inferência | Tokens por segundo e KV cache | Gerar frames e manter consistência 3D no tempo |
+
+## Renderer, simulator e planner: as três funções
+
+A taxonomia funcional da World Labs divide o que se chama de world model em três saídas diferentes. Cada uma resolve um problema distinto — e serve um consumidor distinto.
+
+| Função | O que devolve | O que importa | Exemplos citados pela World Labs |
+|---|---|---|---|
+| **Renderer** | Observações (pixels) | Fidelidade visual: produzir o que um espectador veria | Modelos texto-para-vídeo, Genie 3 (Google), RTFM (World Labs) |
+| **Simulator** | Estado | Contrato estrutural: geometria que aguenta inspeção, física que respeita as leis de Newton, dinâmica coerente | Ambientes 3D com malhas de colisão |
+| **Planner** | Ações | Dado um estado e um objetivo, o que fazer agora | Modelos visão-linguagem-ação (VLA) e world-action models |
+
+O renderer é o mais maduro comercialmente. Ele também é o mais limitado: otimiza plausibilidade visual, não precisão física. Os prédios do drone shot podem parecer impecáveis vistos de cima e desmoronar quando você tenta dirigir pela cidade abaixo deles.
+
+O planner é o mais promissor e o mais imaturo. É preciso honestidade sobre o que os demos de robótica dos últimos dois anos mostram: quase todos ficaram confinados a laboratórios com conjuntos de objetos estreitos e tarefas curtas. A distância entre um vídeo convincente e um robô que funciona de verdade numa cozinha, num galpão ou num centro cirúrgico continua enorme.
+
+**E o simulator, que recebe menos atenção pública, é o elo decisivo.** Se linguagem é uma abstração do mundo e pixels são uma projeção dele, geometria, física e dinâmica são o mundo em si. Um modelo que domina simulação consegue projetar esse entendimento tanto em pixels quanto em previsão de ação. Um modelo que só renderiza, ou só planeja, não consegue nenhum dos dois.
+
+A fronteira entre os três está se dissolvendo, e essa é a parte interessante. O conhecimento necessário para renderizar um mundo, simulá-lo e agir nele é basicamente o mesmo. O destino lógico é um **modelo de mundo unificado**, que alterne entre modalidades conforme o consumidor lá na frente — humano olhando, programa treinando ou braço robótico se movendo.
+
+## O que a World Labs já colocou na mão de quem programa
+
+Nada disso é só paper. Esta é a linha do tempo real, com fontes primárias:
+
+- **12/11/2025 — Marble.** O modelo multimodal de mundo do laboratório ficou disponível para todos. Ele recebe prompts multimodais (texto, imagem, vídeo ou esboço espacial) e gera ambientes 3D exploráveis, com **Gaussian splats para exploração visual e malhas de colisão que um motor de física consegue operar**.
+- **21/01/2026 — World API.** Uma interface pública para gerar mundos 3D navegáveis a partir de texto, imagem única, conjunto de imagens, panorama 360° ou vídeo. A geração é assíncrona e o resultado traz layout, profundidade, iluminação e estrutura espacial. Os mundos podem ser renderizados no browser ou exportados — e a própria documentação de lançamento cita integração com **NVIDIA Isaac Sim, MuJoCo e RoboSuite**.
+- **14/04/2026 — Spark 2.0.** Um sistema de streaming de mundos em 3D Gaussian Splatting com nível de detalhe, para rodar essas cenas no navegador.
+- **21 e 28/07/2026 — SceniX e o R2S2R.** A aquisição de uma empresa de robótica e simulação virou o motor *real-to-sim-to-real*: políticas de robô treinadas **inteiramente em simulação** transferindo para o hardware, com a avaliação em simulação prevendo o desempenho relativo e as regiões de falha no mundo real.
+- **01/09/2026 — Atlas.** Um modelo omni treinado do zero para operar nativamente sobre texto, imagens, vídeo e 3D, descrito como um **diffusion transformer autorregressivo multimodal** que junta todas as entradas num contexto espacial compartilhado. Na geração com controle de câmera, produz até **1 minuto de vídeo em 1440p** a partir de 1 a 6 imagens de entrada; na reconstrução, parte de uma imagem e chega a dezenas. A World Labs diz que ele vai alimentar as próximas versões do Marble.
+
+A frase da Fei-Fei Li sobre o Atlas é a melhor analogia disponível: assim como um LLM prevê o próximo token de um texto, o Atlas prevê a **próxima vista** a partir de imagens 2D — e, segundo ela, isso resolveu na prática o problema conhecido em visão computacional como reconstrução esparsa, combinando modelos generativos com geometria multivista.
+
+Se os seus casos de uso são jogos, mídia imersiva, arquitetura, imóveis, terapia ou ambientes de reinforcement learning, essa é a superfície que já existe hoje — e não uma promessa de roadmap.
+
+## Por que uma fabricante de chips compra um laboratório de modelos
+
+A resposta está na própria justificativa da World Labs para o negócio: escalar esforços, escalar alcance e **chegar mais perto do hardware**.
+
+No texto de anúncio, Fei-Fei Li escreve que, sem um esforço focado em hardware, a IA fica limitada em eficiência e em escala — e, no caso deles, continua presa ao mundo digital.
+
+Traduzindo para engenharia: o gargalo de um world model não é o mesmo de um LLM. Você não está servindo tokens com KV cache e batching de requisições curtas. Você está gerando frames e mantendo coerência 3D no tempo, com consumo de memória e de compute que muda conforme o comprimento da simulação e o número de vistas. Quem controla o silício e a pilha de software consegue otimizar esse perfil de carga de ponta a ponta.
+
+É a lógica de co-design que já apareceu no lado da inferência de LLM, onde escolher quantização e roteamento de modelo mudou a conta final — vale reler [como escolher entre 4-bit, 8-bit, GPTQ e AWQ](/blog/quantizacao-de-llm-como-escolher-4-bit-8-bit-gptq-e-awq) para lembrar o tamanho desse efeito.
+
+A promessa pública das duas empresas é montar um **ecossistema aberto** de hardware, software, plataformas e modelos amplamente acessíveis. Vale anotar o que isso significa na prática para quem programa: se modelos espaciais seguirem o caminho dos modelos de linguagem, a qualidade sobe, o preço por inferência cai e o que trava o seu produto deixa de ser o modelo e passa a ser a integração.
+
+## Como avaliar um modelo de mundo antes de apostar nele
+
+Seis perguntas. Se a ferramenta que você está testando falhar nas três primeiras, ela é um renderer se passando por simulador.
+
+1. **A geometria sobrevive ao retorno?** Gire, ande, volte para o mesmo ponto. Um mundo que se desfaz quando você sai do ângulo original não tem estado 3D.
+2. **A física se comporta sob contato?** Empurre, derrube, jogue. Objetos que atravessam o chão ou flutuam revelam geometria gerada com escala errada ou auto-interseção — um risco que a própria World Labs aponta como específico de simuladores generativos.
+3. **Você controla a câmera e a ação?** Caminho de câmera definido e reprodutível separa geração de cena de vídeo bonito.
+4. **Para onde o mundo exporta?** Malha de colisão, formato de cena, integração com o seu simulador. Sem export, seu pipeline morre na demo.
+5. **O custo por mundo ou por minuto de simulação fecha?** Simulação multi-física em escala continua ordens de magnitude mais caras que simulação de domínio único.
+6. **A licença permite treinar?** "Disponível para todos" não significa automaticamente dados livres para treinar política de robô.
+
+Uma regra que não deve ser quebrada: **não use saída de renderer como dado de treino de robô**. Renderer otimiza o que aparece, não o que é. Ele não pode ser confiado para projetar um prédio nem para ensinar uma mão robótica a pegar um copo.
+
+## O que fazer na prática, nesta semana
+
+1. **Classifique sua necessidade como pixels, estado ou ação.** Isso define se você quer um gerador de cena, um simulador ou um modelo de ação — e evita comprar a categoria errada. A mesma confusão aparece quando o assunto é autonomia: vale reler [como transformar um script Python em agente sem perder o controle](/blog/como-transformar-um-script-python-em-agente-de-ia-sem-perder-controle).
+2. **Faça um teste de reconstrução com material que você já tem.** Pegue 20 fotos de um ambiente real seu — loja, escritório, planta — e veja se o modelo devolve um mundo navegável e exportável.
+3. **Meça o gap sim-real com uma tarefa fixa.** Escolha uma tarefa determinística, execute em simulação e no mundo real, compare observações e desfechos. É o método que a World Labs usa para validar cada mundo reconstruído, e serve em escala pequena.
+4. **Trate a avaliação como camada separada.** Medir se a tarefa terminou não mede se o caminho escolhido era bom — a lição vale igual aqui. Veja em [como avaliar a qualidade de decisão de um agente de IA](/blog/como-avaliar-a-qualidade-de-decisao-de-um-agente-de-ia-taste-bench) o método para minerar isso dos seus próprios traces.
+
+E se o seu horizonte é físico — robótica, drones, câmeras —, este post é a continuação direta de [IA física: quando os agentes saem do chat e entram no mundo real](/blog/ia-fsica-quando-os-agentes-saem-do-chat-e-entram-no-mundo-real).
+
+## FAQ
+
+### O que é um modelo de mundo (world model)?
+
+É um modelo que aprende a estrutura estatística do espaço e do tempo — geometria, física, dinâmica, aparência sob diferentes ângulos — em vez da estrutura estatística do texto. Na taxonomia funcional da World Labs, world models se dividem em três saídas: renderers (pixels), simulators (estado) e planners (ações).
+
+### Quanto a AMD pagou pela World Labs e quando o negócio fecha?
+
+Aproximadamente US$ 8,2 bilhões, em uma transação all-stock anunciada em 28 de setembro de 2026. O fechamento é esperado até o fim de 2026, sujeito a aprovações regulatórias e outras condições usuais, segundo o comunicado oficial da AMD.
+
+### Qual a diferença entre um LLM e um world model?
+
+A unidade de estado. Um LLM opera sobre tokens e devolve texto; um world model opera sobre objetos, posições, velocidades e geometria e devolve pixels, estado 3D ou ações. Os dois erram de formas diferentes: o LLM alucina texto plausível, o world model gera geometria que parece certa e não se sustenta sob inspeção.
+
+### Todo world model serve para treinar robôs?
+
+Não. Renderers otimizam plausibilidade visual e não têm contrato estrutural — não devem ser usados para treinar política de robô nem para projetar engenharia. Para treinar, o que serve é o simulator, que devolve estado com geometria, física e dinâmica coerentes, além de malhas de colisão que um motor de física consegue operar.
+
+### Como usar modelos de mundo num projeto hoje?
+
+A via mais direta é a World API, pública desde 21 de janeiro de 2026: você envia um pedido de geração (texto, imagem, panorama 360° ou vídeo) e recebe de volta um mundo 3D navegável, com layout, profundidade e iluminação. Os mundos podem ser renderizados no navegador ou exportados para pipelines que citam Isaac Sim, MuJoCo e RoboSuite.
+
+## Schema recomendado
+
+Use `Article` para este post, `FAQPage` para as perguntas acima e `BreadcrumbList` para a navegação, injetados no corpo do server component — o Next.js renderiza o JSON-LD a partir do RSC e o Google processa normalmente.
+
+Para imagem de capa, use apenas ilustração original ou com licença verificável, com `alt` descritivo — algo como "diagrama das três funções de um modelo de mundo: renderer devolvendo pixels, simulator devolvendo estado 3D e planner devolvendo ações" — nunca arte de terceiros sem confirmação de uso.
+
+## Classificação editorial
+
+**Atualizável.** A taxonomia (renderer, simulator, planner), o ciclo agente-ação-estado-observação e os critérios de avaliação são estruturais e não dependem do modelo da moda. Já os produtos, a disponibilidade e a propriedade mudam rápido. Revisar este post quando:
+
+- o fechamento da aquisição da World Labs pela AMD for concluído (esperado até o fim de 2026) ou barrado por regulação;
+- sair uma versão nova do Atlas, do Marble ou da World API com mudanças de capacidade, limites ou licença;
+- o Spark ou o pipeline de exportação de mundos mudar de formato ou de integração com simuladores;
+- aparecer uma revisão da taxonomia funcional pela própria World Labs ou um paper que a contradiga;
+- surgirem resultados públicos de sim-to-real que mudem o que se pode afirmar sobre transferência de política treinada só em simulação.
+
+## Fontes
+
+- [AMD Newsroom — AMD to Acquire World Labs to Advance the Future of AI Compute (28/09/2026)](https://newsroom.amd.com/news/amd-acquire-world-labs/)
+- [AMD Investor Relations — AMD to Acquire World Labs to Advance the Future of AI Compute](https://ir.amd.com/news-events/press-releases/detail/1299/amd-to-acquire-world-labs-to-advance-the-future-of-ai-compute)
+- [World Labs — World Labs is Joining AMD (28/09/2026)](https://www.worldlabs.ai/blog/amd-announcement)
+- [Dr. Fei-Fei Li — To Seek a Newer World: Our Journey from World Labs to AMD (28/09/2026)](https://drfeifei.substack.com/worldlabs-joining-amd)
+- [World Labs — A Functional Taxonomy of World Models (03/06/2026)](https://www.worldlabs.ai/blog/taxonomy-of-world-models)
+- [World Labs — Atlas: A World Model for Spatial Intelligence (01/09/2026)](https://www.worldlabs.ai/blog/atlas)
+- [World Labs — Announcing the World API (21/01/2026)](https://www.worldlabs.ai/blog/announcing-the-world-api)
+- [World Labs — Building Worlds That Train Robots: real-to-sim-to-real (28/07/2026)](https://www.worldlabs.ai/blog/real-to-sim-to-real)
+- [TechCrunch — AMD will acquire Fei-Fei Li's World Labs for $8.2 billion (28/09/2026)](https://techcrunch.com/2026/09/28/amd-will-acquire-fei-fei-lis-world-labs-for-8-2-billion/)
