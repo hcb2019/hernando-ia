@@ -1,0 +1,200 @@
+---
+title: "Skills de IA: o que são os SKILL.md, como criar e o que muda com o fim dos Gems"
+date: "2026-09-30"
+description: "Skills são instruções reutilizáveis empacotadas em arquivos — e viraram o formato comum entre Gemini, Claude e ChatGPT. Entenda o que é o SKILL.md, como o progressive disclosure evita estourar o contexto, as regras de nome e descrição que fazem a skill disparar, as datas de desligamento dos Gems e um checklist de migração."
+author: "Hernando Candido"
+tags: [Skills, SKILL.md, Agent Skills, Gemini, Gems, Claude, OpenAI, Agentes de IA, Engenharia de IA, Prompt]
+sponsored: false
+premium: false
+---
+
+# Skills de IA: o que são os SKILL.md, como criar e o que muda com o fim dos Gems
+
+**Skill é uma capacidade reutilizável empacotada em arquivo — instruções, metadados e, opcionalmente, scripts e templates — que o assistente carrega sozinho quando o seu pedido combina com ela. O Google confirmou que os Gems do Gemini viram skills a partir de novembro de 2026 e que o arquivo de intercâmbio é o SKILL.md, o mesmo formato em que a Anthropic empacota as Agent Skills do Claude. Neste post: o que é uma skill na definição oficial dos dois fornecedores, como o carregamento em camadas funciona, as regras de nome e descrição que fazem a skill disparar, as datas exatas de desligamento por tipo de conta e um checklist para migrar sem perder o trabalho que você já tem.**
+
+Quem constrói produto com IA vive o mesmo ciclo: escreve um prompt bom, cola num documento, perde, reescreve pior. Skill resolve isso transformando conhecimento recorrente em arquivo versionável.
+
+E em 2026 esse arquivo virou acordo entre fornecedores — o que muda o cálculo de quem escolhe onde investir tempo.
+
+## O que está mudando: os Gems viram skills
+
+Segundo a central de ajuda do Google, os **Gems vão virar skills** e o desligamento acontece em ondas, por tipo de conta. A mudança é a mesma que o TechCrunch noticiou em 28/09/2026:
+
+| Conta | Gems saem do ar |
+|---|---|
+| Conta pessoal do Google | **novembro de 2026** |
+| Workspace business, enterprise e sem fins lucrativos | **março de 2027** |
+| Workspace education | **junho de 2027** |
+
+Segundo o TechCrunch e o 9to5Google, a tela de gerenciamento de Gems já avisa que a migração começa em **17 de novembro de 2026**.
+
+O Google diz que recria seus Gems automaticamente como skills, incluindo **arquivos de conhecimento compatíveis**. Quem quiser antecipar, faz manual: baixar os arquivos do Gem, criar a skill com o mesmo nome e subir a pasta.
+
+Não é só o Gems: **o Opal** (o experimento de mini apps) **e o Gems by Google Labs saem do ar no mesmo mês**.
+
+Skills hoje estão disponíveis para **maiores de 18 anos com conta pessoal do Google**, com expansão anunciada para contas de trabalho e escola.
+
+## O que é uma skill de IA, na definição oficial
+
+A definição do Google é a mais curta: **"instruções personalizadas reutilizáveis"** que ajudam a automatizar tarefas.
+
+A da Anthropic é a mais operacional: skills são **recursos modulares baseados em filesystem** que dão ao agente conhecimento específico de domínio — workflows, contexto e boas práticas que transformam um agente generalista em especialista.
+
+Três propriedades aparecem nas duas documentações:
+
+- **Carrega sob demanda.** Você não cola a skill no prompt. Ela existe no ambiente e é acionada quando é relevante.
+- **É composta.** Dá para empilhar várias skills numa mesma conversa, segundo o Google, e combinar skills para tarefas multietapa, segundo a Anthropic.
+- **Tem gatilho explícito.** Nome e descrição são o que o modelo usa para decidir se aquilo serve para o seu pedido agora.
+
+O que a skill **não** é:
+
+- **Não é prompt salvo.** Prompt vive na conversa; skill vive em arquivo, sobrevive à sessão e vale para qualquer chat.
+- **Não é MCP.** Os dois se complementam. O MCP conecta ferramentas e dados externos; a skill ensina o processo. A própria Anthropic diz que pretende explorar como skills complementam servidores MCP.
+- **Não é manual.** A recomendação do Google é literal: **"pense em cola, não em manual"**. Instruções curtas, regras de formatação e os erros comuns a evitar.
+
+## SKILL.md: o formato que virou comum
+
+Aqui está o ponto que interessa a quem desenvolve: **Google e Anthropic convergiram no mesmo arquivo**.
+
+Na Anthropic, toda skill é um diretório com um **SKILL.md** obrigatório, começando por frontmatter YAML com `name` e `description`:
+
+```yaml
+---
+name: pdf-processing
+description: Extract text and tables from PDF files, fill forms, merge documents. Use when working with PDF files or when the user mentions PDFs, forms, or document extraction.
+---
+```
+
+O Google adotou o mesmo formato. A própria central de ajuda responde à pergunta "posso trazer skills de outras plataformas?" com **sim, subindo os SKILL.md**. Hoje o upload de arquivos está disponível só no app do Gemini para Mac e no gemini.google.com.
+
+As regras de nomenclatura também batem: **nome em minúsculas com hífens** (`sample-skill-name`, `plan-meal-from-recipe`), e a pasta precisa ter o mesmo nome da skill quando você sobe arquivos junto.
+
+É uma convergência discreta e barata: um Markdown com duas chaves de frontmatter. Mas é ela que permite escrever sua biblioteca de capacidades uma vez e testá-la em mais de um assistente.
+
+A OpenAI foi para o lado oposto do espectro no DevDay de 29/09/2026. Em vez de arquivo de texto, ela abriu **plugin extensions**: seu plugin ganha um lugar na barra lateral do ChatGPT e pode ter **painéis interativos** ao lado da conversa, além de visualizadores dos arquivos que o seu produto suporta — disponível para todos os planos. É superfície de aplicativo, não arquivo de instrução.
+
+## Progressive disclosure: por que a skill não estoura o contexto
+
+Esse é o detalhe técnico que faz o modelo funcionar. A documentação da Anthropic descreve três níveis de carregamento:
+
+| Nível | Quando carrega | Custo | Conteúdo |
+|---|---|---|---|
+| 1 — Metadados | Sempre, na inicialização | ~100 tokens por skill | `name` e `description` do frontmatter |
+| 2 — Instruções | Quando a skill é acionada | Menos de 5k tokens | Corpo do SKILL.md |
+| 3 — Recursos e código | Sob demanda | Zero até ser lido | Arquivos de referência, templates, scripts |
+
+O Google descreve exatamente o mesmo comportamento, em três passos: o Gemini checa **nome e descrição** para saber se a skill é relevante; se for, lê as instruções completas; e só abre os arquivos anexos **quando precisa deles**.
+
+O efeito prático está no nível 3: **scripts rodam via bash e só a saída entra no contexto**. O código do script não consome token nenhum. Por isso a Anthropic pode dizer que não existe penalidade de contexto para conteúdo empacotado que não é usado — você pode ter dezenas de arquivos de referência numa skill e carregar um só.
+
+Duas consequências que quase ninguém comenta:
+
+- **A descrição é o que dispara a skill**, não as instruções. Se ela for vaga, o modelo não aciona. O Google diz isso explicitamente: descrição genérica significa que a skill pode não ser usada quando deveria.
+- **Mais skill não significa mais contexto ocupado.** O custo fixo é o metadado. É o inverso de colar tudo no system prompt — a decisão de arquitetura de prompt que já discutimos em [roteamento de modelos](/blog/roteamento-de-modelos-llm-como-equilibrar-custo-latencia-e-qualidade-em-producao) aparece aqui de novo, só que em outra camada.
+
+## Como escrever uma skill que realmente dispara
+
+As duas documentações são convergentes e específicas.
+
+**Nome** (Google): comece com verbo, foque no que a skill faz e não no que ela é. Evite palavras vagas como "helper", "tools", "data". Use o formato obrigatório em minúsculas com hífens.
+
+**Descrição** (Google): liste situações concretas de uso começando por **"Use when…"**, escreva em terceira pessoa (nada de "eu posso ajudar você") e respeite o limite de **1.024 caracteres**.
+
+**Conteúdo** (Google): instruções rápidas de como fazer, regras de formatação e os erros comuns a evitar. Skill é para tarefa recorrente — se é trabalho de uma vez só, se o assistente já acerta sozinho ou se os requisitos mudam toda semana, **não vale criar skill**.
+
+**Método** (Anthropic): comece pela avaliação, não pela escrita. Rode o agente em tarefas representativas, veja onde ele trava, e só então escreva a skill que tapa aquele buraco. Quando o SKILL.md ficar pesado, quebre em arquivos separados e referencie. E acompanhe como o modelo usa a skill em cenário real — comportamento inesperado quase sempre é problema de nome e descrição.
+
+Uma coisa que o Google já delimita: **no Gemini você pode criar quantas skills quiser, mas só 100 ficam ativas ao mesmo tempo**.
+
+## Onde suas skills ficam em cada plataforma
+
+| Plataforma | Onde ficam | Observação |
+|---|---|---|
+| Gemini (app/web) | Página Skills, em Configurações | Ganha compartilhamento, arquivos do Drive e notebooks "nas próximas semanas" |
+| Claude Code | `~/.claude/skills/` (pessoal) ou `.claude/skills/` (projeto) | Baseado em filesystem, sem upload |
+| claude.ai | Upload de ZIP em Configurações | Planos Pro, Max, Team e Enterprise com execução de código; skills são individuais, sem gestão central |
+| Claude API | `skill_id` no parâmetro `container` + code execution tool; custom via `/v1/skills` | Container sem rede e sem instalação de pacote em runtime |
+| ChatGPT | Plugin extensions (barra lateral e painéis) | Superfície de aplicativo, não arquivo de instrução |
+
+Vale registrar o que o Google ainda não cobriu: skills **funcionam** com Connected Apps (como os apps do Workspace), mas **não funcionam** com Canvas, Deep Research, Create video, Create music e Guided learning. E, ao contrário dos Gems, não existe mais uma página dedicada listando os chats em que uma skill específica foi usada.
+
+## O que muda quando a capacidade vira arquivo
+
+Três mudanças de fundo, para além do anúncio.
+
+**Primeira: sua capacidade fica portável.** Um Markdown com frontmatter, versionado em Git, sobrevive à troca de fornecedor. Essa é a razão prática pela qual companhias abrem repositórios públicos de skills de exemplo — a Anthropic mantém o `anthropics/skills` justamente para servir de referência de padrão.
+
+**Segunda: a revisão passa a ser de conteúdo, não de prompt.** Skill é arquivo revisável em pull request, com diff e histórico. Quem já sofreu com prompt crítico perdido em thread de Slack sabe o valor disso.
+
+**Terceira: a competição sai do modelo e vai para o processo.** Se dois assistentes carregam a mesma skill, o diferencial deixa de ser quem tem o modelo melhor e passa a ser quem escreveu o procedimento melhor. É a mesma tese que sustenta medir a qualidade da decisão do agente, não só se a tarefa terminou — método que está em [como avaliar a qualidade de decisão de um agente de IA](/blog/como-avaliar-a-qualidade-de-decisao-de-um-agente-de-ia-taste-bench).
+
+Isso conecta com uma decisão que você provavelmente já tomou sem chamar de skill: transformar script em agente com fronteira clara de permissão, como em [como transformar um script Python em agente de IA sem perder controle](/blog/como-transformar-um-script-python-em-agente-de-ia-sem-perder-controle). Skill é a camada seguinte — o procedimento empacotado, não o código.
+
+## Segurança: skill é instrução e código rodando no seu ambiente
+
+A própria Anthropic escreve o alerta: skills dão novas capacidades por meio de instruções e código, e **skills maliciosas podem introduzir vulnerabilidades** ou levar o agente a exfiltrar dados e tomar ações não intencionais.
+
+A recomendação oficial é instalar apenas de fontes confiáveis e, quando vier de fonte menos confiável, auditar antes: ler os arquivos empacotados, olhar dependências de código, recursos embutidos e qualquer instrução que mande conectar a fontes externas de rede.
+
+Se a skill vai rodar com execução de código, trate como você trataria um pacote de terceiro no seu projeto — porque é exatamente isso que é.
+
+## Como migrar seus Gems até novembro
+
+1. **Baixe os arquivos de conhecimento agora.** No Gem, abra cada arquivo em "Knowledge" e use Download. A migração automática é prometida, mas backup próprio é mais barato que suporte.
+2. **Renomeie no padrão.** Pasta em minúsculas com hífens, igual ao nome da skill. O nome da pasta tem que bater com o nome da skill no upload.
+3. **Cole nome, descrição e instruções no `SKILL.md`** — ou crie a skill manualmente em Configurações → Skills e suba a pasta depois.
+4. **Reescreva a descrição no formato "Use when…".** Essa é a parte que quase todo mundo deixa genérica e é a que decide se a skill dispara.
+5. **Desative Gems que você não usa.** Com limite de 100 skills ativas, vale escolher.
+6. **Teste antes de 17 de novembro.** Faça uma pergunta que deveria acionar a skill automaticamente e verifique se ela foi aplicada.
+
+## FAQ
+
+### O que é uma skill de IA?
+
+É uma capacidade reutilizável, empacotada em arquivo — normalmente um SKILL.md com frontmatter YAML de `name` e `description`, mais instruções e, opcionalmente, scripts e templates. O assistente carrega a skill sozinho quando o seu pedido combina com a descrição dela. Na definição do Google, são "instruções personalizadas reutilizáveis"; na da Anthropic, recursos modulares que transformam um agente generalista em especialista.
+
+### Os Gems vão acabar? Quando?
+
+Sim. Segundo a central de ajuda do Google, os Gems saem do ar em **novembro de 2026** para contas pessoais, **março de 2027** para Workspace business, enterprise e sem fins lucrativos, e **junho de 2027** para contas Workspace education. A migração para skills começa em **17 de novembro de 2026** e é automática — inclusive dos arquivos de conhecimento compatíveis. O Opal e o Gems by Google Labs saem no mesmo mês.
+
+### O SKILL.md funciona no Gemini e no Claude ao mesmo tempo?
+
+O formato é o mesmo nos dois: pasta com SKILL.md, frontmatter com `name` e `description`, nome em minúsculas com hífens. O Google afirma explicitamente que você pode importar skills criadas em outras plataformas subindo os SKILL.md — hoje, no app do Gemini para Mac e no gemini.google.com. O que muda entre plataformas é onde a skill fica armazenada e quais ferramentas ela consegue acessar.
+
+### Por que a skill não estoura a janela de contexto?
+
+Por causa do carregamento em camadas (progressive disclosure). Só nome e descrição ficam sempre carregados, cerca de 100 tokens por skill. O corpo do SKILL.md entra apenas quando a skill é acionada, e os arquivos de referência só quando são lidos. Scripts rodam fora do contexto: o código não entra, apenas a saída.
+
+### Skill substitui MCP?
+
+Não, complementa. MCP conecta ferramentas, dados e sistemas externos; skill ensina o procedimento — como executar uma tarefa do seu jeito, com suas regras. A Anthropic descreve justamente essa combinação: usar skills para ensinar fluxos mais complexos que envolvem ferramentas externas conectadas por MCP.
+
+## Schema recomendado
+
+Use `Article` para este post, `FAQPage` para as perguntas acima e `BreadcrumbList` para a navegação, injetados no corpo do server component — o Next.js renderiza o JSON-LD a partir do RSC e o Google processa normalmente.
+
+Para a imagem de capa, use apenas ilustração original ou com licença verificável, com `alt` descritivo — algo como "estrutura de uma pasta de skill com o arquivo SKILL.md e seus arquivos de referência e scripts ao lado". Nunca arte de terceiros sem confirmação de uso.
+
+## Classificação editorial
+
+**Atualizável.** O conceito — capacidade empacotada em arquivo, carregada sob demanda, disparada por descrição — é estrutural e não depende da versão do momento. Já os prazos, limites e caminhos de arquivo mudam. Revisar este post quando:
+
+- a migração de Gems para skills começar (17/11/2026) ou quando as datas de Workspace (março e junho de 2027) se aproximarem;
+- o Google liberar skills para contas de trabalho e escola, ou entregar o compartilhamento, os arquivos do Drive e os notebooks;
+- o limite de 100 skills ativas no Gemini mudar;
+- a Anthropic alterar o formato do SKILL.md, os níveis de carregamento ou os caminhos em Claude Code;
+- skills passarem a funcionar com Canvas e Deep Research, hoje fora da lista de compatibilidade;
+- o formato SKILL.md ganhar suporte em mais plataformas além de Gemini e Claude.
+
+## Fontes
+
+- [Google — About the transition from Gems to skills (Gemini Apps Help)](https://support.google.com/gemini/answer/18560919?hl=en)
+- [Google — Write effective skills for Gemini Apps](https://support.google.com/gemini/answer/17102773?hl=en)
+- [Google — Create & manage skills for Gemini Apps](https://support.google.com/gemini/answer/17094296?hl=en)
+- [Anthropic — Agent Skills (Claude Platform Docs)](https://platform.claude.com/docs/en/agents-and-tools/agent-skills/overview)
+- [Anthropic Engineering — Equipping agents for the real world with Agent Skills](https://www.anthropic.com/engineering/equipping-agents-for-the-real-world-with-agent-skills)
+- [Anthropic — Repositório público anthropics/skills (GitHub)](https://github.com/anthropics/skills)
+- [OpenAI — DevDay 2026 Recap (29/09/2026)](https://openai.com/index/devday-2026-recap/)
+- [TechCrunch — Google is killing off Gemini's Gems in favor of 'skills' (28/09/2026)](https://techcrunch.com/2026/09/28/google-is-killing-off-geminis-gems-in-favor-of-skills/)
+- [9to5Google — Gemini app replacing Gems with skills in November (27/09/2026)](https://9to5google.com/2026/09/27/gemini-gems-skills/)
+- [TechCrunch — OpenAI expands ChatGPT's plugins with app-like interfaces and automations (29/09/2026)](https://techcrunch.com/2026/09/29/openai-expands-chatgpts-plugins-with-app-like-interfaces-and-automations/)
