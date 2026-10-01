@@ -1,0 +1,176 @@
+---
+title: "Destilação adversarial de LLM: o que é o ataque que extrai o raciocínio do modelo"
+date: "2026-10-01"
+description: "Destilação adversarial é o uso não autorizado da saída de um LLM para treinar outro modelo. Como o ataque ao raciocínio funciona e o que revisar no seu código."
+author: "Hernando Candido"
+tags: [Destilação adversarial, Segurança de IA, LLM, Raciocínio, OpenAI, Anthropic, API, Propriedade intelectual, Engenharia de IA, Termos de uso]
+sponsored: false
+premium: false
+---
+
+# Destilação adversarial de LLM: o que é o ataque que extrai o raciocínio do modelo
+
+**Destilação adversarial é o uso sistemático e não autorizado das saídas — ou do raciocínio interno — de um modelo para treinar, reproduzir ou melhorar outro modelo. Em 30/09/2026 a OpenAI divulgou que interrompeu uma campanha coordenada desse tipo: a atividade começou na primeira semana de julho, teve picos em 24 e 25 de julho com 16 mil requisições de extração partindo de mais de 4 mil usuários e um cluster de mais de 15 mil contas foi totalmente cortado até 28 de julho. A OpenAI atribui um núcleo dessa atividade a pessoas associadas à Moonshot AI, dona do Kimi. O que interessa a quem programa não é o episódio em si, e sim a arquitetura que ele explorou: provedores devolvem o raciocínio do modelo ao cliente como blocos criptografados, e esses blocos são intercambiáveis entre sessões, usuários e modelos — o que permite decifrar o raciocínio num modelo mais fraco sem atacar o modelo forte.**
+
+Toda semana aparece um susto de segurança em IA. Esse é diferente, porque não envolve invasão, banco de dados comprometido nem criptografia quebrada.
+
+Envolve alguém usando a API do jeito certo, na ordem errada, em escala.
+
+E envolve algo que muitos times guardam hoje sem pensar duas vezes: o log da conversa, com o raciocínio do modelo dentro.
+
+## O que é destilação adversarial, na definição oficial
+
+A definição que a OpenAI usa é curta: **uso sistemático e não autorizado das saídas ou do raciocínio de um modelo para ajudar a treinar, reproduzir ou melhorar outro modelo**.
+
+A palavra que muda tudo é **não autorizado**.
+
+Destilar um modelo é técnica antiga e legítima: você pega um modelo grande e experiente, usa as respostas dele para treinar um modelo menor e mais barato, e chama isso de destilação. Times fazem isso com o próprio modelo, com dados próprios, dentro do contrato.
+
+Adversarial é quando a extração acontece **contra a vontade do provedor** — em escala, de forma coordenada, violando os termos de uso.
+
+Não confunda com compressão de modelo. Reduzir o tamanho de um modelo já treinado por quantização é outro assunto, e dá para fazer isso dentro das regras: veja [quantização de LLM](/blog/quantizacao-de-llm-como-escolher-4-bit-8-bit-gptq-e-awq). Destilação adversarial não é comprimir: é **roubar capacidade**.
+
+E não confunda com um modelo pequeno imitando um grande por treino normal. Na destilação adversarial o alvo é o **raciocínio protegido** — o registro interno que o modelo faz para chegar à resposta.
+
+## O que a OpenAI divulgou em 30/09/2026
+
+O relatório oficial é direto sobre o que aconteceu e o que não aconteceu.
+
+O que **não** aconteceu: ninguém quebrou criptografia, comprometeu banco de dados ou teve acesso direto a conversas armazenadas de usuários. O que aconteceu foi manipulação de interações com o modelo, em escala coordenada, para que o raciocínio protegido aparecesse em formato visível para quem pediu.
+
+A linha do tempo, segundo a própria OpenAI:
+
+| Data | O que foi observado |
+|---|---|
+| Primeira semana de julho | Início da atividade, em volume baixo |
+| 24 e 25 de julho | Picos de **16 mil requisições** com padrão de extração, vindas de **mais de 4 mil usuários** |
+| Até 28 de julho | Cluster de **mais de 15 mil contas** relacionado ao padrão foi totalmente interrompido |
+
+A técnica descrita é engenhosa e chata de defender: copiar o **raciocínio criptografado de uma conversa** e pedir, em **outra conversa**, que o modelo decifre e transcreva o conteúdo escondido.
+
+A OpenAI também credita pesquisadores independentes que reportaram vulnerabilidades relacionadas de cross-model e de compactação de conversa por divulgação responsável. A empresa investigou e confirmou que os caminhos de ataque eram reais.
+
+Sobre autoria: a OpenAI diz que não dá para afirmar que todos os operadores observados sejam de um único ator, mas atribui **um núcleo da atividade a pessoas associadas à Moonshot AI**, a desenvolvedora do Kimi.
+
+## Como o ataque funciona, em quatro passos
+
+Aqui está a parte que deveria interessar qualquer pessoa que constrói produto com modelo de raciocínio.
+
+**1. O raciocínio não fica no servidor.** Para proteger propriedade intelectual e reduzir vazamento, provedores escondem o passo a passo do modelo. Em vez de armazenar o traço no servidor, eles o devolvem ao cliente como um bloco de texto criptografado — e o cliente manda esse bloco de volta a cada requisição seguinte.
+
+**2. Os blocos são intercambiáveis.** É o achado central do paper *Stealing Reasoning Traces from Proprietary LLM APIs* (arXiv:2608.09867, agosto de 2026): esses blocos criptografados são **plenamente compatíveis entre sessões, usuários e modelos diferentes dentro do ecossistema de um mesmo provedor**.
+
+**3. Se você tem um bloco, você tem um decodificador.** O paper descreve o golpe: injetar o traço criptografado de um modelo forte num **modelo mais fraco e menos protegido do mesmo provedor**, forçando o fraco a decodificar e cuspir o traço em texto claro. Não é preciso quebrar o jailbreak do modelo forte — você usa o irmão desprotegido dele como tradutor.
+
+**4. Escala.** Uma vez que o padrão funciona, o resto é volume: contas, automação e repetição coordenada até alguém perceber.
+
+## Os quatro vetores que o paper descreve
+
+O paper não para na destilação. Ele lista quatro consequências do mesmo defeito de arquitetura:
+
+| Vetor | O que ele permite |
+|---|---|
+| **Burlar anti-destilação** | Extrair o raciocínio de um modelo proprietário; os autores dizem ter demonstrado isso em **Anthropic, OpenAI e Google** |
+| **Extração de dados privados em escala** | Decodificar **315.320 blocos de raciocínio** raspados de repositórios públicos rendeu **367 artefatos de dados pessoais e 182 credenciais** |
+| **Informação perigosa escondida** | O raciocínio pode conter conteúdo sensível mesmo quando a **resposta final recusa** o pedido malicioso |
+| **Injeção de prompt invisível** | Payload malicioso embutido dentro do bloco criptografado, para envenenar rollouts agênticos públicos |
+
+O segundo item é o mais desconfortável para quem programa. Não porque alguém atacou seu app, mas porque **desenvolvedores publicam logs de sessão achando que ali só tem texto**.
+
+Só que o bloco criptografado viaja junto. E dá para decifrar.
+
+## Por que isso importa pra quem constrói com LLM
+
+Três razões práticas, sem alarmismo.
+
+**Primeiro: o que você guarda é dado sensível.** Se o seu tracing salva a requisição inteira — incluindo artefatos de raciocínio — você está guardando material que, decodificado, pode conter dados pessoais, credenciais e conteúdo que o modelo recusou entregar na resposta final. Vale para logs de agente, dumps de sessão, issues de bug e gists de reprodução.
+
+**Segundo: a capacidade roubada não leva os guardrails junto.** A OpenAI é explícita: o raciocínio extraído pode treinar outro modelo **sem preservar as salvaguardas aplicadas à saída visível do modelo original**. Em escala, isso acelera a transferência de capacidade avançada sem o mesmo investimento em segurança. Todo o trabalho que você faz de filtro, recusa e política fica do lado de fora do pacote.
+
+**Terceiro: o risco não é exclusivo de um fornecedor.** A OpenAI diz que compartilhou o achado com parceiros de indústria pelo Frontier Model Forum justamente porque a classe de ataque não é uma vulnerabilidade só dela. E deixa o recado para quem constrói em cima: **sistemas que suportam artefatos de raciocínio portáveis ou reexecutáveis podem enfrentar riscos relacionados**.
+
+Ou seja: se o seu produto faz o raciocínio do modelo atravessar usuários, workspaces ou modelos, você herdou o problema.
+
+Vale lembrar que injeção de prompt já é o vetor de ataque mais explorado contra agentes e pipelines de RAG — o que muda aqui é só o transporte: agora o payload viaja dentro do bloco criptografado. Veja [injeção de prompt explorando falhas de design](/blog/injeo-de-prompt-est-explorando-as-maiores-falhas-de-design-da-ia-empresarial-ao-) e [controle de acesso em RAG](/blog/seguranca-em-rag-como-aplicar-controle-de-acesso-antes-da-resposta-do-llm).
+
+## O que dizem os contratos que você aceitou
+
+Destilação adversarial não é só um problema técnico. É quebra de contrato, e as cláusulas existem por escrito.
+
+| Provedor / documento | O que está proibido |
+|---|---|
+| **OpenAI Services Agreement** (vigente desde 01/01/2026, aplica-se a API, Enterprise e Business) | Fazer engenharia reversa dos serviços; **usar o Output para desenvolver modelos de IA que concorram com a OpenAI**; extrair dados por outra via que não a permitida; e contornar limites de taxa, medidas protetivas ou mitigações de segurança |
+| **OpenAI Services Agreement** — definição de "Reverse Engineer" | A definição inclui literalmente **"model extraction or stealing attacks"** |
+| **OpenAI Terms of Use** (vigente desde 01/01/2026, uso individual) | Tentar ou ajudar alguém a fazer engenharia reversa, decompilar ou descobrir os componentes subjacentes dos serviços, incluindo **modelos, algoritmos e sistemas** |
+| **Anthropic Usage Policy** | Uso de entradas e saídas para treinar um modelo de IA — citando **"model scraping" e "model distillation"** — sem autorização prévia da Anthropic; também proíbe coordenar atividade maliciosa entre contas e burlar guardrails |
+
+Detalhe que mostra o tamanho da preocupação: a política da Anthropic lista essa prática ao lado de criação automatizada de contas e de burla de banimento. Não é uma nota de rodapé contratual — é a mesma prateleira.
+
+Faz sentido. O que está em jogo é o produto.
+
+## O que fazer na prática
+
+Um checklist honesto, do mais urgente ao mais estrutural.
+
+1. **Trate bloco de raciocínio como credencial, não como log.** Se ele é sensível ao ponto de ser criptografado, ele não pertence ao seu bucket de logs com acesso amplo.
+2. **Revise o que você publica.** Repositório público, issue, gist, print de trace e sessão de debug compartilhada em canal de time. O paper tirou credenciais e dados pessoais de material assim.
+3. **Não reencaminhe artefatos de raciocínio entre usuários, workspaces ou modelos.** A compatibilidade entre contextos é exatamente o que faz o ataque funcionar.
+4. **Cuidado ao repassar contexto para um modelo menor.** Rodar parte do trabalho num modelo mais barato é estratégia correta — veja [roteamento de modelos por custo, latência e qualidade](/blog/roteamento-de-modelos-llm-como-equilibrar-custo-latencia-e-qualidade-em-producao) — mas o traço de raciocínio de um modelo de confiança alta não deve virar entrada de um modelo de confiança menor sem revisão.
+5. **Se você expõe modelo ou atua como parceiro hospedado,** a lição da OpenAI é o pacote: controle de criação de conta e infraestrutura, monitoramento de rede relacionada, inspeção de saída em streaming e cobertura de classificador. Partner-hosted deployment precisa das mesmas proteções do serviço de primeira parte.
+6. **Se você usa modelo próprio de peso aberto,** o raciocínio é dado seu. Vazou, vazou direto, sem intermediação de ninguém.
+
+## O que ainda não está resolvido
+
+Três pontos que ficaram abertos e que valem acompanhar:
+
+- **A interoperabilidade dos blocos é decisão de arquitetura dos provedores.** Enquanto o traço de raciocínio for um artefato que trafega e pode ser reexecutado, a superfície existe. A mitigação criptográfica proposta pelos pesquisadores ainda vai amadurecer.
+- **Ataques via saída de ferramenta.** A própria OpenAI diz que esse tipo de ataque exige proteção que analisa mais do que texto visível comum — trabalho em andamento.
+- **A responsabilidade nascerá no uso, não no anúncio.** O que a OpenAI fez foi banir e restringir contas fraudulentas, reforçar controles de cadastro, fechar o caminho que permitia repetir um raciocínio criptografado de terceiro e adicionar verificação em saída transmitida. Isso é defesa de fornecedor. A parte que depende de você é o que o seu código guarda.
+
+## FAQ
+
+### O que é destilação adversarial de LLM?
+
+É o uso sistemático e não autorizado das saídas ou do raciocínio de um modelo para treinar, reproduzir ou melhorar outro modelo. O que a torna adversarial não é a técnica — destilar modelo é prática legítima — e sim a ausência de autorização e a escala coordenada, normalmente contra os termos de uso do provedor.
+
+### É a mesma coisa que destilar um modelo para deixá-lo menor?
+
+Não. Destilar um modelo para deixá-lo menor é técnica legítima, feita com dados e modelos sob sua responsabilidade. Quantização, que também reduz tamanho, é outro caminho e não tem relação com o ataque. Na destilação adversarial o objetivo é extrair o raciocínio protegido de um modelo de terceiro.
+
+### O ataque quebrou a criptografia ou invadiu a OpenAI?
+
+Não. Segundo a própria OpenAI, ninguém quebrou criptografia, comprometeu banco de dados ou acessou conversas armazenadas. O que houve foi manipulação de interações com o modelo, de forma coordenada e em escala, violando os termos de uso — inclusive pedindo que um modelo decifrasse o raciocínio criptografado de outra conversa.
+
+### Se eu só consumo API, isso me afeta?
+
+Afeta se o seu código guarda ou repassa artefatos de raciocínio. Logs de sessão publicados por desenvolvedores renderam, no estudo dos pesquisadores, mais de 300 mil blocos decodificados, com centenas de dados pessoais e credenciais recuperados. O problema não é consumir API: é o que sobra no seu banco, no seu tracing e no seu repositório.
+
+### Modelo de peso aberto está livre disso?
+
+Não exatamente. O mecanismo central descrito no paper depende de blocos de raciocínio criptografados e intercambiáveis dentro do ecossistema de um provedor, então a versão específica não se aplica igual. Mas extração de capacidade por coleta massiva de saídas funciona em qualquer endpoint público — e num modelo de peso aberto o que vaza é o próprio ativo, sem intermediação.
+
+## Schema recomendado
+
+Use `Article` para este post, `FAQPage` para as perguntas acima e `BreadcrumbList` na navegação, injetados no corpo do server component — o Next.js renderiza o JSON-LD a partir do RSC e o Google processa normalmente.
+
+Para imagem de capa, use apenas ilustração original ou com licença verificável, com `alt` descritivo — algo como "diagrama de um bloco de raciocínio criptografado saindo de um modelo forte e sendo decodificado por um modelo mais fraco do mesmo provedor". Nunca arte de terceiros sem confirmação de uso.
+
+## Classificação editorial
+
+**Atualizável.** O conceito — extração não autorizada de capacidade, raciocínio como artefato que trafega e defesa por camadas — é estrutural. Já a arquitetura dos blocos de raciocínio, os números do episódio e as mitigações mudam rápido. Revisar este post quando:
+
+- os provedores mudarem o formato de entrega do raciocínio (server-side, expiração por chamada, chave por sessão);
+- os autores do paper publicarem as mitigações criptográficas em detalhe, ou as implementarem;
+- a OpenAI, a Anthropic ou o Google publicarem novas políticas ou alterações nessas cláusulas contratuais;
+- o Frontier Model Forum publicar orientação conjunta sobre destilação adversarial;
+- surgirem casos públicos de extração de raciocínio em produto de terceiro (parceiro hospedado, gateway, proxy de LLM);
+- o mecanismo de injeção invisível em blocos criptografados virar item de checklist padrão de segurança de agentes.
+
+## Fontes
+
+- [OpenAI — Disrupting a coordinated model-distillation campaign (30/09/2026)](https://openai.com/index/disrupting-a-coordinated-model-distillation-campaign)
+- [arXiv:2608.09867 — Stealing Reasoning Traces from Proprietary LLM APIs (agosto de 2026)](https://arxiv.org/abs/2608.09867)
+- [OpenAI — Services Agreement / Business Terms (vigente desde 01/01/2026)](https://openai.com/policies/business-terms/)
+- [OpenAI — Terms of Use (vigente desde 01/01/2026)](https://openai.com/policies/terms-of-use/)
+- [Anthropic — Usage Policy (AUP)](https://www.anthropic.com/legal/aup)
+- [Frontier Model Forum — mandatos e compartilhamento de informação](https://www.frontiermodelforum.org/)
