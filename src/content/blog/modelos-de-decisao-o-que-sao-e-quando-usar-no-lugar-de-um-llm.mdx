@@ -1,0 +1,210 @@
+---
+title: "Modelos de decisão: o que são e quando usar no lugar de um LLM"
+date: "2026-10-02"
+description: "Modelos de decisão como o Jev, o Strands Decider 2B e a Decisions API da OpenAI devolvem escolhas com confiança calibrada em vez de texto. O que são, onde entram num pipeline e quando o LLM continua sendo a resposta certa."
+author: "Hernando Candido"
+tags: [Modelos de decisão, Jev, TypeSafe, Strands Decider, OpenAI, Agentes de IA, Classificação, Confiança calibrada, Inferência, Engenharia de IA]
+sponsored: false
+premium: false
+---
+
+# Modelos de decisão: o que são e quando usar no lugar de um LLM
+
+**Modelo de decisão é um modelo treinado para escolher entre opções que você define e devolver probabilidade e confiança em vez de texto. Você manda o estado (mensagem do cliente, histórico, política interna) e uma lista fechada de respostas; ele devolve `choice`, `noul` ou `score` — sempre valores tipados que o seu código lê direto, sem parse de JSON. Em menos de três semanas isso deixou de ser ideia de paper: a TypeSafe lançou o Jev, a AWS abriu o Strands Decider 2B em 01/10/2026 e a OpenAI apresentou a Decisions API no DevDay de 29/09/2026.**
+
+A melhor forma de entender a categoria é lembrar do problema que ela resolve.
+
+Quem já escreveu um prompt do tipo "responda apenas com uma das categorias: cobrança, bug ou conta" conhece o resto: o modelo devolve texto, você faz parse, e uma vez a cada tantas execuções vem a resposta criativa que quebra o pipeline.
+
+**Modelos de decisão existem porque LLM serve para escrever, não para julgar.** São dois trabalhos diferentes, e a indústria passou a tratá-los como dois produtos diferentes.
+
+## O que é um modelo de decisão
+
+A TypeSafe chama a categoria de **System One models** — nome emprestado do "pensar rápido" que Daniel Kahneman popularizou em *Thinking, Fast and Slow*. Na prática, o modelo:
+
+- **recebe** um estado em texto (string, objeto JSON ou lista de textos) e uma ou mais perguntas com espaço de resposta fechado;
+- **avalia** as perguntas em paralelo contra o mesmo estado;
+- **devolve** valores tipados com distribuição de probabilidade e um número de confiança.
+
+O que ele **não** faz: escrever, resumir, traduzir, gerar código ou justificar a própria decisão. Não existe explicação na saída.
+
+A analogia que a própria documentação usa é a de uma função: estado entra, decisão tipada sai.
+
+Vale fixar a fronteira cedo, porque ela separa o que você pode delegar: **o LLM escreve, o modelo de decisão julga, o código executa.** O código continua sendo quem decide o que fazer com a resposta.
+
+## As três perguntas que existem
+
+A TypeSafe expõe três primitivas, e é esse vocabulário que aparece nas ferramentas que estão surgindo em volta da categoria.
+
+| Primitiva | Tipo de pergunta | O que volta |
+|---|---|---|
+| **Choice** | Escolher uma opção de uma lista | Opção escolhida, probabilidade de cada opção e confiança |
+| **Score** | Nota numa escala ordenada com descrições | Nota, probabilidade de cada nível e confiança |
+| **Noul** | "Afirmação verdadeira?" sim/não | Um valor entre 0 e 1 (probabilidade de sim) |
+
+O nome **Noul** vem de Bernoulli — a distribuição de probabilidade por trás de uma resposta sim/não.
+
+## Confiança não é probabilidade
+
+Aqui está o detalhe que muda o desenho do seu código.
+
+**Probabilidade** é a distribuição entre as alternativas: 0,84 para `billing`, 0,09 para `retail`, 0,06 para `sales`. **Confiança** é esse formato condensado em um número de 0 a 1: vale 1 quando toda a probabilidade está numa alternativa e cai conforme ela se espalha.
+
+Ou seja, a resposta diz **o que**; a confiança diz **se você deve agir**.
+
+É isso que permite escrever `if resposta.confidence > 0.9` e seguir, deixando o resto para revisão humana ou para um LLM — padrão que a documentação chama de confidence-gated routing. Detalhe importante: respostas de Noul não carregam confiança, só probabilidade.
+
+## O que aconteceu nas últimas semanas
+
+A cronologia importa porque explica por que o assunto saiu do nicho.
+
+| Data | O que aconteceu |
+|---|---|
+| Setembro/2026 | TypeSafe AI lança o **Jev**, o primeiro modelo System One |
+| 21/09/2026 | Simon Willison publica a análise que populariza o termo "decision models" |
+| 29/09/2026 | OpenAI apresenta a **Decisions API** no DevDay |
+| 01/10/2026 | AWS publica o **Strands Decider 2B** como peso aberto |
+
+Três fornecedores diferentes em menos de três semanas, cada um com uma aposta bem distinta.
+
+O **Jev** é a aposta em inteligência centralizada: modelo hospedado, cobrado por token de entrada, API própria.
+
+O **Strands Decider 2B** é a aposta oposta: **2 bilhões de parâmetros, Apache-2.0, pesos no Hugging Face e o dataset e os scripts de treino no pacote**, para rodar em CPU ou GPU que você já tem.
+
+A **Decisions API** da OpenAI ancora o produto no **Luna**, seu modelo menor, e por enquanto está em preview limitado. A empresa respondeu ao The New Stack que vai detalhar preço e limites no lançamento amplo — ou seja, o custo real dessa opção ainda não é público.
+
+## Como um modelo de 2B consegue decidir
+
+O truque do Strands Decider é bom de entender porque revela o que a categoria é por dentro.
+
+O time pegou um torso de LLM pré-treinado (**Qwen3.5-2B**) e **removeu a cabeça de geração de texto**. No lugar, colocou uma **cabeça de ponteiro com pouco mais de um milhão de parâmetros**, que pontua cada opção oferecida comparando o estado oculto da posição da opção com o estado oculto da posição da resposta. O torso é ajustado com um adaptador **LoRA de rank 16**.
+
+Sem geração de texto, a decisão sai numa única passada paralela. É por isso que a latência é baixa: **mediana de ~115 ms localmente numa RTX 3090** e **~153 ms num MacBook M3** para tarefas pequenas, com crescimento aproximadamente linear conforme a tarefa cresce. Se você já roda modelo pequeno localmente para tarefas específicas, é o mesmo tipo de conta: veja [modelos pequenos com a biblioteca Transformers](/blog/pequenos-modelos-de-linguagem-com-a-biblioteca-transformers-do-hugging-face-smol).
+
+O desempenho declarado pelo time: **3º de 33 modelos na classe 2B**, e **1º de 30 excluindo os que passam pouco de 2B**, medindo acurácia no conjunto público do benchmark **JevBench** e calibração pelo **Brier score**.
+
+Vale registrar o que o próprio post de anúncio diz sobre o limite: decisões em passada única tornam o modelo **pior que modelos de raciocínio em problemas complexos** e a incapacidade de gerar texto o torna **inadequado para código, chatbot e resumo de documento**.
+
+## Por que não usar um LLM com prompt (ou treinar um classificador)
+
+Existe um motivo técnico, não só de preço.
+
+| Abordagem | O que entrega | O que cobra |
+|---|---|---|
+| **LLM com prompt** | Resposta em texto, confiança aproximada, vários tokens até chegar lá | Latência e custo de um modelo grande; parse frágil |
+| **Classificador treinado por você** | Rápido e barato | Dados rotulados e um retreino a cada mudança no conjunto de rótulos |
+| **Modelo de decisão** | Opções novas no próprio prompt, com score utilizável | Categoria nova; ecossistema ainda pequeno |
+
+O meio do caminho é o ponto: **o modelo de decisão aceita rótulos novos sem retreino, mas devolve um número calibrado em vez de prosa.** É a diferença entre pedir uma opinião e pedir um voto com margem.
+
+## Onde isso entra num sistema de verdade
+
+A lista de usos que o time da AWS descreve ter visto é bem concreta: **roteamento de modelo, seleção de ferramenta, avaliações, guardrails, memória, gestão de contexto e classificação de política**.
+
+Roteamento é o caso mais imediato. Se você já escreve regras para decidir qual modelo atende cada etapa, o decider vira a versão treinada dessa regra — o desenho geral está em [roteamento de modelos LLM por custo, latência e qualidade](/blog/roteamento-de-modelos-llm-como-equilibrar-custo-latencia-e-qualidade-em-producao).
+
+Três padrões valem o seu tempo:
+
+**1. Uma chamada, muitas perguntas.** O Jev ingere o estado uma vez e avalia cada pergunta em paralelo. Na própria documentação, um exercício que roda 13 perguntas regulatórias sobre o mesmo documento mostra que juntar tudo numa chamada só fica **12,2x mais barato e 10,0x mais rápido**, sem alterar as respostas.
+
+**2. Portão de confiança com escalonamento.** O caso fácil o modelo de decisão resolve; o ambíguo sobe. A documentação da TypeSafe chama isso de confidence-gated routing e de cascata: você calibra o limiar pelo custo de errar de cada lado, não pelo número redondo de 0,9.
+
+**3. Intervenção em ferramenta.** No exemplo publicado pelo time da AWS, o agente roda localmente e o Decider responde duas perguntas sim/não antes de qualquer execução: os argumentos da chamada estão ancorados em algo que o usuário falou? É cedo demais para chamar essa ferramenta? O resultado vira uma ação tipada — prosseguir, negar, confirmar com um humano ou devolver orientação ao modelo. Sem o decider, o agente inventava a cidade e reportava o clima de um lugar que ninguém citou.
+
+O mesmo desenho serve para vigiar agente em produção. Um projeto de hackathon citado pelo TechCrunch usou o Jev para checar cada ação do agente contra a tarefa original — bloqueando o que tinha alta confiança de estar errado, sinalizando o resto para revisão. Nessa demonstração, o custo do monitoramento ficou em **US$ 2,94 com o Jev contra US$ 372 com um LLM de fronteira**.
+
+Repare no que isso significa: monitorar cada ação de cada agente sempre foi caro demais para ser o padrão. Com um decider na casa dos centavos, passa a ser uma decisão de arquitetura. E o mesmo raciocínio vale para sistema que já existe: [transformar um script Python em agente de IA sem perder o controle](/blog/como-transformar-um-script-python-em-agente-de-ia-sem-perder-controle) é, no fundo, decidir quem decide cada passo.
+
+## O que os modelos de decisão fazem mal
+
+Aqui é onde a maior parte dos posts de lançamento para. A própria TypeSafe mantém uma página de "jaggedness" — as arestas conhecidas — e é material obrigatório antes de colocar um decider no meio do seu pipeline:
+
+| Falha documentada | O que fazer |
+|---|---|
+| **Leitura literal** — responde o que você escreveu, não o que você quis dizer | Escrever a condição exata e os casos de fronteira no critério |
+| **Conta e matemática** — não conta confiável, some mal | Fazer a aritmética no código |
+| **Datas** — lê data como texto, não como quantidade ordenada | Extrair as partes com o modelo e comparar no código |
+| **Indireção** — perde precisão com negação dupla e múltiplos saltos | Reduzir os saltos e apontar para o trecho relevante |
+| **Estado grande com ruído** | Filtrar antes; mandar só o que a pergunta precisa |
+| **Conteúdo adversarial** | Escrever critério preciso e testar casos-limite antes de subir |
+| **Geração de texto** | Usar um modelo generativo |
+
+Duas consequências práticas saem daí. A primeira: **você precisa de avaliação própria.** Terceirizar o julgamento não terceiriza o erro — e medir qualidade de decisão de agente é um problema com método próprio, como mostrei em [como avaliar a qualidade de decisão de um agente de IA](/blog/como-avaliar-a-qualidade-de-decisao-de-um-agente-de-ia-taste-bench). A segunda é mais desconfortável e o Simon Willison formulou bem: um decider devolve só um número.
+
+Isso é um recuo para a era da caixa-preta. Se ele marca algo como spam, **qual sinal pesou?** Não tem explicação na saída — o que torna viés embutido mais difícil de enxergar. O Simon conta um teste que fez pontuando cidades da baía de São Francisco com a pergunta "é uma boa cidade?" e o resultado o deixou desconfortável. A defesa é a mesma: experimento estruturado e avaliação em cima das respostas reais.
+
+A diferença é que rodar centenas de perguntas de teste num decider custa centavos — e essa é a parte boa do problema.
+
+## Quando usar e quando não usar
+
+| Use modelo de decisão quando… | Fique no LLM quando… |
+|---|---|
+| A saída cabe num conjunto fechado | A saída é texto livre |
+| A decisão se repete muitas vezes por minuto | É uma interação única e criativa |
+| Errar em silêncio custa caro e você quer limiar | Você precisa de raciocínio longo e encadeado |
+| Você quer revisar cada ação do agente | Você quer explicação do porquê |
+| Latência e custo dominam o desenho | A tarefa é código, resumo ou conversa |
+
+## O que fazer na prática
+
+1. **Não comece pela ferramenta, comece pela pergunta.** Se a decisão não cabe numa lista fechada, nenhum decider resolve — o que você tem é uma tarefa de geração.
+2. **Uma pergunta atômica por vez.** Junte os resultados no código; perguntas compostas perdem acurácia.
+3. **Meça calibração, não só acurácia.** Um decider confiante e errado é pior que um LLM hesitante.
+4. **Ponha o limiar onde dói errar.** Onde o falso positivo custa caro, o limiar sobe; onde o custo é baixo, ele desce.
+5. **Mantenha o determinismo no código.** Conta, data, aritmética e verificação de identidade são trabalho de software, não de modelo.
+
+## FAQ
+
+### O que é um modelo de decisão?
+
+É um modelo treinado para escolher entre opções definidas por quem chama e devolver valores tipados — probabilidade e confiança — em vez de texto. A TypeSafe, que cunhou o termo System One, descreve o formato como estado entra e decisão tipada sai, sem geração de texto e sem explicação da decisão.
+
+### Qual a diferença entre o Jev, o Strands Decider 2B e a Decisions API?
+
+Os três são da mesma classe. O Jev é hospedado pela TypeSafe e cobrado por token de entrada — US$ 0,042 por milhão de tokens, com saída gratuita. O Strands Decider 2B é peso aberto, licença Apache-2.0, com 2 bilhões de parâmetros, para rodar localmente. A Decisions API roda sobre o Luna, da OpenAI, e segue em preview limitado, sem preço público.
+
+### Modelo de decisão substitui o LLM?
+
+Não. Ele cobre a parte do trabalho que é julgamento com espaço de resposta fechado — classificar, rotear, priorizar, aprovar ou bloquear. Escrever, resumir, programar e conversar continuam sendo trabalho de modelo generativo. O desenho comum é cascata: o decider resolve o fácil, o LLM entra no ambíguo ou no complexo.
+
+### Dá para rodar isso sem gastar com API?
+
+Sim. O Strands Decider 2B é pequeno o suficiente para rodar em CPU ou GPU local, e o pacote inclui os pesos, os dados de treino e os scripts. É o mesmo caminho de quem já roda modelo pequeno localmente para tarefas específicas.
+
+### Confiança alta garante decisão correta?
+
+Não. Confiança mede como a probabilidade está distribuída entre as opções, não a chance de você estar certo. Ela é uma medida de calibração em grupo, e a própria documentação avisa que ela descreve a certeza do modelo sobre a distribuição — não a segurança do que acontece depois que o seu código age.
+
+## Schema recomendado
+
+Use `Article` para este post, `FAQPage` para as perguntas acima e `BreadcrumbList` na navegação, injetados no corpo do server component — o Next.js renderiza o JSON-LD a partir do RSC e o Google processa normalmente.
+
+Para imagem de capa, use apenas ilustração original ou com licença verificável, com `alt` descritivo — algo como "diagrama de um LLM com a cabeça de geração de texto removida e substituída por uma cabeça que pontua opções, devolvendo probabilidade e confiança". Nunca arte de terceiros sem confirmação de uso.
+
+## Classificação editorial
+
+**Atualizável.** O conceito estrutural — separar julgamento tipado de geração de texto, com confiança calibrada e limiar no código — é durável. Já nomes de modelo, preços, versões e limites mudam em semanas. Revisar este post quando:
+
+- a OpenAI publicar preço e limites da Decisions API no lançamento amplo;
+- o Strands Decider ganhar versões maiores ou integração oficial nos frameworks de agente;
+- a TypeSafe publicar uma versão do Jev com precisão numérica e de datas melhor;
+- surgir benchmark independente comparando deciders em produção, além do JevBench;
+- o padrão de decider para guardrail de agente virar item padrão de framework, e não projeto isolado.
+
+## Fontes
+
+- [TypeSafe AI — Introduction (Jev, o primeiro modelo System One)](https://docs.typesafe.ai/introduction)
+- [TypeSafe AI — System One (conceito e diferença para LLM)](https://docs.typesafe.ai/concepts/system-one)
+- [TypeSafe AI — Primitives: Choice, Score e Noul](https://docs.typesafe.ai/primitives)
+- [TypeSafe AI — Confidence (confiança x probabilidade)](https://docs.typesafe.ai/confidence)
+- [TypeSafe AI — Pattern: confidence-gated routing](https://docs.typesafe.ai/patterns/confidence-routing)
+- [TypeSafe AI — Models (preço, contexto e limites do Jev 1.13)](https://docs.typesafe.ai/models)
+- [TypeSafe AI — Jev 1.13 jaggedness (limitações conhecidas)](https://docs.typesafe.ai/model-jaggedness/jev-1.13)
+- [TypeSafe AI — Cookbook: parallel questions (12,2x mais barato)](https://docs.typesafe.ai/cookbooks/parallel_questions)
+- [Strands Agents — Introducing Strands Decider 2B (01/10/2026)](https://strandsagents.com/blog/introducing-strands-decider/)
+- [GitHub — strands-labs/strands-decider (código e dados de treino)](https://github.com/strands-labs/strands-decider)
+- [Hugging Face — StrandsAgents/strands-decider-2B-hobson-v19 (Apache-2.0)](https://huggingface.co/StrandsAgents/strands-decider-2B-hobson-v19)
+- [Simon Willison — Jev introduces a new shape of LLM: System One, aka Decision Models (21/09/2026)](https://simonwillison.net/2026/Sep/21/jev/)
+- [The New Stack — OpenAI answers TypeSafe's Jev with a Decision API built on Luna](https://thenewstack.io/openai-decision-api-luna/)
+- [TechCrunch — Amazon releases its own Jev clone as decision models flood the web (01/10/2026)](https://techcrunch.com/2026/10/01/amazon-releases-its-own-jev-clone-as-decision-models-flood-the-web/)
+- [TechCrunch — OpenAI's Jev clone could help the frontier lab stop its swarming agents (30/09/2026)](https://techcrunch.com/2026/09/30/openais-jev-clone-could-help-the-frontier-lab-stop-its-swarming-agents/)
