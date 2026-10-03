@@ -1,0 +1,212 @@
+---
+title: "Permissões de agentes de IA: o que o Full Disk Access libera e como limitar"
+date: "2026-10-03"
+description: "O que o Full Disk Access do macOS libera de verdade, por que agentes de IA mudam o cálculo do risco e como aplicar privilégio mínimo com pasta dedicada, sandbox, regras de negação e container no Claude Code e no Codex."
+author: "Hernando Candido"
+tags: [Agentes de IA, Segurança, Permissões, Full Disk Access, macOS, Sandbox, Privilégio Mínimo, Claude Code, Codex, Privacidade]
+sponsored: false
+premium: false
+---
+
+# Permissões de agentes de IA: o que o Full Disk Access libera e como limitar
+
+**Resposta curta:** permissão de agente é o que define o que ele pode ler, escrever e executar na sua máquina — e costuma ser bem mais ampla do que o dono da máquina imagina. No macOS, o **Full Disk Access (FDA)** dá a um app acesso a *todos* os arquivos do computador, incluindo dados de Mail, Messages, Safari e backups do Time Machine. Foi por isso que a Apple anunciou em 02/10/2026 que vai exigir **ação explícita do usuário** para conceder esse nível de acesso. Na prática, a defesa é privilégio mínimo: pasta dedicada, sandbox ligado, negação explícita do que você não quer exposto e, quando o agente roda código que você não escreveu, container ou máquina virtual.
+
+![Tela do macOS com permissões de acesso a disco concedidas a aplicativos](https://developer.apple.com/news/images/og/full-disk-access-og.png)
+
+*Imagem: Apple Developer (anúncio "Updates to Full Disk Access in macOS", 02/10/2026)*
+
+## O que o Full Disk Access libera de verdade
+
+A definição está no help oficial da Apple, e vale ler inteira:
+
+> "**Full Disk Access** — Allow apps to access all files on your computer, including data from other apps (for example, Mail, Messages, Safari, and Home), data from Time Machine backups, and certain administrative settings for all users on this Mac."
+> — [Apple, Change Privacy & Security settings on Mac](https://support.apple.com/guide/mac-help/change-privacy-security-settings-on-mac-mchl211c911f/mac)
+
+Isso é diferente de **"Files & Folders"**, a permissão ao lado dela. Files & Folders libera arquivos e pastas específicos que o app pediu — Documentos, Área de Trabalho, Downloads. O FDA não pede pasta nenhuma: ele **contorna o mediador de privacidade do sistema**. A própria Apple diz isso com todas as letras no anúncio de 02/10:
+
+> "Full Disk Access largely sidesteps these controls in order to allow backup apps to function properly on the Mac. Some developers are using Full Disk Access in ways that could put users at risk, exposing everything on their systems—including files, mail, messages, and even browsing history—without users' full knowledge and understanding. For communication apps, this can also compromise the privacy of the people users are communicating with."
+> — [Apple Developer News, 02/10/2026](https://developer.apple.com/news/?id=p6zjojqw)
+
+O gatilho foi concreto. Duas semanas antes, o colunista Jason Aten ([Inc.](https://www.inc.com/jason-aten/metas-new-muse-ai-agent-read-my-private-messages-i-never-asked-it-to/91408202)) contou que o **Muse**, o agente de uso geral da Meta no Mac, mandou uma notificação citando uma conversa dele no Apple Messages — sem que ele lembrasse de ter dado permissão. O CTO da Meta, David Singleton, respondeu que o Muse só lê o Messages com **duas** coisas ligadas: FDA no nível do sistema *e* o conector de Messages habilitado no app.
+
+O problema é que a segunda condição não protege a primeira. O pesquisador de segurança de macOS **Patrick Wardle** contestou a defesa da Meta no [Ars Technica](https://arstechnica.com/security/2026/10/apple-changes-full-disk-access-permissions-to-curb-abuse-from-ai-agents/): "do ponto de vista técnico, com FDA, qualquer arquivo (não-root) é legível — histórico de navegação, cookies do browser, chats, etc." Ou seja, uma vez concedido, o app tem a chave do disco. A decisão de ler ou não passa a ser do código, não do sistema.
+
+E não é só leitura. Onze dias antes do anúncio da Apple, Wardle já tinha divulgado uma configuração do Muse que permitia a **qualquer app ou código rodando no Mac** — incluindo comandos injetados via ataques ClickFix — assumir o controle total do assistente. A partir daí, o atacante herdava exatamente os acessos que o Muse tinha. A Amazon bloqueou o Muse na própria plataforma.
+
+## Por que agentes de IA mudaram o cálculo
+
+Aqui está a mudança que a maioria dos guias de privacidade ainda não absorveu.
+
+Um app de backup com FDA **lê** o disco. O risco é o dado parado: se ele vazar, você troca senhas e segue. Um agente com acesso equivalente **lê e age** no mesmo contexto. Ele edita arquivo, roda comando de shell, chama API externa, manda mensagem em seu nome, abre uma cobrança. A permissão deixa de ser sobre dado e passa a ser sobre **ação** — e ação não tem rollback fácil.
+
+Duas consequências práticas:
+
+1. **O FDA é binário.** Não existe "FDA só para a pasta de Mensagens". Ou o app enxerga o disco inteiro, ou não enxerga nada. Como o macOS não oferece um meio-termo para esse nível, a decisão real é *não conceder* e resolver por outro caminho.
+2. **O agente herda os seus acessos, não os dele.** Se o seu usuário lê `~/.ssh` e `~/.aws/credentials`, o agente rodando como você também lê — a menos que algo externo o impeça. É o mesmo raciocínio que vale para [controle de acesso em RAG](/blog/seguranca-em-rag-como-aplicar-controle-de-acesso-antes-da-resposta-do-llm): autorizar depois que o contexto já foi montado é tarde demais.
+
+A Apple reconhece o incentivo errado e vai apertar. Mas enquanto isso, quem instala um agente de desktop hoje está decidindo política de acesso com as ferramentas que existem.
+
+## Privilégio mínimo em quatro camadas
+
+Privilégio mínimo não é um ajuste, é um empilhamento. Cada camada abaixo assume que a de cima falhou.
+
+| Camada | O que ela faz | Quando usar |
+|---|---|---|
+| **1. Pasta dedicada** | O agente só vê um workspace, não o home inteiro. | Sempre. É o mínimo inegociável. |
+| **2. Sandbox do agente** | O sistema operacional bloqueia leitura e escrita fora do escopo declarado. | Sempre que o agente tiver acesso a terminal. |
+| **3. Conta de usuário separada** | O que o agente alcança é definido pelo perfil do usuário, não por configuração de app. | Agente com autonomia alta rodando todo dia. |
+| **4. Container ou VM** | Fronteira descartável: o host fica fora de alcance por construção. | Agente executando código de terceiros ou skill baixada. |
+
+A camada 3 é a mais subestimada. Criar um usuário do macOS só para o agente resolve de uma vez o problema do `~/.ssh`: arquivos de outro usuário simplesmente não estão lá. A camada 4 é a única que aguenta código que você não leu — e é por isso que agentes em CI normalmente rodam em container, não na máquina de alguém.
+
+## O que o sandbox de um agente cobre — e o que ele deixa passar
+
+Sandbox é a parte que dá falsa sensação de segurança, porque o nome sugere isolamento completo. Os dois agentes de código mais usados hoje documentam exatamente onde fica o buraco.
+
+### Claude Code
+
+A documentação oficial da Anthropic descreve o sandbox como uma fronteira **imposta pelo sistema operacional** em volta dos comandos de shell que o Claude executa: Bash, PowerShell, Monitor e os processos que eles iniciam. Vale para macOS, Linux e WSL2 — no Windows nativo, ele roda sem sandbox.
+
+E ele vem **desligado**. Só liga com `/sandbox` na sessão ou `sandbox.enabled: true` no arquivo de settings. Os padrões, quando ligado:
+
+| Acesso | Padrão | Como restringir |
+|---|---|---|
+| Escrita | Diretório de trabalho, pasta temporária e diretórios adicionados explicitamente | `sandbox.filesystem.allowWrite`, `denyWrite` |
+| Leitura | **A maior parte da máquina, incluindo arquivos de credencial como `~/.ssh` e `~/.aws/credentials`** | `sandbox.filesystem.denyRead`, bloco `sandbox.credentials` |
+| Rede | Nenhuma rota direta: as conexões passam por um proxy que checa cada host contra uma lista que **começa vazia** | `network.allowedDomains`, `deniedDomains` |
+| Variáveis de ambiente | Herdadas do Claude Code, incluindo qualquer segredo presente nelas | `sandbox.credentials`, `CLAUDE_CODE_SUBPROCESS_ENV_SCRUB` |
+
+Repare na segunda linha: **o padrão de leitura é o disco quase inteiro**. Quem liga o sandbox e para por aí protegeu a escrita, não os segredos.
+
+E a parte que quase ninguém lê:
+
+> O sandbox cobre apenas comandos de shell. As ferramentas de arquivo do Claude, os servidores MCP e os hooks rodam **fora** dele.
+> — [Claude Code, Configure the sandboxed Bash tool](https://docs.claude.com/en/docs/claude-code/sandboxing)
+
+Traduzindo: uma regra `denyRead` no sandbox **não** bloqueia a ferramenta Read, e `allowedDomains` **não** limita o WebFetch. São dois sistemas diferentes — o sandbox do SO e o sistema de permissões do app — e eles não se cobrem. Se você delega ferramentas a servidores MCP de terceiros, esse é o caminho que continua aberto.
+
+Na parte que o sandbox cobre, a precedência é clara: **deny → ask → allow**, primeira regra que casa vence, e especificidade não muda a ordem. Um `deny` amplo como `Bash(aws *)` bloqueia tudo que casa, inclusive uma chamada que também casaria com um `allow` mais estreito. Um `allow` não abre exceção dentro de um `deny`.
+
+Duas saídas de emergência existem e merecem atenção: `sandbox.excludedCommands` roda o padrão listado **fora** do sandbox, com acesso total; e o retry não-sandboxado passa direto sem perguntar se houver um `allow` largo como `Bash(curl *)`.
+
+### Codex
+
+O Codex tem dois controles que a OpenAI trata como camadas separadas: **sandbox mode**, que define o que ele consegue fazer tecnicamente, e **approval policy**, que define quando ele precisa parar e perguntar. Os modos são `read-only`, `workspace-write` (padrão) e `danger-full-access`.
+
+Fatos que importam no dia a dia:
+
+- **Rede desligada por padrão.** No preset `workspace-write`, comandos não saem para a internet a menos que você habilite explicitamente.
+- **Execução é imposta pelo SO**, não pelo app: macOS usa políticas **Seatbelt** via `sandbox-exec`, Linux usa `bwrap` mais `seccomp`, e Windows depende de WSL2 ou do sandbox nativo. Em algumas configurações containerizadas, o sandbox do Linux simplesmente não consegue montar (namespace, `bwrap` setuid ou `seccomp` bloqueados) — e aí a isolação tem de vir do container.
+- **Caminhos protegidos dentro do workspace gravável**: `.git` fica somente leitura, e `.agents` e `.codex` também quando existem como diretório. A proteção é recursiva.
+- `danger-full-access` — ou a flag `--dangerously-bypass-approvals-and-sandbox` — desliga os dois controles ao mesmo tempo. O nome não é exagero retórico.
+
+## Como configurar
+
+No Claude Code, o que muda o jogo é negar a leitura do home e reabrir só o projeto:
+
+```json
+{
+  "sandbox": {
+    "enabled": true,
+    "filesystem": {
+      "denyRead": ["~/"],
+      "allowRead": ["~/projetos/meu-app"],
+      "allowWrite": ["~/projetos/meu-app"]
+    }
+  },
+  "permissions": {
+    "allow": ["Bash(npm run *)"],
+    "deny": ["Bash(git push *)", "Bash(rm -rf *)"]
+  }
+}
+```
+
+Detalhe de precedência que evita configuração que parece certa e não é: **regra mais estreita vence**. `denyRead: ["~/"]` com `allowRead: ["~/projects"]` deixa só `~/projects` legível. Mas o inverso também funciona a seu favor — `allowRead: ["~/"]` com `denyRead: ["~/.env"]` mantém o `.env` bloqueado, porque o deny segura dentro de um allow mais amplo.
+
+Outro ponto prático: em settings de projeto (`.claude/settings.json`), o caminho `.` resolve para a raiz do projeto; no arquivo de usuário (`~/.claude/settings.json`), `.` resolve para `~/.claude`. O mesmo JSON faz coisas diferentes dependendo de onde mora.
+
+No Codex, o equivalente fica em `config.toml`:
+
+```toml
+# Sessão interativa com sandbox somente leitura
+sandbox_mode = "read-only"
+approval_policy = "on-request"
+
+# Rede continua desligada no workspace-write, a menos que você ligue aqui
+[sandbox_workspace_write]
+network_access = false
+
+# Opcional: limitar a saída de rede a uma lista de domínios
+[features.network_proxy]
+enabled = true
+domains = { "api.openai.com" = "allow", "example.com" = "deny" }
+```
+
+Se você já organiza o comportamento do agente em [skills](/blog/skills-de-ia-o-que-sao-os-skill-md-como-criar-e-o-que-muda-com-o-fim-dos-gems), vale o mesmo cuidado: skill é instrução, não fronteira. Instrução não impede leitura de arquivo; só configuração de sistema impede. A mesma lógica aparece em [como transformar um script Python em agente sem perder o controle](/blog/como-transformar-um-script-python-em-agente-de-ia-sem-perder-controle).
+
+## Checklist antes de dar acesso a um agente
+
+- **Saiba o que está concedendo.** Abra `Ajustes do Sistema › Privacidade e Segurança` e confira a lista do **Acesso Total ao Disco**. O que está lá pode ler tudo, incluindo Mensagens e o histórico do Safari.
+- **Não conceda FDA para agente, conceda pasta.** Se o agente tem uma pasta de trabalho, ele não precisa do disco inteiro. Preserve o FDA para quem realmente depende dele.
+- **Ligue o sandbox e negue leitura do home.** Nos dois casos acima, o padrão de leitura é permissivo; a negação é escolha sua, não default.
+- **Trate servidores MCP como código de terceiro.** Eles rodam fora do sandbox de shell e herdam o que você deu ao agente.
+- **Confirme se o agente roda código de terceiros.** Se sim, container ou conta separada, sempre.
+- **Revise as permissões que você já deu.** Cada "não perguntar de novo" salvo em `.claude/settings.local.json` é uma regra permanente — e vale para sessões futuras do repositório inteiro.
+- **Lembre que agente financeiro é outra categoria.** Quando o agente passa a [fazer checkout com protocolos de pagamento](/blog/checkout-agentico-como-ucp-ap2-e-acp-colocam-agentes-de-ia-na-sua-loja), o escopo deixa de ser só o seu arquivo e passa a ser o seu dinheiro.
+
+## O que a Apple ainda vai mudar
+
+A Apple não anunciou data nem formato. O compromisso publicado é que os controles novos vão garantir que quem "genuinamente deseje conceder esse nível extraordinário de acesso" só consiga fazê-lo com "ação explícita do usuário". Também não nomeou a Meta nem o Muse — mas a proximidade com o caso é difícil de ignorar, e a frase de abertura da Apple contradiz, na prática, a defesa de que era impossível o Muse ler o Messages sem o conector ligado.
+
+Vale tratar como **Atualizável**: o modelo mental (privilégio mínimo, sandbox por SO, negação explícita) não muda, mas as telas e os defaults do macOS vão mudar quando o anúncio virar release.
+
+## FAQ
+
+### O que o Full Disk Access dá acesso?
+
+Acesso a todos os arquivos do computador, incluindo dados de outros apps como Mail, Messages, Safari e Home, dados de backups do Time Machine e certas configurações administrativas de todos os usuários do Mac. É a definição do próprio help da Apple.
+
+### Qual a diferença entre Full Disk Access e Files & Folders?
+
+Files & Folders libera as pastas específicas que o app pediu (Documentos, Downloads, Área de Trabalho). Full Disk Access contorna esse mediador e entrega o disco inteiro — por isso a Apple diz que ele "largely sidesteps these controls".
+
+### Preciso desligar o agente de IA para ficar seguro?
+
+Não. Precisa dar a ele o menor escopo que ainda faz o trabalho: pasta dedicada, sandbox ligado, leitura do home negada. Se o agente não pode fazer nada, ele não serve; se ele pode fazer tudo, a sua conta inteira é o limite de dano.
+
+### O sandbox do Claude Code ou do Codex me protege por completo?
+
+Não. No Claude Code, o sandbox cobre apenas comandos de shell — ferramentas de arquivo, servidores MCP e hooks rodam fora, e o padrão de leitura inclui arquivos como `~/.ssh` e `~/.aws/credentials`. No Codex, o sandbox é imposto pelo sistema operacional e a rede vem desligada, mas `danger-full-access` desativa a proteção. Em nenhum dos dois o sandbox substitui cuidado com o que você instala.
+
+### Agente de IA pode ler minhas mensagens sem permissão?
+
+Com Full Disk Access concedido, o app tem acesso técnico a dados de Mensagens — é o que diz a Apple e é o que o pesquisador Patrick Wardle afirma sobre o funcionamento do FDA. O que um app específico faz com esse acesso depende do código dele. A recomendação é não conceder FDA a agentes que não precisam dele.
+
+## Schema recomendado
+
+`TechArticle` + `FAQPage`. Manter `datePublished` como 2026-10-03 e `dateModified` sincronizado com as revisões. O `FAQPage` deve espelhar as cinco perguntas acima, com respostas de 40 a 60 palavras.
+
+## Classificação editorial
+
+**Atualizável.** O núcleo — privilégio mínimo, fronteira imposta pelo sistema operacional, diferença entre instrução e permissão — segue válido por anos e é o que este artigo entrega. O que muda em semanas é a superfície: telas de privacidade do macOS, defaults de versão dos agentes. Revisar este post quando:
+
+- a Apple publicar os novos controles de Full Disk Access (formato e data ainda não anunciados);
+- o sandbox do Claude Code passar a cobrir ferramentas de arquivo, MCP ou hooks, ou mudar o default de leitura;
+- a Meta publicar detalhes técnicos verificáveis sobre o que o conector de Messages acessa;
+- o Codex mudar os modos de sandbox, os caminhos protegidos ou o default de rede;
+- surgir padrão de mercado para permissão de agente no desktop (algo como consentimento granular por ferramenta), o que tornaria o exemplo do FDA histórico.
+
+## Fontes
+
+- [Apple Developer News — Updates to Full Disk Access in macOS (02/10/2026)](https://developer.apple.com/news/?id=p6zjojqw)
+- [Apple — Change Privacy & Security settings on Mac (definição de Full Disk Access)](https://support.apple.com/guide/mac-help/change-privacy-security-settings-on-mac-mchl211c911f/mac)
+- [TechCrunch — Apple says it's tightening macOS 'Full Disk Access' controls due to new risks from AI agents (02/10/2026)](https://techcrunch.com/2026/10/02/apple-says-its-tightening-macos-full-disk-access-controls-due-to-new-risks-from-ai-agents/)
+- [Ars Technica — Apple changes full-disk access permissions to curb abuse from AI agents (02/10/2026)](https://arstechnica.com/security/2026/10/apple-changes-full-disk-access-permissions-to-curb-abuse-from-ai-agents/)
+- [Ars Technica — Meta's extraordinarily privileged AI assistant has a serious 0-day (09/2026)](https://arstechnica.com/security/2026/09/muse-metas-extraordinarily-privileged-ai-assistant-has-a-serious-0-day/)
+- [Inc. — Meta's new Muse AI agent read my private messages; I never asked it to (Jason Aten)](https://www.inc.com/jason-aten/metas-new-muse-ai-agent-read-my-private-messages-i-never-asked-it-to/91408202)
+- [Claude Code Docs — Configure the sandboxed Bash tool](https://docs.claude.com/en/docs/claude-code/sandboxing)
+- [Claude Code Docs — Configure permissions (allow, ask, deny)](https://docs.claude.com/en/docs/claude-code/permissions)
+- [Claude Code Docs — Settings reference](https://docs.claude.com/en/docs/claude-code/settings)
+- [OpenAI Codex Docs — Agent approvals & security (sandbox modes e sandbox por SO)](https://developers.openai.com/codex/sandbox)
+- [OpenAI Codex Docs — Local configuration (config.toml)](https://developers.openai.com/codex/local-config)
