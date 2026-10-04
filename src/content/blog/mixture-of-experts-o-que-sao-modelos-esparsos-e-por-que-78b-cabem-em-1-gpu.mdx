@@ -1,0 +1,194 @@
+---
+title: "Mixture of Experts: o que são modelos esparsos e por que 78B cabem em 1 GPU"
+date: "2026-10-04"
+description: "MoE ativa só uma fração dos parâmetros por token: 78B no total, 3,46B ativos. Entenda o que isso reduz (compute), o que não reduz (memória) e como decidir antes de servir um modelo esparso."
+author: "Hernando Candido"
+tags: [Mixture of Experts, MoE, Modelos Esparsos, LLM, Inferência, Parâmetros Ativos, FP8, vLLM, Modelos Abertos, Infraestrutura de IA]
+sponsored: false
+premium: false
+---
+
+# Mixture of Experts: o que são modelos esparsos e por que 78B cabem em 1 GPU
+
+**Resposta curta:** em um modelo **MoE (Mixture of Experts)**, cada token passa por apenas uma fração dos parâmetros do modelo — o resto fica parado naquele instante. Um **roteador** escolhe, entre centenas de especialistas, os poucos que vão processar aquele token. O resultado é um modelo com a **capacidade** de 78 bilhões de parâmetros e o **custo de compute por token** de um modelo bem menor: o Kolibri, da alemã Aleph Alpha, tem **78,1B de parâmetros totais e 3,46B ativos** por token — 4,4% do modelo por vez.
+
+E aqui está a parte que quase todo resumo pula: **MoE economiza compute, não memória.** Os 78B precisam estar carregados de qualquer jeito. É por isso que o mesmo modelo ocupa **~78 GB só de pesos** e pede uma H200/B200 — ou duas GPUs de 80 GB — para sair do papel.
+
+![Capa do anúncio do modelo Kolibri, com destaque para a arquitetura de especialistas](https://aleph-alpha.com/_astro/00-cover.Du35XCGh_zJqw.jpeg)
+
+*Imagem: Aleph Alpha, anúncio do Kolibri (03/10/2026)*
+
+## O que é Mixture of Experts, sem rodeio
+
+Um transformer denso tem, em cada camada, uma rede ***feed-forward* (FFN)** que **todo** token atravessa. Em um modelo esparso, essa FFN é fatiada em vários **especialistas** e existe um **roteador** (*gate*) que decide para quais deles cada token vai. A definição do artigo clássico da Hugging Face sobre o tema é direta:
+
+> "Sparse MoE layers are used instead of dense feed-forward network (FFN) layers. MoE layers have a certain number of 'experts' (e.g. 8), where each expert is a neural network. In practice, the experts are FFNs [...] A gate network or router, that determines which tokens are sent to which expert."
+> — [Hugging Face, Mixture of Experts Explained](https://huggingface.co/blog/moe)
+
+Três detalhes que costumam ficar de fora:
+
+1. **Só as camadas FFN viram especialistas.** Atenção, embeddings, normalizações e o LM head continuam compartilhados — é por isso que um "8x7B" não tem 56B de parâmetros, e sim ~47B. O HF explica essa conta no mesmo artigo.
+2. **O roteador é treinado, não escrito à mão.** Quem aprende para onde mandar o token é um conjunto de parâmetros treinado junto com o resto da rede.
+3. **Existe especialista compartilhado.** O Kolibri, por exemplo, tem **384 especialistas por camada, sendo 6 roteados + 1 compartilhado por token**. O compartilhado pega o que é comum a todo token; os roteados, o que é específico.
+
+O contraponto é igualmente conhecido: se o roteador concentra tudo em poucos especialistas, o treino fica ineficiente — por isso os MoEs usam perda auxiliar (ou, no caso do Kolibri, um balanceamento de quantis exato) para distribuir carga.
+
+## Parâmetros totais ≠ parâmetros ativos
+
+Esse é o número que decide a sua conta de GPU, e é o que a maioria das comparações ignora quando olha "78B" e conclui que é impossível rodar.
+
+O card do modelo do Kolibri separa as duas coisas de forma explícita:
+
+| Característica | Kolibri |
+|---|---|
+| Parâmetros totais | 78.103.074.560 (**78B**) |
+| Parâmetros ativos por token | 3.457.573.120 (**3,46B**, ~4,4%) |
+| Especialistas por camada | 384 (6 roteados + 1 compartilhado) |
+| Contexto | até 1.048.576 tokens; recomendado **≤262.144** |
+| Precisão | **FP8** (`float8_e4m3fn`) em blocos 128×128, KV cache em FP8; embeddings, LM head, normas e roteador em bfloat16 |
+| Peso em memória | **~78 GB** |
+| Hardware mínimo | 2× A100 80 GB, 2× H100 SXM5, 1× H200, 1× B200 ou 1× B300 |
+| Licença | **Apache 2.0** |
+| Lançamento | 03/10/2026 |
+
+Fonte: [card oficial do Kolibri-1](https://huggingface.co/Aleph-Alpha/Kolibri-1).
+
+Leia de novo a primeira e a segunda linha. **Total e ativo medem coisas diferentes:**
+
+- **Parâmetros ativos** definem o **compute por token**. Um modelo de 78B com 3,46B ativos tem custo de inferência próximo ao de um modelo denso de poucos bilhões — foi assim que a Aleph Alpha colocou o Kolibri na "fronteira de Pareto" entre qualidade e custo de serving.
+- **Parâmetros totais** definem **quanto pesa**. Você precisa do modelo inteiro disponível, mesmo usando 4,4% dele por vez.
+
+Essa separação é o que explica a notação que apareceu nos nomes dos modelos abertos: **35B-A3B**, **120B-A12B**, **119B-A6B**. O número antes do "A" é o tamanho armazenado; o depois, o que roda por token. A própria Aleph Alpha compara o Kolibri com Qwen3.6-35B-A3B, Nemotron 3 Super 120B-A12B e Mistral Small 4 119B-A6B — todos esparsos, todos com o par de números no nome.
+
+## Por que MoE não economiza memória
+
+Aqui está o trade-off, nas palavras do próprio card do modelo:
+
+> "Its mixture-of-experts architecture activates only a small fraction of its parameters for each token, keeping compute per token low while retaining the capacity of a much larger model. **The trade-off is memory: the full model must be held in memory even though only part of it is active at any time.**"
+> — [Aleph Alpha / Hugging Face, model card do Kolibri](https://huggingface.co/Aleph-Alpha/Kolibri-1)
+
+O blog da Hugging Face diz o mesmo com outras palavras: "Although a MoE might have many parameters, only some of them are used during inference. This leads to much faster inference compared to a dense model with the same number of parameters. However, **all parameters need to be loaded in RAM, so memory requirements are high**."
+
+Traduzindo em uma tabela:
+
+| Recurso | MoE reduz? | Por quê |
+|---|---|---|
+| Compute por token | **Sim** | Só os especialistas ativos entram na conta do FLOPs daquele token |
+| Memória para os pesos | **Não** | Todos os especialistas precisam estar carregados, mesmo ociosos |
+| Latência de decode | **Tende a cair** | Menos parâmetros lidos por token (a Aleph Alpha reporta decode 28% mais rápido do 78B em relação ao 123B) |
+| Capacidade do modelo | **Sobe** | Você armazena muito mais parâmetros do que usa por token |
+
+A consequência prática é contraintuitiva: **quantizar continua sendo o caminho para caber na sua GPU**, porque o gargalo é o armazenamento dos pesos, não o compute. O card lista **~78 GB** de pesos justamente porque o checkpoint é FP8 (o mesmo modelo em bf16 pediria o dobro). Quem quer reduzir memória precisa olhar para [quantização](/blog/quantizacao-de-llm-como-escolher-4-bit-8-bit-gptq-e-awq) — MoE resolve outra coisa.
+
+E o "MoE é mais barato" só vale se a comparação for entre modelos **de tamanho parecido**. Um denso de 8B quantizado em 4 bits roda em 24 GB. Um MoE de 78B não roda, por mais esparso que seja: a GPU de 24 GB não cabe os 78 GB.
+
+## O gargalo real não é treinar: é servir
+
+O detalhe mais útil do anúncio do Kolibri não é o benchmark — é a decisão de arquitetura explicada no blog, entre 78B e 123B:
+
+> "123B can handle only 3 long-context 256k-token user queries on two H100s, while 78B handles 18 concurrent requests and decodes 28% faster."
+
+Ou seja: **na mesma máquina, o modelo menor atende 6× mais usuários simultâneos** em contexto longo. Não foi só qualidade que decidiu — foi concorrência.
+
+Isso aparece porque, em produção, você soma três consumos de memória: os **pesos** (fixos), o **KV cache** (cresce com contexto × número de sequências simultâneas) e as **ativações/comunicação** entre especialistas. Um modelo com poucos parâmetros ativos ainda precisa materializar o cache de atenção de **cada** conversa aberta — o mesmo mecanismo que faz o custo de [RAG](/blog/reduzir-os-custos-de-inferncia-do-rag-em-6x-comea-com-decidir-o-que-nunca-chega-) explodir em produção. Daí a recomendação do card de ficar em **até 262.144 tokens** para deploy sensível a latência, mesmo com o modelo validado até 1.048.576.
+
+Foi por isso também que a Aleph Alpha mexeu na atenção: **das 50 camadas, só 10 processam o contexto inteiro; as outras 40 usam uma janela deslizante de 512 tokens.** Em texto normal, quase tudo que importa está perto. O custo de decode dessas 40 camadas fica limitado, independentemente do tamanho do contexto. É o mesmo raciocínio de [roteamento de modelos](/blog/roteamento-de-modelos-llm-como-equilibrar-custo-latencia-e-qualidade-em-producao) aplicado para dentro da arquitetura: não gaste compute uniformemente com o que não precisa dele.
+
+## "Quanto o modelo deve pensar": o esforço de raciocínio como parâmetro
+
+Outra alavanca que virou padrão nos modelos abertos recentes: o usuário escolhe **quanto compute de raciocínio** quer gastar por requisição. O Kolibri expõe quatro níveis — **none, low, medium, high** — e o blog justifica: "[...] the user can exercise control over how much compute the model should invest to find a solution to the task at hand. This allows our customers to trade-off cost and inference speed against the quality of the final answer."
+
+Na prática, isso é roteamento dentro do modelo:
+
+- requisição simples de extração ou formatação → `low` (ou `none`);
+- RAG com pergunta direta e contexto já recuperado → `medium`;
+- tarefa longa, multi-passo, com tool calling → `high`.
+
+Você paga o esforço que o problema exige, em vez de configurar o modelo no máximo para tudo. Se o seu gargalo é custo por resposta, esse parâmetro rende mais que trocar de modelo.
+
+## Quando MoE é a escolha certa (e quando não é)
+
+| Situação | O que faz sentido |
+|---|---|
+| Você precisa de capacidade perto de um modelo aberto grande e tem memória (1× H200/B200 ou 2× 80 GB) | **MoE aberto**, servido com vLLM/SGLang |
+| Mandato de soberania: dados e pesos não saem da sua infra, licença permissiva | **MoE aberto on-premise** (Apache 2.0 no caso do Kolibri) |
+| Onde cada token é caro e o throughput manda (muitos usuários, orçamento apertado) | **MoE com poucos ativos**, esforço de raciocínio ajustado |
+| GPU única de 24 GB ou menos | **Denso pequeno quantizado** |
+| A tarefa é classificar/escolher entre opções fixas | **[Modelo de decisão](/blog/modelos-de-decisao-o-que-sao-e-quando-usar-no-lugar-de-um-llm)**, não um LLM de conversa |
+| Qualidade máxima por resposta, custo não é restrição | Um denso grande (aberto ou via API) |
+
+Repare que a pergunta certa não é "MoE é melhor?". É: **quantos parâmetros eu preciso armazenar e quantos eu quero pagar por token?** Se a resposta para a segunda é "poucos" e para a primeira é "muitos", MoE ganha. Se as duas são "poucos", denso pequeno ganha e o problema fica de operação, não de arquitetura.
+
+## Checklist: como avaliar um modelo esparso antes de adotar
+
+- **Olhe os parâmetros ativos primeiro.** É o número que define compute, latência e, em boa parte, o custo.
+- **Calcule o peso, não confie na impressão.** Parâmetros totais × bytes por parâmetro. FP8 ≈ 1 byte/parâmetro → 78B ≈ 78 GB. Em bf16, seriam ~156 GB.
+- **Some o KV cache.** Contexto × sequências simultâneas é o que estoura primeiro em produção, não os pesos.
+- **Defina o contexto real do seu caso.** Um RAG com trechos de 32k tokens consome memória muito diferente de um chat de 2k.
+- **Cheque o suporte no seu stack de serving.** O Kolibri, por exemplo, exige o pacote `aleph-alpha-inference` com o plugin de vLLM — não é "baixar e usar" em qualquer runtime.
+- **Leia a licença.** Apache 2.0 libera uso comercial e on-premise; outras licenças de modelo aberto não.
+- **Teste no seu domínio.** Benchmark público é sinal, não prova. O que decide é a sua avaliação com os seus dados.
+- **Verifique abstenção e grounding** se o caso é RAG. Um modelo que responde com confiança fora do contexto é um passivo.
+
+## O caso Kolibri: o que ele mostra além do benchmark
+
+O Kolibri é útil como exemplo porque o anúncio traz a arquitetura, os números e as escolhas explícitas. Os pontos que valem para qualquer projeto de modelo aberto:
+
+- **Especialização deliberada, não generalidade.** É um modelo bilíngue (alemão e inglês), treinado para setores regulados: administração pública, indústria, aeroespacial.
+- **Dados em proporção declarada.** O card informa ~62,5% inglês, ~23,9% alemão e ~13,6% código nos 20T tokens de pré-treino. Bom exemplo de transparência de mix de dados — item que normalmente não existe.
+- **Abstenção treinada.** O protocolo Merlin-Arthur ensina o modelo a dizer "não sei" quando o contexto não sustenta a resposta. Para RAG, é mais útil que mais um ponto de benchmark.
+- **Rastro de raciocínio** exposto como explicação da resposta.
+- **O custo de construir vs. baixar.** Pré-treino em 768 B200 por 21 dias (~392 mil GPU-horas), mais mid-training e fase de contexto longo; ~950 MWh estimados. Treinar um 78B próprio está em outra liga — baixar e servir é a jogada razoável para quase todo mundo.
+
+Padrão de leitura: os números são os divulgados pelo fornecedor, tanto no benchmark quanto na eficiência. Trate-os como *claim* verificável, não como fato independente. O que se replica sem depender do fornecedor é a **mecânica**: total vs. ativo, compute vs. memória, e o efeito da concorrência no KV cache.
+
+## O que observar nos próximos meses
+
+- Novos MoEs abertos com a mesma notação (`XA-YB`) e janelas de contexto cada vez maiores.
+- Suporte de primeira classe a MoE nos servidores de inferência (roteamento de especialistas, paralelismo por especialista, quantização do roteador).
+- Hardwares com mais memória por GPU, que é o que de fato destrava modelos esparsos grandes em uma placa só.
+- Pressão regulatória empurrando "soberania" de dados para modelos abertos rodando on-premise.
+
+## FAQ
+
+### MoE é sempre mais barato que um modelo denso?
+
+Não. É mais barato **por token** no compute, porque só uma fração dos parâmetros é ativada. Mas exige memória equivalente ao total de parâmetros. Sem a memória mínima, o modelo simplesmente não roda — e nenhum ganho de compute compensa isso.
+
+### O que significam nomes como "35B-A3B"?
+
+O primeiro número é o total de parâmetros armazenados; o segundo, os parâmetros ativos por token. "35B-A3B" é um modelo que ocupa espaço de 35 bilhões e executa com compute de cerca de 3 bilhões. A notação existe para deixar claro que os dois números medem coisas diferentes.
+
+### Dá para rodar um MoE de 78B numa GPU de 24 GB?
+
+Não, mesmo quantizado. Em FP8 os pesos ocupam ~78 GB e o card recomenda no mínimo uma H200/B200 ou duas GPUs de 80 GB. O que cabe em 24 GB é um modelo denso pequeno quantizado — para esse hardware, a arquitetura esparsa não ajuda.
+
+### MoE melhora a qualidade do modelo?
+
+Aumenta a **capacidade** disponível por um custo de compute menor, o que costuma melhorar qualidade em tarefas variadas. Mas qualidade depende de dados, pós-treino e avaliação. A arquitetura esparsa é um instrumento de eficiência, não um atalho de qualidade.
+
+### Se eu só chamo uma API, MoE muda alguma coisa?
+
+Muda o preço, mesmo que você não veja. Provedores rodam modelos esparsos justamente porque o custo por token cai — parte desse ganho aparece no seu preço. Em contrapartida, contexto longo e concorrência continuam sendo os itens que mais encarecem a sua fatura.
+
+## Schema recomendado
+
+`TechArticle` + `FAQPage`. Manter `datePublished` como 2026-10-04 e `dateModified` sincronizado com as revisões. O `FAQPage` deve espelhar as cinco perguntas acima, com respostas de 40 a 60 palavras, e o `TechArticle` deve citar o Kolibri como exemplo datado — não como assunto do artigo.
+
+## Classificação editorial
+
+**Atualizável (núcleo estável).** A mecânica — roteador, parâmetros ativos vs. totais, compute que cai e memória que não cai — é estável e é o que o artigo entrega. O que envelhece é o exemplo. Revisar este post quando:
+
+- surgirem MoEs abertos com números de referência melhores que os do Kolibri na mesma faixa de custo de serving;
+- o suporte de MoE nos servidores de inferência mudar o cálculo de memória (por exemplo, carregar especialistas sob demanda em disco);
+- a Aleph Alpha ou terceiros publicarem avaliação independente do Kolibri que contrarie os números do card;
+- mudar a recomendação de contexto (hoje ≤262.144 tokens para deploys sensíveis a latência);
+- aparecer hardware nova geração que mude a conta de "quantas GPUs para 78B".
+
+## Fontes
+
+- [Aleph Alpha — Kolibri Has Landed: A Sovereign Open-Weight Model (03/10/2026)](https://aleph-alpha.com/en/blog/kolibri-has-landed-a-sovereign-open-weight-model/)
+- [Hugging Face — Aleph-Alpha/Kolibri-1 (model card, arquitetura, hardware e licença)](https://huggingface.co/Aleph-Alpha/Kolibri-1)
+- [Aleph Alpha — Kolibri Tech Report (PDF)](https://aleph-alpha.com/downloads/tech-report.pdf)
+- [Hugging Face — Mixture of Experts Explained (roteador, especialistas e a conta de memória)](https://huggingface.co/blog/moe)
+- [MarkTechPost — Aleph Alpha Releases Kolibri: A 78.1B Open-Weight English-German MoE Model With Only 3.46B Active Parameters (04/10/2026)](https://www.marktechpost.com/2026/10/04/aleph-alpha-releases-kolibri-a-78-1b-open-weight-english-german-moe-model-with-only-3-46b-active-parameters/)
