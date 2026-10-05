@@ -1,0 +1,182 @@
+---
+title: "Como avaliar um agente de IA que mexe no banco: estado final, não resumo"
+date: "2026-10-05"
+description: "Um agente de IA pode dizer que terminou com o banco no estado errado e sem erro de ferramenta. O ThinkingBox rodou 507 fluxos de negócio 20 vezes cada: entenda pass@1 vs 20/20, por que 4 em 5 falhas são de ferramenta e como avaliar pelo estado final."
+author: "Hernando Candido"
+tags: [Agentes de IA, Avaliação de Agentes, Confiabilidade, ThinkingBox, MCP, Engenharia de IA, Evals, Modelos de Linguagem, Banco de Dados, Automação]
+sponsored: false
+premium: false
+---
+
+# Como avaliar um agente de IA que mexe no banco: estado final, não resumo
+
+**Resposta curta:** avalie o agente pelo **estado final do sistema**, não pela resposta que ele escreve nem pelas tool calls que ele registra. Um agente consegue terminar a tarefa "limpo" — sem erro de ferramenta, com resposta educada — e deixar o registro errado no banco. Foi isso que o **ThinkingBox**, sandbox e benchmark da Microsoft com a Hugging Face, mediu em **507 fluxos de negócio com estado**, cada um rodado **20 vezes**: nos melhores modelos, **menos da metade** dessas tarefas passa 20 de 20 vezes.
+
+Na mesma semana em que esse resultado saiu, a indústria anunciou agentes persistentes com "conta de despesas": os **Dots** da OpenAI ligados a mais de 4.000 apps, o **GPT-6.1 Sol** a cerca de um quinto do preço de token do Astra e o **Gemini 4 Argon** com limite de saída de **1 milhão de tokens**.
+
+Todos prometem a mesma coisa: delegar trabalho que mexe em registro real. Nenhum deles responde à pergunta que o ThinkingBox responde.
+
+![Diagrama do ThinkingBox rodando um agente contra sessões MCP isoladas e avaliando o estado final do backend](https://cdn-uploads.huggingface.co/production/uploads/64b8491203124195cd795cad/NStwJm1AafDELVsU4KGwS.png)
+
+*Imagem: Microsoft e Hugging Face, blog do ThinkingBox (03/10/2026)*
+
+## A trajetória é uma alegação. O banco é a evidência.
+
+Um agente de atendimento recebe um caso banal: cliente com um aparelho de **US$ 745** preso num centro de distribuição já **15 dias** além do prazo.
+
+O agente faz um trabalho caprichado — **nove tool calls**: puxa o pedido, checa o rastreio, lê o perfil do cliente, consulta a política de reembolso duas vezes, confirma que não existe ticket aberto, abre um e documenta a linha do tempo. Faz tudo certo e conclui que aquela cliente não tem direito a compensação por atraso.
+
+Depois **fecha o ticket como resolvido**.
+
+Dois erros. O estado final exigido era *on hold*, porque a exceção da transportadora continuava aberta. E a cliente nunca recebeu resposta ao que perguntou.
+
+Um avaliador que lê tool calls enxerga nove chamadas bem formadas. Um avaliador que checa se o agente escreveu no banco vê escrita. **Só o banco discorda.**
+
+## O que o ThinkingBox mediu (e o que leaderboard nenhum mostra)
+
+O ThinkingBox não avalia texto: ele roda o agente contra **sessões MCP isoladas**, com o estado inicializado do zero a cada tentativa, e julga o **estado terminal do backend** com checagens executáveis. Trajetória válida passa; efeito errado, faltando ou **a mais** é rejeitado.
+
+São **507 fluxos** de negócio em cinco domínios: varejo, hotelaria, seguro auto, TI interno de neobank e suporte de TI/RH. Cada tarefa roda **20 vezes independentes**.
+
+Na ablação de conjunto comum, **121.680 tentativas válidas** de 12 modelos foram avaliadas. **79.853 falharam** — e o dado que muda tudo é este: **67,24% das falhas terminaram limpas**, sem erro na última ferramenta. Nessas falhas limpas, as checagens de estado acharam valor errado em **77,61%** dos casos, efeito não intencional em **43,30%** e efeito obrigatório faltando em **25,36%** (os achados se sobrepõem).
+
+O benchmark reporta três números, e a diferença entre eles é o artigo inteiro:
+
+| Métrica | O que responde |
+|---|---|
+| `pass@1` | Como ele costuma se sair? |
+| `pass@20` | Ele consegue fazer isso alguma vez em 20? |
+| **20/20 observado** | Ele acerta **toda** vez? |
+
+Agora o ranking que ninguém coloca no slide:
+
+| Modelo | `pass@1` (507 tarefas) | Tarefas 20/20 | % 20/20 |
+|---|---|---|---|
+| Claude Opus 5.5 | 67,16% | 241 | 47,53% |
+| Claude Opus 5 | 66,50% | 241 | 47,53% |
+| GPT-5.4 | 65,36% | 128 | 25,25% |
+| GPT-5.6 Sol | 61,91% | 82 | 16,17% |
+| Claude Sonnet 4.6 | 59,19% | 102 | 20,12% |
+| GPT-6 Astra | 58,31% | 231 | 45,56% |
+| Kimi-K3 (aberto) | 57,37% | 68 | 13,41% |
+| Qwen3.8-27B (aberto) | 51,70% | 38 | 7,50% |
+
+Ainda assim, esse é o recorte otimista. Olhando quanto da nota **sobrevive** às 20 repetições: GPT-6 Astra mantém 78%; Opus 5.5 e Opus 5 mantêm 71% cada; **GLM-5.1, Kimi-K2.6 e DeepSeek-V4-Pro mantêm cerca de 8%**.
+
+## Amplitude e consistência não andam juntas
+
+O caso mais didático é o do Kimi-K3. É o modelo com a **maior cobertura** do teste: resolve **93,89%** das tarefas pelo menos uma vez — 476 das 507, deixando só 31 de fora — e lidera o varejo com 82,24%, na frente de todo modelo proprietário.
+
+Só que essas tarefas passam **20 de 20 vezes** em apenas **13,41%** dos casos.
+
+O Opus 5 é o espelho: resolve menos (79,09% pelo menos uma vez, com 106 tarefas que o derrotam por completo) e completa **47,53%** do benchmark em **todas** as tentativas.
+
+Traduzindo para decisão de arquitetura — o Kimi-K3 resolve **75 tarefas mais** que o Opus 5 na conta do "pelo menos uma vez". O Opus 5 resolve **173 tarefas mais** na conta do "sempre".
+
+E modelo novo não corrige isso sozinho: o Opus 5.5 acerta mais no geral (67,16% contra 66,50%) e passa **exatamente as mesmas 241 tarefas** nas 20 tentativas. Meio ponto de acurácia de manchete não comprou nenhuma confiabilidade adicional.
+
+Se o trabalho toca registro real, `pass@20` é a coluna errada de se olhar.
+
+## Quatro em cada cinco falhas são de ferramenta, não de raciocínio
+
+Cada traço que falha recebe uma assinatura determinística. O resultado é acionável:
+
+| Assinatura da falha | Fatia das falhas |
+|---|---|
+| Uso de ferramenta | 79,9% |
+| Atualizações de estado erradas | 10,3% |
+| Resolução incompleta para o usuário | 7,0% |
+| Nenhuma ação que muda estado | 2,9% |
+
+O padrão é estável: o agente chega longe, tenta o fluxo e **não se recupera** de erro de ferramenta, precondição falhada ou busca vazia. É problema de **retry e recuperação de erro antes de ser problema de modelo**.
+
+E o domínio pesa mais que o fornecedor. Entre os modelos da tabela, o varejo tem média de **59,52%** em `pass@1`, enquanto o seguro auto fica em **33,83%**. O mesmo modelo pode acertar 68% num domínio e 8% em outro.
+
+## O que "confiável" custa
+
+Existem duas contas diferentes, e a diferença é o que separa acertar de acertar sempre.
+
+- **Custo por tentativa bem-sucedida** = custo estimado de 507 tentativas ÷ (507 × `pass@1`).
+- **Custo por tarefa confiável** = custo estimado de 20 rodadas de 507 tentativas ÷ tarefas que passaram 20/20.
+
+As nove melhores na segunda conta (custos estimados, não faturas de nuvem):
+
+| Modelo | Tarefas 20/20 | Custo estimado, 20 rodadas | Custo por tarefa confiável |
+|---|---|---|---|
+| GPT-5.4 | 128 | US$ 869,80 | **US$ 6,80** |
+| GPT-6 Astra | 231 | US$ 1.720,60 | US$ 7,45 |
+| Claude Opus 5.5 | 241 | US$ 1.880,77 | US$ 7,80 |
+| GPT-5.6 Sol | 82 | US$ 800,00 | US$ 9,76 |
+| Claude Opus 5 | 241 | US$ 3.206,00 | US$ 13,30 |
+| Claude Sonnet 4.6 | 102 | US$ 1.587,60 | US$ 15,56 |
+| GPT-5.2 | 44 | US$ 878,00 | US$ 19,95 |
+| Kimi-K3 | 68 | US$ 1.406,40 | US$ 20,68 |
+| Qwen3.8-27B | 38 | US$ 925,80 | US$ 24,36 |
+
+O GPT-5.6 Sol é o mais barato **por acerto isolado** (US$ 0,127 por tentativa bem-sucedida) e ainda assim custa **US$ 9,76 por tarefa confiável**. O jeito mais barato de acertar não é o jeito mais barato de ser confiável.
+
+## Checklist para aplicar isso no seu agente
+
+1. **Olhe o estado terminal antes de commitar**, não o resumo que o modelo escreveu sobre o que fez.
+2. **Rode a mesma tarefa N vezes** a partir de um estado limpo e reporte o k que você escolheu — 5, 20, o que o risco justificar.
+3. **Diga se é best-of-k ou every-of-k.** "Passou em 20 tentativas" e "passou nas 20" são afirmações diferentes.
+4. **Separe erro de ferramenta de erro de raciocínio** e só reenvie o que é recuperável.
+5. **Corte a superfície de ferramentas** ao que o fluxo realmente precisa.
+6. **Exija aprovação humana no que não é reversível barato.**
+7. **Mantenha a fronteira de confiança:** o modelo vê a tarefa, o diálogo e os schemas; estado gabarito, checagens e credenciais ficam do lado do avaliador.
+
+Se você ainda está decidindo qual modelo entra no fluxo, o mesmo raciocínio de custo por qualidade aparece em [roteamento de modelos LLM](/blog/roteamento-de-modelos-llm-como-equilibrar-custo-latencia-e-qualidade-em-producao) — só que aqui o denominador não é qualidade percebida, é confiabilidade medida. E se você está expondo funções Python ao agente agora, [a validação e o tracing entram antes do retry](/blog/como-transformar-um-script-python-em-agente-de-ia-sem-perder-controle).
+
+## Vale para quem não mexe em banco?
+
+Vale. O ponto do ThinkingBox não é banco de dados — é **efeito colateral**. Qualquer agente que envia e-mail, cria cobrança, agenda compromisso ou abre chamado produz estado final verificável, e é nele que a nota deveria ser lida.
+
+Se o seu agente só lê e responde, a pergunta muda: aí o seu problema é qualidade de decisão, que é outro tipo de avaliação — o [Taste-Bench](/blog/como-avaliar-a-qualidade-de-decisao-de-um-agente-de-ia-taste-bench) isola justamente o rumo escolhido no meio do caminho; e [modelos de decisão](/blog/modelos-de-decisao-o-que-sao-e-quando-usar-no-lugar-de-um-llm) resolvem a parte barata de escolher entre opções fixas.
+
+## Como testar você mesmo
+
+O ThinkingBox está aberto: o framework é **MIT**, os dados do benchmark são **CDLA-Permissive-2.0** e a interface **OpenEnv** é **BSD-3-Clause**. A release executável é a `thinkingbox-bench-v1.0`; o dataset no Hugging Face é a versão amigável de visualização, e o GitHub continua sendo a fonte que roda.
+
+A instalação pede Linux ou WSL, Python 3.11+, `uv` e Docker, mais endpoints de modelo para o agente, o usuário simulado e o juiz — um único endpoint pode servir os três papéis para começar. A recompensa por episódio é binária (passa/não passa), e falha de infraestrutura é reportada em arquivo separado, nunca convertida em falha do modelo.
+
+## FAQ
+
+### O que é pass@20 ou pass^k?
+
+É a fração de tarefas que o agente resolve **em pelo menos uma** de k tentativas. Serve para medir amplitude (o que ele *consegue* fazer). Não confunda com a taxa observada de k/k, que mede se ele acerta **todas** as vezes — que é o que importa quando o trabalho tem efeito colateral.
+
+### Como avaliar um agente que altera banco de dados?
+
+Não leia a resposta do agente e não conte tool calls. Aplique checagens executáveis sobre o **estado final do backend** depois que a execução termina, aceitando qualquer trajetória que produza o resultado certo e rejeitando efeito errado, faltando ou a mais. Rode cada tarefa a partir de um estado limpo, N vezes, e reporte a fração de tarefas que passam em todas.
+
+### Qual modelo de IA é mais confiável para trabalho com registro?
+
+No ThinkingBox, os mais consistentes ficaram próximos de **47%** de tarefas 20/20 (Claude Opus 5.5 e Opus 5) e o GPT-6 Astra em **45,56%**. Nenhum passa de metade do benchmark sendo correto em todas as tentativas — e o mais barato por tarefa confiável foi o **GPT-5.4**, com US$ 6,80.
+
+### Preciso mesmo rodar tudo 20 vezes?
+
+Não existe número sagrado. O que existe é a obrigação de **definir o k** que o seu risco justifica e de ser explícito sobre como você calculou. Rodar 20 vezes numa ablação é como se mede confiabilidade; rodar 3 vezes em produção é o mínimo para não confundir sorte com estabilidade.
+
+## Schema recomendado
+
+`TechArticle` + `FAQPage`. Manter `datePublished` como 2026-10-05 e sincronizar `dateModified` a cada revisão. O `FAQPage` deve espelhar as quatro perguntas acima, com respostas de 40 a 60 palavras. O `TechArticle` deve citar o ThinkingBox como **método** (sandbox, checagens sobre estado final, repetição), não como assunto datado.
+
+## Classificação editorial
+
+**Atualizável (núcleo estável).** O núcleo do artigo — avaliar agente por estado final, `pass@1` vs 20/20, falhas que terminam limpas, erro de ferramenta dominando — é mecânica de engenharia e não envelhece. O que envelhece são os números dos modelos. Revisar este post quando:
+
+- sair uma versão nova do ThinkingBox-Bench com mais fluxos ou novas asserções;
+- houver avaliação independente que contrarie os números de 20/20 da tabela;
+- os modelos citados (Opus 5.5, GPT-6 Astra, Kimi-K3, GPT-5.4) forem substituídos por gerações que mudem a fronteira de custo por tarefa confiável;
+- aparecer uma mudança de arquitetura que melhore recuperação de erro de ferramenta — hoje 79,9% das falhas;
+- o padrão de interface de avaliação (OpenEnv) mudar de contrato.
+
+## Fontes
+
+- [Hugging Face e Microsoft — The Agent Said It Was Done. The Database Disagreed. (03/10/2026)](https://huggingface.co/blog/microsoft/thinkingbox)
+- [arXiv:2608.19741 — One Success Isn't Reliability: Thinkingbox, a Sandbox and Benchmark for Agents in Stateful Business Workflows (v4, 01/10/2026)](https://arxiv.org/abs/2608.19741)
+- [Hugging Face — microsoft/ThinkingBox-Bench (dataset, 507 fluxos)](https://huggingface.co/datasets/microsoft/ThinkingBox-Bench)
+- [GitHub — microsoft/thinkingbox (framework, licença MIT)](https://github.com/microsoft/thinkingbox)
+- [Hugging Face Docs — OpenEnv: ThinkingBox (interface de avaliação)](https://huggingface.co/docs/openenv/environments/thinkingbox)
+- [The Sequence Radar — Issue 944: OpenAI Connects the Dots, Gemini Levels Up, and Agents Cash In (04/10/2026)](https://thesequence.substack.com/p/the-sequence-radar-issue-944-last)
+- [Google — The latest AI news we announced in September 2026 (Gemini 4 Argon, limite de saída de 1M de tokens)](https://blog.google/innovation-and-ai/technology/ai/google-ai-updates-september-2026/)
