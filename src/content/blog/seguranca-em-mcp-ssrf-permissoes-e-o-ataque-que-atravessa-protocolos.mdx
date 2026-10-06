@@ -1,0 +1,220 @@
+---
+title: "Segurança em MCP: SSRF, permissões e o ataque que atravessa protocolos"
+date: "2026-10-06"
+description: "O mesmo erro de SSRF foi corrigido em cinco organizações sem relação entre si: Google, JPMorgan Chase, Weaviate, o governo francês e uma prefeitura da Indonésia. O que isso revela sobre a confiança que um agente deposita em outro, as seis classes de falha em servidores MCP e o checklist para fechar cada uma."
+author: "Hernando Candido"
+tags: [MCP, Segurança, Agentes de IA, SSRF, Prompt Injection, Protocol Pivoting, A2A, Model Context Protocol, Engenharia de IA]
+sponsored: false
+premium: false
+---
+
+# Segurança em MCP: o que seu servidor faz quando o agente manda uma URL
+
+**Resposta curta:** um servidor MCP recebe do agente uma URL, um caminho ou um endpoint e monta a requisição sem checar para onde o endereço realmente resolve. Isso é **SSRF (server-side request forgery)**, e o mesmo erro foi corrigido em **cinco organizações sem nenhuma relação entre si**: Google, JPMorgan Chase, Weaviate, o governo francês e a prefeitura de Tangerang, na Indonésia. O padrão não é acidente de implementação, é estrutural: **a especificação do MCP não define requisitos de segurança normativos**. A defesa passa por quatro movimentos: tratar todo parâmetro de tool como hostil, validar o IP resolvido **no momento da conexão**, cortar a saída de rede no nível do processo e nunca deixar um agente herdar automaticamente a confiança do agente que o chamou.
+
+![Cabos conectados ao painel traseiro de um equipamento — a metáfora literal de protocolos que se conectam entre si e passam a confiar um no outro](https://media.thenextweb.com/2026/10/cables-plugged-into-back-panel-connectors-close-up.jpg)
+
+*Imagem: [TNW](https://thenextweb.com/news/mcp-flaw-ssrf-google-jpmorgan-dinum-protocol-pivoting)*
+
+Todo mundo que colocou um agente em produção nos últimos meses passou pela mesma cena: instalar o servidor MCP que dá ao modelo acesso a arquivos, banco, shell ou API interna, ver funcionar na primeira tentativa e seguir em frente.
+
+O detalhe que ficou para trás é o que esse servidor faz quando o agente manda um endereço para ele buscar.
+
+## O modelo de confiança do MCP é assimétrico
+
+Um deployment de MCP tem três peças: o **host** (a aplicação de IA que gerencia as conexões), o **cliente** (o componente do host que fala o protocolo) e o **servidor** (o processo que expõe as tools).
+
+Segundo o Internet-Draft do próprio pesquisador que reportou os casos, a relação de confiança entre eles é assimétrica:
+
+- o host confia que o servidor vai limitar corretamente os efeitos das suas tools;
+- o servidor confia que os parâmetros da chamada vêm de um host autorizado e com entrada validada.
+
+As duas suposições falham na prática com frequência, porque **parâmetro de tool nasce de raciocínio de LLM** — e raciocínio de LLM é influenciável por prompt injection. A conclusão do draft é direta: servidores MCP **devem tratar todo parâmetro de tool como não confiável**.
+
+Só que "deve" aqui não é obrigação de protocolo. O documento é explícito: a especificação do MCP **não traz requisitos de segurança normativos**. Cada SDK e cada servidor decide sozinho o que faz com uma URL que chegou de fora. O protocolo evoluiu rápido em 2026 — a [maior atualização desde o lançamento](/blog/o-mcp-acaba-de-receber-sua-maior-atualizao-de-todos-os-tempos-veja-o-que-muda-pa) mexeu em capacidade e integração, não em obrigação de segurança.
+
+## As seis classes de falha que reaparecem em todo servidor MCP
+
+O mesmo Internet-Draft cataloga as vulnerabilidades que se repetem nos relatos públicos de servidores MCP. Seis classes, todas de implementação, todas previsíveis:
+
+| Classe | Como aparece na prática | O que habilita |
+|---|---|---|
+| **SSRF** | Tool que aceita URL e passa para um cliente HTTP sem validar o IP resolvido | Metadados de instância em nuvem (**169.254.169.254**, com credenciais IAM), serviços internos, serviços em **127.0.0.1** |
+| **Permissões excessivas** | Tool de filesystem expõe caminhos além da própria função documentada | Leitura de arquivo arbitrário por prompt adversarial |
+| **Superfície de prompt injection** | Tool devolve conteúdo externo ao modelo sem sanitização | Quem controla aquele conteúdo altera o comportamento seguinte do agente |
+| **Bypass de ciclo de vida** | Servidor responde `tools/list` antes do handshake `initialize` terminar | Pula o controle de acesso aplicado na inicialização |
+| **Vazamento de informação** | Erros verbosos com stack trace, caminho interno e versão de dependência | Fingerprinting do ambiente |
+| **Falha de autenticação** | Servidor responde tool call sem verificar autenticação | Crítico quando a tool executa código ou acessa filesystem |
+
+Duas dessas classes têm relatos públicos abertos em repositórios dos próprios mantenedores do ecossistema: issues **4116, 4143 e 4205** no repositório `modelcontextprotocol/servers` (servidor que busca HTTP) e a issue **1626** no `microsoft/playwright-mcp` (automação de navegador).
+
+A segunda é a mais desconfortável. Um servidor MCP que dirige navegador costuma rodar **com acesso ao perfil local do browser** — ou seja, o impacto do SSRF inclui sessões autenticadas, não só rede interna.
+
+E vale a ressalva de sempre: mitigação ingênua não resolve. Bloquear o IP literal de metadados é contornável por **DNS rebinding** (o hostname resolve para um endereço público na hora da checagem e para um endereço restrito na hora da conexão) e por cadeia de **redirect 3xx** partindo de uma URL permitida.
+
+## O mesmo erro em cinco lugares sem relação entre si
+
+Se o problema fosse descuido, apareceria uma vez. Ele apareceu cinco, em ambientes que não compartilham código, dono nem país.
+
+| Organização | O que estava aberto | Registro público |
+|---|---|---|
+| **Google** (mcp-toolbox) | Cliente HTTP sem política restritiva de redirect e sem validação de IP de destino: caminho manipulado levava a requisição a endpoints internos ou externos arbitrários. Afeta versões **0.3.0 a 1.4.0** | **CVE-2026-14540** / GHSA-3x3x-8ffg-ghcv, publicado em **31/07/2026** |
+| **JPMorgan Chase** (repo aberto `jpmorgan-payments/ai`) | Servidor de busca em documentação com duas tools: uma filtrava domínio por allowlist, a tool irmã buscava qualquer URL fornecida pelo chamador | Confirmado pelo time de responsible disclosure do banco, correção implantada |
+| **Weaviate** | Módulo do Google aceitava `apiEndpoint`, `region` e `location` arbitrários | Restringido a hosts da API do Google; pesquisador citado no Security Hall of Fame em **25/08/2026** |
+| **DINUM / data.gouv.fr** (governo francês) | Campo de URL de documentação fornecido por produtor de dados era buscado server-side e podia apontar para loopback, rede privada ou metadados | PR **#126** ("harden SSRF on external APIs"), **04/09/2026** |
+| **Tangerang, Indonésia** (Wazuh MCP Server) | Tool anunciava proteção contra SSRF, mas rejeitava apenas IP literal e nunca resolvia hostname | Aviso de severidade alta em **03/09/2026**, corrigido no commit `2bbfe12` |
+
+Ainda na mesma leva, a Rapid7 corrigiu **CVE-2026-97228** no Bulk Export MCP: o `export_id` — argumento de tool não validado — era interpolado direto numa query GraphQL, permitindo fechar a seleção `export(id: "...")` e anexar seleções próprias, como introspecção de schema. O aviso é honesto sobre o alcance: a query roda **dentro do próprio escopo de API já autenticado do operador**, com a chave dele, e não cruza fronteira de tenant. Corrigido na **0.6.2**, passando o ID como variável parametrizada.
+
+### O mesmo CVE com duas notas diferentes
+
+Esse é um detalhe que ensina mais que a vulnerabilidade em si. O CVE-2026-14540 tem **duas pontuações oficiais** na base do NIST:
+
+| Métrica | Nota | Severidade | Quem assina |
+|---|---|---|---|
+| **CVSS 3.1** | 6.1 | Média | `nvd@nist.gov` |
+| **CVSS 4.0** | 8.0 | Alta | `cve-coordination@google.com` |
+
+Não é erro de digitação, e nenhuma das duas é "a errada". São **versões diferentes do mesmo sistema de pontuação**, com vetores diferentes — a 3.1 assume interação do usuário (`UI:R`), a 4.0 não. Quando você vir "8.0, severidade alta" numa manchete e 6.1 na ficha técnica, não está diante de desinformação: está diante de dois scores que precisam ser citados com a versão do CVSS ao lado.
+
+## Protocol Pivoting: o ataque que muda de protocolo no meio do caminho
+
+Aqui a história sai do SSRF e fica mais interessante.
+
+O mesmo pesquisador formalizou um preprint no Zenodo (**24/05/2026**, v1, DOI 10.5281/zenodo.20371152) descrevendo o que chama de **Protocol Pivoting**: um ataque em várias etapas em que o adversário entra por um protocolo, explora **a confiança que os protocolos depositam uns nos outros** e escala para capacidades que só existem em outro protocolo.
+
+O encadeamento descrito no Internet-Draft tem quatro passos:
+
+1. **Acesso inicial** — uma instrução injetada entra no conteúdo processado por um agente que usa MCP.
+2. **Etapa MCP** — a instrução faz o agente invocar uma tool contra um serviço interno.
+3. **Etapa A2A** — o agente delega uma tarefa a um agente a jusante, que **herda a confiança do agente de origem**.
+4. **Etapa de negociação** — o agente a jusante negocia com um serviço externo sob a identidade do agente que originou a cadeia.
+
+O exemplo concreto do preprint: texto com formato de instrução de tarefa A2A vem embutido na saída de uma tool MCP. O agente orquestrador repassa aquilo como delegação normal. O subagente, confiando no orquestrador, executa.
+
+Nenhuma peça da corrente fez algo errado segundo a própria especificação. É exatamente por isso que o caso é difícil, como resumiu ao Ars Technica **Douglas McKee, diretor de inteligência de vulnerabilidades da Rapid7**:
+
+> "Every piece in that chain did exactly what it was designed to do, which is what makes this so tricky to catch."
+
+Para **Markus Vervier, da X41 D-Sec**, a técnica é uma forma de **indirect prompt injection** — a mesma classe que já aparece em RAG quando o controle de acesso é aplicado depois da resposta do modelo.
+
+E o preprint vai além do relato: ele analisa por que as defesas existentes falham nesse cenário e propõe um framework de segurança cross-protocol com **modelo formal de fronteira de confiança** e três mitigações agnósticas de protocolo.
+
+## Por que o scanner de dependência não pega isso
+
+Essa é a parte que explica por que a falha se repetiu cinco vezes sem ninguém notar antes de um terceiro reportar.
+
+O argumento do pesquisador é específico: ferramentas de SCA e scanners de dependência **não enxergam essa classe**. A entrada perigosa chega pela camada de transporte, como argumento de tool descrito por um manifesto que o scanner nunca lê. O call graph **termina na fronteira do transporte**. Não há biblioteca vulnerável a apontar, não há versão a subir. Há um `url` que o modelo preenche.
+
+Some a isso o retrato mais amplo. Um research note da **Cloud Security Alliance (04/05/2026)** trata o cenário como crise sistêmica de design: lembra que o **Simon Willison** já havia documentado, em abril de 2025, descrições de tool visíveis ao modelo e invisíveis na interface carregando instruções adversariais, e que a **Invariant Labs** demonstrou cross-server tool shadowing, em que um único servidor malicioso instrumentaliza servidores confiáveis vizinhos. A nota também chama de default de projeto — não bug de um produto — o comportamento do transporte STDIO, e cita uma varredura da internet que encontrou instâncias MCP respondendo a requisições não autenticadas.
+
+Vale marcar o status de cada coisa: os cinco casos acima têm correção publicada ou confirmação do time de segurança. As conclusões da CSA são **avaliações da própria CSA**, com números que ela atribui a terceiros. As duas coisas não têm o mesmo peso, e misturar as duas é o jeito mais rápido de escrever um artigo errado.
+
+## O que continua aberto
+
+O pesquisador relatou, em **02/09/2026**, cinco avisos privados de segurança cobrindo servidores MCP sob o Technology Transformation Services da GSA americana: benefícios do Departamento de Assuntos de Veteranos, CMS Blue Button, regulations.gov, USASpending e CDC PLACES. Todos permanecem **em triagem, sem correção publicada**.
+
+No caso do servidor de benefícios, a classe descrita é vazamento de informação: o servidor registra o corpo de erro completo da API a montante em nível ERROR, **sem redação** — e esses corpos podem conter nome, número de seguro social, data de nascimento e endereço. Falhas de validação rotineiras bastariam para gerar o registro em operação normal.
+
+Há ainda o servidor de grants da Agência Digital do Japão, notificado ao JPCERT em **01/09/2026** por ausência de autenticação, com pull request público aberto para exigir opt-in explícito antes de expor o servidor fora do loopback. Não foi mergeado.
+
+A regra que eu sigo aqui: **relato em triagem não é incidente confirmado**. As organizações ainda não confirmaram publicamente, e os detalhes de código estão retidos até a correção sair.
+
+## Como fechar cada porta: implementadores
+
+Se você escreve servidor MCP, o Internet-Draft lista exigências objetivas. Traduzindo para o que entra no repositório:
+
+- **Validar o IP resolvido, não a string.** A checagem tem que acontecer **no momento da conexão**, não no parse da URL. Validar cedo é o que o DNS rebinding derruba.
+- **Bloquear faixas não roteáveis:** RFC 1918 (`10/8`, `172.16/12`, `192.168/16`), loopback (`127/8`, `::1`), link-local (`169.254/16`, `fe80::/10`) e IPv6 privado (`fc00::/7`). Link-local é onde mora o endpoint de metadados.
+- **Não seguir redirect por padrão.** Se seguir, cada destino passa pela mesma validação da URL original.
+- **Escopo de filesystem mínimo.** Sem acesso à raiz sem configuração explícita do operador.
+- **Nada de tool call antes do `initialize`.** O ciclo de vida é controle de acesso, não cerimônia.
+- **Log estruturado e atribuível** de cada invocação, para detecção e resposta.
+
+A documentação oficial do MCP cobre a mesma família de risco e acrescenta duas observações que valem tatuar:
+
+1. **Não implemente validação de IP na mão.** Atacantes exploram truques de codificação — octal, hexadecimal, IPv6 mapeado de IPv4 — que parser caseiro erra.
+2. **DNS é TOCTOU.** O domínio do atacante pode resolver para um IP seguro na validação e para um IP interno na requisição. A recomendação é fixar o resultado da resolução entre a checagem e o uso, e não confiar só nela.
+
+## Como fechar cada porta: operadores
+
+Para quem só *instala* servidor MCP, a lista é menor e mais concreta:
+
+- **Controle de egresso no nível de processo ou container**, independente da validação da aplicação. Proxy de saída que barra destino interno por design resolve mais que qualquer regex.
+- **Privilégio mínimo** no processo do servidor, como em qualquer serviço exposto.
+- **Trate todo servidor que processa conteúdo externo como exposto a prompt injection** — e limite os efeitos que ele pode causar.
+- **Monitore as invocações.** SSRF bem-sucedido aparece como requisição estranha saindo do seu processo, não como erro.
+
+Se você já olhou permissão de agente antes, o raciocínio é o mesmo em outra camada: o que define o estrago é o alcance que você concedeu, não a intenção do modelo. O post sobre [o que o Full Disk Access libera e como limitar](/blog/permissoes-de-agentes-de-ia-o-que-o-full-disk-access-libera-e-como-limitar) cobre o lado da máquina local; este aqui cobre o lado do protocolo. E o mesmo vale quando o controle de acesso é aplicado [depois da resposta do modelo em RAG](/blog/seguranca-em-rag-como-aplicar-controle-de-acesso-antes-da-resposta-do-llm): a checagem que chega tarde não protege nada.
+
+E se o seu agente conversa com um servidor que devolve conteúdo de terceiros, a pergunta certa não é "o modelo vai obedecer?" e sim "se ele obedecer, o que esse servidor pode fazer?".
+
+## Como testar os seus próprios servidores
+
+O pesquisador mantém um scanner open source, o **mcp-safeguard** (licença MIT, `pip install mcp-safeguard`). Ele faz avaliação **black-box**: testa o servidor pela superfície de tools exposta, sem precisar do código-fonte.
+
+A ideia por trás da detecção de SSRF é a que funciona em qualquer pipeline:
+
+1. submete uma requisição benigna para um host externo controlado;
+2. submete uma requisição que redireciona para um endereço restrito;
+3. submete uma requisição direta ao endpoint de metadados.
+
+O servidor é classificado como afetado quando um destino restrito é alcançável. As descobertas saem em formato legível por máquina, feitas para rodar em CI.
+
+Uma ressalva que o próprio documento faz questão de registrar: a validação do scanner contra deployments de produção é trabalho futuro, e **os resultados citados no draft vêm de fixtures controladas** que modelam as classes de falha. Scanner é rede de proteção, não atestado.
+
+E vale o mesmo raciocínio de [avaliar um agente pelo estado final do sistema](/blog/como-avaliar-um-agente-de-ia-que-mexe-no-banco-estado-final-nao-resumo): a resposta que o agente escreveu não diz nada sobre o que ele fez no caminho. Aqui, quem diz é o log do servidor.
+
+## Perguntas frequentes
+
+### SSRF em MCP é a mesma coisa que prompt injection?
+
+Não. Prompt injection é o vetor que influencia o parâmetro; SSRF é a falha do servidor ao usar esse parâmetro. A exploração junta os dois: a injeção decide o endereço, a ausência de validação de IP deixa a requisição sair para a rede interna.
+
+### Meu servidor MCP é vulnerável só por aceitar URL?
+
+Aceitar URL não é o problema. O problema é aceitar URL e **não validar o IP de destino no momento da conexão**, não restringir redirect e não ter controle de egresso. Se as três coisas estão no lugar, aceitar URL é legítimo.
+
+### O que eu faço hoje, antes de esperar patch de fornecedor?
+
+Corte o egresso do processo do servidor, rode com privilégio mínimo e monitore as invocações. Rede restrita no nível do container protege mesmo quando a aplicação valida errado, e funciona sem depender do fornecedor.
+
+### Protocol Pivoting é um ataque confirmado em produção?
+
+Não. É uma classe formalizada em preprint e descrita em relato público, com exemplo conceitual de encadeamento MCP → A2A. O que está confirmado e corrigido são os casos de SSRF listados acima.
+
+### Por que o scanner de dependências não avisou nada?
+
+Porque não há biblioteca vulnerável. A entrada perigosa chega como argumento de tool pela camada de transporte, descrita num manifesto que o scanner não lê. O call graph termina antes de onde o problema começa.
+
+## Schema recomendado
+
+`TechArticle` + `FAQPage`. Manter `datePublished` em **2026-10-06** e sincronizar `dateModified` a cada revisão. O `FAQPage` espelha as cinco perguntas acima, em 40 a 60 palavras cada. No `TechArticle`, citar os CVEs com **a versão do CVSS declarada no texto** — o par 6.1 (v3.1) e 8.0 (v4.0) do mesmo CVE precisa aparecer rotulado, nunca solto.
+
+## Classificação editorial
+
+**Atualizável (núcleo estável).** O que este artigo entrega é durável: a assimetria de confiança do MCP, as seis classes de falha, o encadeamento do Protocol Pivoting e o checklist de validação no momento da conexão. Isso não muda com a próxima release. O que envelhece é o elenco de casos. Revisar quando:
+
+- as cinco notificações sob a GSA saírem da triagem, com correção ou confirmação pública;
+- o pull request do servidor de grants do Japão for mergeado ou fechado;
+- a apresentação no **MCPCon North America** (San Jose, **23/10/2026**) publicar achados novos ou confirmar os federais;
+- sair nova versão da especificação do MCP com requisitos de segurança normativos — hoje ela não tem;
+- o Internet-Draft `draft-mohiuddin-mcp-security-considerations-00` expirar (**03/12/2026**) e for substituído por uma revisão `-01`;
+- aparecer caso de Protocol Pivoting confirmado em produção por fornecedor, o que hoje não existe.
+
+## Fontes
+
+- [Ars Technica — MCP for agent-to-agent comms may be the riskiest protocol you've never heard of (05/10/2026)](https://arstechnica.com/security/2026/10/vulnerability-in-agents-from-google-and-others-exposes-structural-flaw-in-mcp/)
+- [TNW — Google, JPMorgan and two governments fixed the same MCP flaw (06/10/2026)](https://thenextweb.com/news/mcp-flaw-ssrf-google-jpmorgan-dinum-protocol-pivoting)
+- [Unite.AI — Researcher Discloses Same MCP Flaw at Google, JPMorgan, Two Governments (05/10/2026)](https://www.unite.ai/researcher-discloses-same-mcp-flaw-at-google-jpmorgan-two-governments/)
+- [IETF — Security Considerations for Model Context Protocol (MCP) Implementations in AI Agent Systems, draft-mohiuddin-mcp-security-considerations-00 (junho/2026, expira 03/12/2026)](https://www.ietf.org/archive/id/draft-mohiuddin-mcp-security-considerations-00.html)
+- [IETF Datatracker — histórico do draft (status, revisões e datas)](https://datatracker.ietf.org/doc/draft-mohiuddin-mcp-security-considerations/)
+- [Zenodo — Protocol Pivoting: Cross-Protocol Attack Escalation in Agentic AI Systems (preprint v1, 24/05/2026, DOI 10.5281/zenodo.20371152)](https://zenodo.org/records/20371152)
+- [Cloud Security Alliance — MCP Security Crisis: Systemic Design Flaws in AI Agent Infrastructure (04/05/2026)](https://labs.cloudsecurityalliance.org/research/csa-research-note-mcp-security-crisis-20260504-csa-styled/)
+- [GitHub Advisory Database — GHSA-3x3x-8ffg-ghcv / CVE-2026-14540 (Google mcp-toolbox, 31/07/2026)](https://github.com/advisories/GHSA-3x3x-8ffg-ghcv)
+- [GitHub Advisory Database — GHSA-pwmm-7g3w-8pvp / CVE-2026-97228 (Rapid7 Bulk Export MCP, 25/09/2026)](https://github.com/advisories/GHSA-pwmm-7g3w-8pvp)
+- [NVD — CVE-2026-14540 (descrição técnica e as duas métricas CVSS, 3.1 e 4.0)](https://nvd.nist.gov/vuln/detail/CVE-2026-14540)
+- [GitHub — googleapis/mcp-toolbox PR #3448 (SSRFGuard, allowPrivateNetworks e faixas de IP)](https://github.com/googleapis/mcp-toolbox/pull/3448)
+- [GitHub — syedanas01/mcp-safeguard (scanner de segurança para servidores MCP, MIT)](https://github.com/syedanas01/mcp-safeguard)
+- [PyPI — mcp-safeguard (instalação e versões)](https://pypi.org/project/mcp-safeguard/)
+- [Model Context Protocol — Security Best Practices (SSRF, confused deputy, session hijacking e validação de redirect)](https://modelcontextprotocol.io/specification/2025-06-18/basic/security_best_practices)
