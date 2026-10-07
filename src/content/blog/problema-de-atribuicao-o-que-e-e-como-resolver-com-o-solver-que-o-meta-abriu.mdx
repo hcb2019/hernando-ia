@@ -1,0 +1,186 @@
+---
+title: "Problema de atribuição: o que é e como resolver com o solver que o Meta abriu"
+date: "2026-10-07"
+description: "Problema de atribuição é decidir qual objeto vai para qual caixa sob restrições e objetivos: tarefa em servidor, shard em host, tráfego em região. Na forma geral é NP-difícil, e é aí que planilha, heurística na mão e round-robin param de funcionar. O Meta abriu o Rebalancer, que resolve cerca de 40 milhões desses problemas por dia há mais de nove anos, e a lição do código aberto não é o solver: é a separação entre descrever o problema e resolvê-lo."
+author: "Hernando Candido"
+tags: [Otimização, Infraestrutura de IA, Alocação de Recursos, Meta, Busca Local, Programação Inteira Mista, Código Aberto, Engenharia de IA]
+sponsored: false
+premium: false
+---
+
+# Problema de atribuição: o que é, quando usar busca local e quando usar solver exato
+
+**Resposta curta:** um **problema de atribuição** é decidir qual objeto vai para qual caixa — cada objeto em exatamente uma caixa — respeitando um conjunto de limites e otimizando um conjunto de objetivos. Rack em datacenter, shard em host, tarefa em servidor, tráfego em região. Na forma geral o problema é **NP-difícil**, e é aí que planilha, `if` encadeado e round-robin param de resolver. O Meta usou uma biblioteca interna para isso por **mais de nove anos** e abriu o código em setembro de 2026: o **Rebalancer**, núcleo em C++ com API em Python, licença **Apache 2.0**, que resolve **cerca de 40 milhões de problemas de atribuição por dia** em produção. O **P99** leva **12 segundos** num problema com **265 mil objetos e 3,2 mil caixas**. O que faz isso funcionar não é um solver mágico: é uma **separação de responsabilidades** entre descrever o problema e resolvê-lo.
+
+![Arte de capa do anúncio do Rebalancer, a biblioteca de atribuição que o Meta abriu](https://engineering.fb.com/wp-content/uploads/2026/09/Meta-Rebalancer.webp)
+
+*Imagem: [Engineering at Meta](https://engineering.fb.com/2026/09/21/open-source/rebalancer-generic-high-performance-library-assignment-problems/)*
+
+Todo sistema que cresce passa por uma versão do mesmo momento: alguém escreve uma função que distribui unidades de trabalho entre máquinas, recursos ou regiões, ela funciona, e seis meses depois ninguém consegue mexer nela sem quebrar outra coisa.
+
+O motivo é que a função não está resolvendo um problema de código. Está resolvendo um **problema de otimização combinatória** disfarçado.
+
+## O que é um problema de atribuição, exatamente
+
+A definição formal é curta: dado um conjunto de **objetos** e um conjunto de **caixas**, atribua cada objeto a exatamente uma caixa de forma que a solução satisfaça uma lista de **restrições** e otimize uma lista de **objetivos**.
+
+O que muda de caso para caso é só o vocabulário. Nos exemplos que o próprio Meta publica, o mesmo problema aparece em quatro camadas da stack:
+
+- **Hardware:** racks (objetos) em datacenters (caixas), espalhando racks entre domínios elétricos de falha e respeitando limites de energia e refrigeração.
+- **Serviços:** servidores (objetos) em serviços (caixas), atendendo a demanda de cada serviço e otimizando tolerância a falha e densidade.
+- **Tarefas:** tarefas (objetos) em servidores (caixas), respeitando os limites de CPU e memória de cada servidor.
+- **Tráfego:** bilhões de usuários (objetos) em datacenters geográficos (caixas), minimizando latência de rede e carga por datacenter.
+
+Fora da infraestrutura, a mesma estrutura aparece em escala hospitalar (plantão de enfermeiros), logística (rota e veículo), educação (sala e horário) e resposta a emergência (equipe e ocorrência). Meta diz explicitamente que não tem expertise nessas áreas e que a esperança é que outras pessoas apliquem a biblioteca nelas.
+
+Na literatura, esse problema aparece sob nomes diferentes conforme o sabor: **atribuição**, **bin packing** (minimizar o número de caixas) e **problema generalizado de atribuição**. O que dá o tempero é sempre o trio: **objetivo** (o que você quer melhorar), **restrição** (o que você não pode violar) e **domínio** (quantas caixas cada objeto pode ocupar).
+
+## Por que planilha e heurística na mão param de funcionar
+
+Meta nomeia dois bloqueios concretos para transformar isso numa ferramenta reutilizável, e os dois são reconhecíveis por quem já tentou:
+
+1. **Usabilidade.** Traduzir política real em fórmula matemática precisa é difícil. "Não deixe o mesmo cliente inteiro cair na mesma zona de falha" é uma frase; virar restrição formal é outra coisa.
+2. **Escalabilidade.** Os problemas são **NP-difíceis** e não podem ser resolvidos eficientemente por solvers comerciais na escala real. O espaço de busca explode: com 1.000 objetos e 100 caixas existem **100^1000** atribuições possíveis, ou seja, um 1 seguido de 2.000 zeros. Nenhum hardware varre isso.
+
+É por isso que a saída quase sempre é heuristicazinha local: distribuir por hash, por round-robin, por "quem tem menos". Funciona até o dia em que as restrições ficam acopladas — e, quando ficam, o código já está espalhado em cinco lugares.
+
+## Como o Rebalancer descreve o problema: três camadas
+
+A ideia central da biblioteca é que **especificação e solução são coisas separadas**. Você descreve o problema uma vez; depois escolhe o algoritmo. A linguagem de modelagem sobe em três degraus:
+
+1. **Construtos de modelagem:** dimensões (atributos reais de objetos e caixas, como CPU e armazenamento), partições (agrupamentos de objetos), escopos (agrupamentos de caixas) e utilização (quanto cada objeto contribui para uma caixa).
+2. **API de expressões:** transformações sobre esses construtos, aplicáveis recursivamente — agregar utilização com `SUM` ou `MAX`, transformar com `SQUARE`, `Abs` e afins.
+3. **API de specs:** dezenas de objetivos e restrições prontos. Cada spec é uma receita que aceita construtos e parâmetros e devolve a fórmula.
+
+Na prática, um caso de placement vira poucas linhas legíveis. Um `CapacitySpec` limita CPU por servidor, um `GroupCountSpec` garante que cada rack tenha um único tipo de job e um `BalanceSpec` equilibra a utilização de cada servidor nas duas dimensões ao mesmo tempo.
+
+Depois de descrita, a especificação é compilada num **grafo de expressões** (um DAG). As folhas são valores de utilização — a memória do servidor A, por exemplo, obtida somando a contribuição das tarefas atribuídas a ele — e os nós internos compõem esses valores. Como o valor de cada nó depende da atribuição atual, o grafo é recalculado a cada mudança de estado. É esse mesmo grafo que serve de entrada para os dois solvers.
+
+## Os dois solvers: busca local ou MIP
+
+A biblioteca não tem um solver. Tem dois, e eles não competem: resolvem escalas diferentes.
+
+**Solver ótimo (programação inteira mista).** Traduz o grafo de expressões para um programa inteiro misto e delega a um solver genérico: **FICO Xpress** e **Gurobi** (comerciais) ou **HiGHS** (open source). Encontra o ótimo se tiver tempo. O problema é o tamanho do modelo: representar a utilização de uma caixa exige variáveis binárias por objeto, o que dá um pior caso **O(objetos × caixas)**. A biblioteca aplica reduções automáticas — agregação de variáveis, intercambialidade, quebra de simetria — mas os maiores problemas do Meta continuam grandes demais para qualquer solver de MIP.
+
+**Busca local.** Trabalha direto no grafo de expressões. Começa de uma atribuição qualquer e testa movimentos simples — mover um objeto para outra caixa, trocar dois objetos de lugar — aplicando o melhor candidato que não viola restrição. A vizinhança tem pior caso **O(objetos + caixas)**, o que cabe em memória até em problema gigante. A avaliação é paralelizada e chega a **milhões de avaliações por segundo**, com poda do espaço de busca. O que ela não faz é garantir o ótimo global.
+
+A regra de uso vem da operação do próprio Meta: **quase todos os problemas grandes usam busca local**, e problemas pequenos ou médios com prazo moderado usam o solver ótimo. O padrão mais comum é prototipar no ótimo, entender a solução de referência e só então migrar para busca local. Fora do horário de pico, o ótimo também serve para calibrar a busca local.
+
+Nenhum desses números é caso de laboratório. A escala em produção é o argumento:
+
+- **~40 milhões de problemas por dia**, em **mais de 30 formulações** distintas.
+- **P99 de 12 segundos** num problema com **265 mil objetos e 3,2 mil caixas**.
+- Em problemas com **mais de 1 milhão de objetos e 5 mil caixas**, a média é **171 segundos**, e existem **mais de 3,4 mil execuções** nessa faixa.
+
+Entre os sistemas que usam a biblioteca: o **Shard Manager** (shards em servidores), o **RAS** (servidores em serviços) e o **Taiji** (tráfego entre datacenters de borda e datacenters principais). A mesma biblioteca também resolve coisas que não são infraestrutura: salas para reuniões, tickets para engenheiros, mesa para pessoa.
+
+## Onde isso encosta em IA
+
+A parte que interessa para quem trabalha com IA é a linha de produção: a biblioteca é usada para **placement de treino e inferência de ML** e para **balancear cargas de treino online entre regiões considerando a prioridade de cada workload**.
+
+Ou seja, antes de o scheduler decidir quanta GPU cada job recebe, existe uma camada anterior decidindo **em qual lugar** cada pedaço vai — e essa camada é resolvida como problema de atribuição. É o mesmo tipo de decisão de capacidade que aparece ao escolher a [quantização certa para caber o modelo no hardware](/blog/quantizacao-de-llm-como-escolher-4-bit-8-bit-gptq-e-awq) ou ao [rotear requisições entre modelos por custo, latência e qualidade](/blog/roteamento-de-modelos-llm-como-equilibrar-custo-latencia-e-qualidade-em-producao). Modelos esparsos entram na mesma conta: [MoE reduz o compute ativo por token](/blog/mixture-of-experts-o-que-sao-modelos-esparsos-e-por-que-78b-cabem-em-1-gpu), mas o que roda onde continua sendo um problema de acomodação.
+
+## Exemplo mínimo em Python
+
+O pacote está no PyPI com interface em Python e em C++. O exemplo abaixo é o do próprio README: quatro tarefas, dois hosts, um limite de memória — `host0` começa sobrecarregado com três tarefas e `host1` com uma.
+
+```python
+from rebalancer import ProblemSolver
+from rebalancer.specs import (
+    CapacitySpec, ConstraintSpec, LocalSearchSolverSpec,
+    MoveTypeSpec, SingleMoveTypeSpec, SwapMoveTypeSpec, SolverSpec,
+)
+
+solver = ProblemSolver(service_name="rebalancer", service_scope="example")
+(solver
+    .set_object_name("task")
+    .set_container_name("host")
+    .set_assignment({"host0": ["task0", "task1", "task2"], "host1": ["task3"]})
+    .add_object_dimension("memory", {"task0": 10, "task1": 10, "task2": 10, "task3": 10})
+    .add_container_dimension("memory", {}, default_value=20.0)
+    .add_constraint(ConstraintSpec(capacitySpec=CapacitySpec(
+        name="memory_capacity", scope="host", dimension="memory")))
+    .add_solver(SolverSpec(localSearchSolverSpec=LocalSearchSolverSpec(
+        moveTypeList=[MoveTypeSpec(singleMoveTypeSpec=SingleMoveTypeSpec()),
+                      MoveTypeSpec(swapMoveTypeSpec=SwapMoveTypeSpec())])))
+)
+
+solution = solver.solve()
+print(solution["assignment"])
+resultado obtido: {'task0': 'host1', 'task1': 'host0', 'task2': 'host0', 'task3': 'host1'}
+```
+
+Lendo de cima para baixo: você nomeia o que são objetos e o que são caixas, informa a atribuição inicial, declara as **dimensões** (memória por tarefa, capacidade por host), adiciona uma **restrição** de capacidade e escolhe o **solver**. No caso de busca local, você também declara quais movimentos são permitidos — mover um objeto de caixa ou trocar dois objetos de lugar. A solução volta como um mapa de objeto para caixa.
+
+Vale registrar o estado real do pacote em **07/10/2026**: versão **1.0.4**, classificada no PyPI como **Development Status 3 – Alpha**, wheels pré-compiladas para Linux x86-64 e macOS 14+ ARM64, Python 3.12 a 3.14, além de pacotes `.deb` e `.rpm`. Alpha aqui significa API em movimento, não "não é usado": o código roda em produção no Meta há quase uma década, mas o que está aberto é o primeiro pacote público.
+
+## O problema que ninguém mede: depurar o resultado
+
+Um detalhe do relato do Meta vale mais que qualquer benchmark. Com a formulação ficando fácil, o gargalo dos times **migrou**: a maior parte do tempo de engenharia foi para **depurar o comportamento do solver**.
+
+Sem ferramenta, isso exige entender os internos do algoritmo. Foi o que motivou o **Rebalancer Explorer**, uma UI web empacotada em Docker que acompanha a release e responde as três perguntas que aparecem sempre:
+
+- quais restrições estão de fato limitando a solução;
+- o que aconteceria se aquela restrição fosse relaxada;
+- por que um objeto específico foi parar naquela caixa e não em outra.
+
+Em projetos próprios, isso costuma ser a diferença entre um modelo que vive e um modelo que apodrece: se ninguém consegue explicar a solução, ninguém mexe nela.
+
+## Quando NÃO usar
+
+Nem todo problema de distribuição precisa disso, e usar solver onde cabe uma linha de código é como montar cluster para servir uma landing page.
+
+- **Se round-robin, hash consistente ou "menos carregado" resolvem**, eles resolvem. Sem objetivo composto, sem restrição acoplada, não há o que otimizar.
+- **Se o objetivo não é expressável**, não adianta: um `if` ambíguo numa função é uma restrição ambígua no modelo.
+- **Se o problema é gigante**, o caminho é busca local desde o começo. MIP é para protótipo e para casos pequenos.
+- **Se ninguém vai manter o modelo**, pense duas vezes: solução ótima que ninguém sabe reexecutar vira artefato morto.
+
+Vale também comparar com o que já existe aberto. O **Google OR-Tools** é uma suíte muito mais ampla — roteamento de veículos, fluxos, programação linear e inteira, programação por restrições — com APIs em C++, Python, C# e Java e backends comerciais (CPLEX, Gurobi, FICO Xpress) ou abertos (SCIP, GLPK, CP-SAT). O Rebalancer é mais estreito e mais afiado: **uma especificação de atribuição que roda tanto em busca local quanto em MIP**. Se o seu problema é "objeto em caixa", ele cobre; se for roteamento com janela de tempo, OR-Tools é mais direto.
+
+## Perguntas frequentes
+
+### O que é um problema de atribuição, em uma frase?
+
+É decidir qual objeto vai para qual caixa, com cada objeto em exatamente uma caixa, respeitando limites e otimizando objetivos. Tarefa em servidor, shard em host, rack em datacenter e tráfego em região são o mesmo problema com nomes diferentes.
+
+### Preciso de um solver comercial para resolver isso?
+
+Não. O Rebalancer usa HiGHS, que é open source, como backend de programação inteira mista, e o modo principal de produção dele é a busca local, que não depende de licença nenhuma. FICO Xpress e Gurobi são suportados, mas opcionais.
+
+### O Rebalancer é open source mesmo?
+
+Sim. Licença **Apache 2.0**, código em `facebook/rebalancer`, publicação no PyPI com `pip install rebalancer`. O projeto open source é a mesma biblioteca usada internamente no Meta por mais de nove anos.
+
+### Serve para problemas fora de infraestrutura?
+
+Sim, e o Meta lista três usos próprios: alocar reuniões em salas minimizando deslocamento, distribuir tickets de suporte entre engenheiros e otimizar posição de mesas. O próprio post de anúncio cita ainda saúde, energia e serviços públicos, transporte e logística, educação e resposta a emergências como áreas onde o problema aparece — para as quais a empresa diz não ter expertise e espera que outras pessoas apliquem a biblioteca.
+
+### Busca local garante a solução ótima?
+
+Não. A busca local melhora a atribuição até não achar mais movimento válido que ajude, respeitando limites de tempo ou de movimentos. É por isso que o padrão recomendado é prototipar com o solver ótimo para ter referência e só depois migrar para a escala.
+
+## Schema recomendado
+
+`TechArticle` + `FAQPage`. `datePublished` em **2026-10-07**, sincronizando `dateModified` a cada revisão. O `FAQPage` espelha as cinco perguntas acima, com respostas de 40 a 60 palavras. No `TechArticle`, manter as entidades explícitas no corpo — **Rebalancer**, **Meta**, **Apache 2.0**, **programação inteira mista**, **busca local** — e citar os números de produção com a origem declarada, porque eles mudam a cada release.
+
+## Classificação editorial
+
+**Atualizável (núcleo estável).** O que este artigo entrega é durável: o que caracteriza um problema de atribuição, por que ele não cabe em heurística manual, o modelo de três camadas e o trade-off entre MIP e busca local. Isso não muda na próxima versão da biblioteca. O que envelhece é a ficha técnica e os números de produção. Revisar quando:
+
+- o pacote sair de **Alpha** no PyPI — a API pode quebrar entre versões, e vale fixar versão em produção;
+- novos backends de MIP ou novos algoritmos de busca forem adicionados;
+- o Meta publicar números de produção atualizados (hoje: ~40 milhões de problemas por dia, P99 de 12 s em 265 mil objetos e 3,2 mil caixas);
+- o **Rebalancer Explorer** mudar de forma de distribuição, já que hoje vem como UI em Docker;
+- aparecer um caso público de adoção fora do Meta — a biblioteca foi aberta justamente para isso, e um caso real muda a recomendação de "vale testar" para "já rodou em produção".
+
+## Fontes
+
+- [Engineering at Meta — Open-Sourcing Rebalancer: A Generic, High-Performance Library for Solving Assignment Problems (21/09/2026)](https://engineering.fb.com/2026/09/21/open-source/rebalancer-generic-high-performance-library-assignment-problems/)
+- [GitHub — facebook/rebalancer (README, exemplos em Python e C++, licença Apache 2.0)](https://github.com/facebook/rebalancer)
+- [Rebalancer — documentação oficial (construtos, API de specs e Explorer)](https://facebook.github.io/rebalancer/)
+- [PyPI — rebalancer 1.0.4 (metadados, classificador Alpha e wheels disponíveis)](https://pypi.org/project/rebalancer/)
+- [USENIX OSDI '24 — Optimizing Resource Allocation in Hyperscale Datacenters: Scalability, Usability, and Experiences (página da apresentação e resumo)](https://www.usenix.org/conference/osdi24/presentation/kumar)
+- [USENIX — PDF completo do artigo do OSDI '24](https://www.usenix.org/system/files/osdi24-kumar.pdf)
+- [MarkTechPost — Meta AI Open-Sources Rebalancer (06/10/2026)](https://www.marktechpost.com/2026/10/06/meta-ai-open-sources-rebalancer-a-c-assignment-solver-that-runs-about-40-million-placement-problems-a-day/)
+- [Google — OR-Tools (suíte de otimização combinatória e solvers suportados)](https://developers.google.com/optimization)
+- [GitHub — ERGO-Code/HiGHS (solver de programação inteira mista open source)](https://github.com/ERGO-Code/HiGHS)
