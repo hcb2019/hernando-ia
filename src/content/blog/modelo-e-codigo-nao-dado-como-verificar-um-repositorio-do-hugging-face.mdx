@@ -1,0 +1,173 @@
+---
+title: "Modelo é código, não dado: como verificar um repositório do Hugging Face"
+date: "2026-10-08"
+description: "Baixar um modelo não é baixar dados: é baixar código que roda na sua máquina. O Studio do Unsloth tinha uma falha em que escolher um modelo no seletor já executava o Python do repositório, antes de qualquer treino. O mesmo erro aparece em vLLM, LMDeploy e InstructLab, com CVE e aviso publicados. Veja o que olhar no repositório, por que safetensors existe, como fixar o revision num commit e por que o trust_remote_code nunca pode ligar sozinho."
+author: "Hernando Candido"
+tags: [Segurança em IA, Hugging Face, Modelos Abertos, Cadeia de Suprimentos, Python, Transformers, Unsloth, Engenharia de IA]
+sponsored: false
+premium: false
+---
+
+# Modelo é código, não dado: o que olhar no repositório antes de rodar
+
+**Resposta curta:** quando você baixa um modelo, você não baixa só pesos — baixa **código que roda na sua máquina**. Um repositório do Hugging Face pode ter um `config.json` com `auto_map` apontando para um `configuration.py` próprio, e a chamada que serve para **ler a configuração** executa esse módulo. O Unsloth Studio tinha exatamente esse furo nas versões **até a 2026.5.10**: escolher um modelo no seletor do navegador já fazia o backend baixar e rodar o Python do repositório, antes de carregar pesos, antes de treinar, antes de a sua própria configuração de código remoto ser consultada. Corrigido na **2026.6.9**. A defesa não é "nunca usar código remoto": é nunca deixar o `trust_remote_code=True` ligar como efeito colateral invisível.
+
+![Ilustração de capa do post de segurança do Unsloth Studio, com o título "How Unsloth Studio and Desktop Stays Secure"](https://unsloth.ai/cgi/image/unsloth_security_thumbnail_CkaH7pNlOabdH1MmRiUkk.png?format=raw)
+
+*Imagem: [Unsloth](https://unsloth.ai/blog/security)*
+
+Quem trabalha com IA já internalizou que modelo é peso em arquivo. Só que "modelo" é um diretório: tem `config.json`, tem tokenizer, tem às vezes um `.py` que o próprio repositório manda executar. **Pesos são dados. O resto é código.**
+
+Essa distinção parece acadêmica até virar uma execução de código arbitrário (`ACE`) na máquina que tem as suas GPUs. Foi isso que a Pillar Security encontrou no Unsloth Studio.
+
+## O que aconteceu
+
+A Unsloth é uma das bibliotecas abertas mais usadas para ajuste fino e quantização de LLMs — a Pillar cita o ranking do Hugging Face para dizer que ela é a **terceira maior fonte de derivados de modelo** no Hub, atrás de Qwen e Google — e o **Studio** é a interface web dela, em beta.
+
+Segundo a Pillar Security, o Studio tinha um furo no backend: o valor padrão do `trust_remote_code` estava **`True`**. Em `studio/backend/utils/models/model_config.py`, a função `load_model_config()` declara `trust_remote_code: bool = True`, e o caminho que sonda as capacidades do modelo chama essa função sem passar o parâmetro — herda o `True`. Um segundo trecho do mesmo arquivo ainda fixa `{"trust_remote_code": True}` na ramificação do subprocesso.
+
+O efeito prático é o que assusta: **selecionar um modelo no seletor da UI** disparava o download do `config.json` e dos alvos de `auto_map` daquele repositório, e o código rodava ali — na etapa de *inspeção*, antes de carregar os pesos e muito antes de qualquer inferência.
+
+A Pillar reproduziu com um repositório de prova (`ariel-pillar/unsloth_poc`) cuja carga era inofensiva de propósito: abria a calculadora e escrevia um arquivo `~/UNSLOTH_POC_RCE.txt`. Em um ataque real, a carga não precisa ser visível — e o alvo é uma máquina que, por definição, é valiosa: ela costuma guardar **token do Hugging Face, chaves SSH e credenciais de nuvem**.
+
+O impacto listado é o de sempre em ACE de operador: roubo de credenciais, adulteração de pesos e de saídas de treino/inferência, persistência e movimento lateral. O raio de dano cresce em qualquer setup exposto com `-H 0.0.0.0`, em Colab ou em instalação compartilhada multiusuário.
+
+A cronologia importa e é pública: reporte privado no começo de junho de 2026 via GitHub Security Advisory (`GHSA-pc2m-72c4-r38q`), correção verificada na **2026.6.9** no fim de junho, e publicação do write-up pela Pillar em **29/09/2026**. Os mantenedores decidiram não publicar o aviso, então **não foi atribuído CVE** a esta falha específica — a Pillar publicou mesmo assim, porque a lição vale mais do que o registro.
+
+## Modelo é código, não dado
+
+Vale entender o mecanismo, porque ele não é específico do Unsloth.
+
+No Hugging Face, alguns modelos **precisam** de código próprio para funcionar: arquiteturas novas, tokenizers exóticos, variantes de atenção. O jeito de o ecossistema suportar isso é o `auto_map` no `config.json`, que aponta para classes definidas dentro do repositório.
+
+O padrão que a Pillar usou no PoC é essencialmente este:
+
+```
+{
+  "model_type": "unsloth_poc",
+  "auto_map": { "AutoConfig": "configuration.UnslothPocConfig" },
+  "architectures": ["UnslothPocForCausalLM"],
+  "hidden_size": 8,
+  "num_attention_heads": 1,
+  "num_hidden_layers": 1,
+  "vocab_size": 32
+}
+```
+
+Repare no que o `auto_map` faz: o `AutoConfig` — a classe que existe só para **ler** um arquivo declarativo — passa a ser importada de um `configuration.py` irmão. No instante em que essa config é instanciada com código remoto liberado, o módulo roda. **A parada acontece numa leitura de metadados, não num forward pass.**
+
+É por isso que a lição da Pillar é a frase mais reaproveitável de todo o episódio: tratar repositório carregado com `trust_remote_code` como **código não confiável, não como dado**.
+
+O segundo eixo é o formato dos pesos. O pickle é o padrão histórico do PyTorch, e a própria documentação do Hugging Face diz sem rodeios que **há ataques de execução de código arbitrário ao carregar um pickle**, e que o scanner do Hub é *best-effort*, não uma garantia: a responsabilidade de checar o repositório é de quem baixa.
+
+O `safetensors` existe justamente como alternativa a isso: um formato simples de serialização que não carrega lógica. Se um repositório publica `model.safetensors`, o vetor de "peso que executa código" simplesmente não existe ali. Se publica `.bin` ou `.pt`, ele existe.
+
+## Por que isso se repete: a família de CVEs
+
+O bug do Unsloth não é um deslize isolado. É a terceira ou quarta encarnação do mesmo erro no ecossistema, e os avisos estão todos publicados com identificador e nota **CVSS** — sempre a mesma causa: `trust_remote_code=True` fixado no código, como conveniência.
+
+- **LMDeploy — CVE-2026-46432** (`GHSA-m549-qq94-fvhg`): execução de código arbitrário por `trust_remote_code=True` fixado na inicialização do modelo. **Alta, 7,8** no CVSS 3.1.
+- **vLLM 0.14.1 — CVE-2026-4944** (`GHSA-g57c-wgqx-8wx7`): o `True` fixo sobrescrevia o `--trust-remote-code=False` que o usuário tinha escolhido. **Alta, 8,8** no CVSS 3.0.
+- **InstructLab — CVE-2026-6859** (`GHSA-rxpq-xgqx-fr7p`): um modelo do Hugging Face feito sob medida deu ACE na carga, dentro de um script de treino. **Alta, 8,8** no CVSS 3.1.
+- **transformers (classe `Trainer`) — CVE-2026-1839** (`GHSA-69w3-r845-3855`): execução de código arbitrário pela mesma classe de problema, corrigida no mesmo esforço de hardening. **Média, 6,5** no CVSS 3.0.
+
+Leia a nota com o contexto certo, porque **severidade menor não é risco menor**: o 6,5 do `Trainer` é de vetor local e alta complexidade; o 8,8 do vLLM chega pela rede, sem exigir privilégio, mas depende de interação do usuário; o 7,8 do LMDeploy é local e **dispensa** interação. O que os quatro têm em comum não é a nota — é o **gatilho**: um valor padrão que liga execução de código de terceiro sem que ninguém tenha pedido.
+
+Note também o agravante que a Pillar destacou no caso do vLLM e que reapareceu no Unsloth: o `True` fixo **atropela a escolha explícita do usuário**. Você configurou `False`, e a ferramenta liga mesmo assim. A intenção do operador perdeu para uma conveniência interna que ele nem sabia que existia.
+
+## "Olhe, não carregue": por que até a inspeção executa
+
+Aqui está a parte mais desconfortável, e é o que torna este caso digno de virar artigo.
+
+A Unsloth respondeu ao reporte endurecendo o Studio, e detalhou o processo no blog em **06/10/2026**: ao escolher um modelo do Hugging Face, o repositório é verificado antes de rodar código próprio, bloqueando padrões como *reverse shell*, acesso a metadata de nuvem e roubo de credenciais; código customizado exige **permissão explícita**, mesmo quando o scanner não acha nada; o status de scan de malware do Hub é consultado; e a execução de código roda em *sandbox* do sistema (bubblewrap no Linux, Seatbelt no macOS, MXC no Windows).
+
+O ponto de atenção é conceitual: **a inspeção é, ela mesma, execução**. O bug vivia exatamente aí — no caminho que existia para *olhar* o modelo antes de carregá-lo.
+
+Escanear não resolve sozinho. A própria Pillar mostra por quê: scanners de pickle são, em boa parte, **listas de bloqueio** voltadas para serialização insegura e assinaturas conhecidas, e pesquisadores já as contornaram de várias formas — empacotar em `7z` em vez de ZIP, usar `bdb.Bdb.run` no lugar de `exec`, ou colocar a carga antes do ponto em que o parser quebra.
+
+O PoC da Pillar passou por isso: o código **não é malicioso em repouso**, então não tem o que a lista de bloqueio pegue. O `mcpotato/42-eicar-street`, que o Hugging Face sinaliza automaticamente, é uma assinatura conhecida (EICAR) — um carregador real não carrega essa assinatura, ele busca o segundo estágio só na hora de executar.
+
+A conclusão que fica não é "nunca use `trust_remote_code`". A própria Pillar fecha dizendo o contrário: é um recurso legítimo e necessário — variações de visão e fala do IBM Granite, por exemplo, exigem. A regra é outra: **nunca habilite por efeito colateral; exija opt-in explícito e informado para a ação específica que precisa.**
+
+## Como verificar um repositório antes de rodar
+
+Isso não é teoria. São sete checagens que você faz em minutos e que pegam a maior parte dos casos reais. Vale virar rotina, não exceção.
+
+1. **Liste os arquivos do repositório antes de baixar.** Se existem `*.py` com `auto_map`, `modeling_*` ou `configuration_*` próprios, ali tem código — não só dado.
+2. **Leia o `config.json`.** Um bloco `auto_map` é o sinal: alguma classe daquele repositório vai ser importada e instanciada.
+3. **Prefira `model.safetensors`.** Se o peso estiver em `.bin` ou `.pt`, é pickle — o formato que a documentação do Hugging Face aponta como vetor de execução de código.
+4. **Fixei o `revision` num commit, não deixe no `main`.** Um repositório pode mudar depois que o time validou. Por padrão, o download pega a última versão do `main`; o parâmetro `revision` aceita tag, branch, PR ou hash de commit.
+5. **Confira o status de scan de malware do Hub e leia as importações vetadas.** É best-effort, como a própria página da Pillar lembra — mas é um filtro barato.
+6. **Rode em sandbox.** Container sem rede, sem token do Hugging Face, sem chave SSH, sem credencial de nuvem. Se a máquina guarda credencial, o modelo guarda o seu próximo incidente.
+7. **Trate `trust_remote_code=True` como ato deliberado.** Ligue para a ação específica que precisa, com revisão do código, e nunca como padrão de uma ferramenta que você não escreveu.
+
+O passo 4 é o mais barato de todos e o mais ignorado. Fixar o commit resolve o problema "**confio neste repositório**" — que não é o mesmo que "**confio neste repositório hoje, do jeito que ele está agora**".
+
+Um exemplo mínimo, com o parâmetro que quase ninguém passa:
+
+```
+from huggingface_hub import hf_hub_download
+
+hf_hub_download(
+    repo_id="org/modelo",
+    filename="config.json",
+    revision="<hash-de-commit-ou-tag>",
+)
+```
+
+## Se você usa Unsloth Studio
+
+Se o Studio está presente na sua máquina, a ação é direta e não tem meio-termo.
+
+- **Atualize para a 2026.6.9 ou mais recente.** A Pillar confirma que o vetor foi fechado nos dois caminhos (Hugging Face e diretório local).
+- **Versões até a 2026.5.10 estão afetadas.** Mesmo quem só usa o núcleo da Unsloth — treino e quantização, sem abrir o Studio — deve atualizar: o código vulnerável vinha no mesmo pacote, ainda que aquele caminho só execute ao lançar o Studio.
+- **Não deixe o backend exposto em `0.0.0.0`.** O modo remoto da Unsloth usa túnel HTTPS, mas a própria documentação dela avisa que o túnel não fecha a porta crua do servidor, e que ferramentas continuam rodando como o seu usuário do sistema. Existe `--disable-tools` para isso.
+- **Escolha o modo de aprovação mais restrito que o seu trabalho exige** e leia os pedidos de execução de código antes de permitir.
+
+Vale registrar o crédito onde é devido: a Unsloth respondeu, endureceu o Studio e publicou o processo. Foi a ferramenta alvo de uma **classe** de falha que o ecossistema vem repetindo — não uma falha de competência isolada.
+
+## Perguntas frequentes
+
+**Meu modelo é seguro porque o Hugging Face escaneia o repositório?**
+Não. O scanner é útil e best-effort, e a própria documentação do Hub coloca a responsabilidade de checar no usuário. Cargas que não são maliciosas em repouso passam pela lista de bloqueio.
+
+**Preciso parar de usar modelos com código customizado?**
+Não. Muitos modelos legítimos exigem. A questão é *como* você habilita: por opt-in explícito para a ação específica, com o código revisado, e em ambiente isolado.
+
+**`safetensors` resolve tudo?**
+Ele elimina o vetor "peso que executa código". Não elimina o `auto_map`, nem o código customizado de arquitetura. São furos diferentes, e você fecha os dois.
+
+**Se o repositório é de uma organização grande, estou coberto?**
+Ajuda, mas não fecha o caso: o repositório pode mudar depois. Assinatura GPG de commit garante a **origem** do arquivo, não que ele seja inofensivo — são coisas distintas. Fixar o commit cobre "mudou depois do visto".
+
+## Schema recomendado
+
+Para esta página, vale publicar marcação `Article` (headline, `author`, `datePublished`) e uma `FAQPage` com as quatro perguntas acima, em JSON-LD. Como o corpo também é uma lista numerada de procedimento, `HowTo` é defensável, desde que cada `step` corresponda a um passo real do texto. O clássico: um único `H1`, `H2` por seção e `dateModified` atualizado quando os números de versão mudarem.
+
+## Classificação editorial
+
+**Atualizável (núcleo estável).** O que sustenta este artigo é durável e não depende de versão: modelo é código; `auto_map` executa na leitura de config; pickle é vetor de execução; `trust_remote_code=True` como padrão de ferramenta é o erro que reaparece. Isso não muda com o próximo release.
+
+O que envelhece são os ponteiros de versão e as referências de CVE. Revisar quando:
+
+- sair uma versão do Unsloth Studio que mude o fluxo de aprovação de código remoto (hoje a referência é a 2026.6.9);
+- novos CVE entrarem na mesma família — o padrão de `trust_remote_code=True` fixado é o que se deve monitorar, não um identificador isolado;
+- o Hugging Face mudar o comportamento do scanner de pickle ou o padrão de formato de peso;
+- o PyTorch mudar o comportamento de `weights_only` na carga de pesos (a Unsloth parte de PyTorch 2.6+ para carregar `.bin` com `weights_only=True`).
+
+Sobre o cluster: não existe no blog nenhum artigo sobre cadeia de suprimentos de **modelos** — este abre a pauta. Ele dialoga com a segurança de ferramentas de IA publicada em [segurança em MCP: SSRF, permissões e o ataque que atravessa protocolos](/blog/seguranca-em-mcp-ssrf-permissoes-e-o-ataque-que-atravessa-protocolos) e com a cadeia de suprimentos de **pacotes**, tratada em [esqueça typosquatting: slopsquatting](/blog/forget-typosquatting-slopsquatting-is-the-software-supply-chain-threat-created-b). São três superfícies diferentes do mesmo problema: código de terceiro rodando na sua máquina.
+
+## Fontes
+
+- [Pillar Security — Look, Don't Load: Model Inspection in Unsloth Studio Leads to Critical Arbitrary Code Execution (29/09/2026)](https://www.pillar.security/blog/look-dont-load-model-inspection-in-unsloth-studio-leads-to-critical-arbitrary-code-execution)
+- [Unsloth — How Unsloth Studio and Desktop Stays Secure (06/10/2026)](https://unsloth.ai/blog/security)
+- [MarkTechPost — What Happens When a Trusted Model Repo Changes? Unsloth Studio Re-Checks Before It Runs (07/10/2026)](https://www.marktechpost.com/2026/10/07/what-happens-when-a-trusted-model-repo-changes-unsloth-studio-re-checks-before-it-runs/)
+- [Hugging Face — Pickle Scanning (por que o pickle carrega código e quais as mitigações)](https://huggingface.co/docs/hub/security-pickle)
+- [Hugging Face — Safetensors (o formato de peso sem lógica)](https://huggingface.co/docs/safetensors/en/index)
+- [Hugging Face — Download files (parâmetro `revision` para fixar tag, branch ou commit)](https://huggingface.co/docs/huggingface_hub/en/guides/download)
+- [Hugging Face — Hub security (scan de malware e acesso a repositórios)](https://huggingface.co/docs/hub/security)
+- [Python — módulo `pickle` (aviso de segurança sobre dados não confiáveis)](https://docs.python.org/3/library/pickle.html)
+- [GitHub Advisory — GHSA-69w3-r845-3855 / CVE-2026-1839 (transformers, classe Trainer)](https://github.com/advisories/GHSA-69w3-r845-3855)
+- [GitHub Advisory — GHSA-m549-qq94-fvhg / CVE-2026-46432 (LMDeploy)](https://github.com/advisories/GHSA-m549-qq94-fvhg)
+- [GitHub Advisory — GHSA-g57c-wgqx-8wx7 / CVE-2026-4944 (vLLM 0.14.1)](https://github.com/advisories/GHSA-g57c-wgqx-8wx7)
+- [GitHub Advisory — GHSA-rxpq-xgqx-fr7p / CVE-2026-6859 (InstructLab)](https://github.com/advisories/GHSA-rxpq-xgqx-fr7p)
