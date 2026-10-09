@@ -1,0 +1,176 @@
+---
+title: "Prova formal não é prova: como verificar matemática feita por IA"
+date: "2026-10-09"
+description: "Em 06/10/2026 a OpenAI publicou 719 manuscritos de matemática gerados por um modelo interno. No mesmo dia, um paper de Cambridge e do King's College mostrou que a verificação em Lean não garante que a prova em linguagem natural esteja correta. Entenda o que a formalização realmente certifica, o que a AGMAI exige dos laboratórios e qual checklist usar antes de acreditar num resultado de matemática feito por IA."
+author: "Hernando Candido"
+tags: [Matemática com IA, Lean, Verificação Formal, OpenAI, AGMAI, Pesquisa em IA, Engenharia de IA, GEO]
+sponsored: false
+premium: false
+---
+
+# Prova formal não é prova: o que a verificação em Lean realmente certifica
+
+**Resposta curta:** o Lean não verifica a ideia de ninguém. Ele verifica o **arquivo** que foi escrito. Se a tradução do argumento em linguagem natural para o código formal não for fiel, o compilador aprova um teorema que **não é** o que o paper afirma. Em **06/10/2026**, a OpenAI publicou **719 manuscritos** de matemática gerados por um modelo interno, com formalizações em Lean para parte deles. No mesmo dia, um paper do King's College London e de Cambridge mostrou um descompasso concreto entre a prova em linguagem natural e a versão formalizada do resultado do Navier–Stokes. A lição prática não é sobre matemática: é que **compilar não é o mesmo que estar certo**. Verifique a tradução, o enunciado e a proveniência antes de acreditar no selo.
+
+![Figura 3 do paper Navier–Stokes lost in translation: a troca entre o próprio modelo e os pesquisadores sobre a Lemma 8.6 da prova anunciada de blow-up](https://arxiv.org/html/2610.08144v1/Figure3Fixed.jpg)
+
+*Imagem: [Figura 3 do paper "Navier–Stokes lost in translation" (arXiv:2610.08144)](https://arxiv.org/abs/2610.08144)*
+
+A comunidade de matemática viveu uma semana estranha, e ela tem muito a ensinar pra quem escreve software.
+
+De um lado, um volume de resultados que seria impensável há dois anos. Do outro, a constatação de que o selo de "verificado por computador" pode certificar a coisa errada.
+
+## O que aconteceu em 06/10/2026
+
+A OpenAI publicou um lote de resultados matemáticos produzidos por um modelo interno que **não foi lançado ao público**, no repositório público [openai/math](https://github.com/openai/math), sob licença Apache-2.0.
+
+O README do próprio repositório dá os números: **719 manuscritos organizados em 372 famílias** de resultados, agrupadas por disciplina. Cada família reúne o resultado principal, argumentos companheiros, consequências ou provas alternativas.
+
+Sobre como aquilo foi produzido, o repositório é direto: em média, cada resultado consumiu **cerca de três horas de compute de "ChatGPT Pro thinking"** com o modelo interno. Ao longo da avaliação, o modelo recebeu aproximadamente **4.000 problemas**, e o catálogo é o subconjunto que passou do corte de significância.
+
+O pacote inclui **10 resumos do raciocínio** do modelo, estimativas de compute e estatísticas dos problemas tentados. Duas exceções ao procedimento padrão são citadas pelo próprio README: uma região livre de zeros para a função zeta de Riemann e a conjectura de Hodge para variedades abelianas do tipo CM. O texto da região Re(s) > 11/12, diz o repositório, foi **editado por humanos para ficar legível**.
+
+E, no detalhe que mais importa aqui:
+
+- O repositório contém resultados **em estágios diferentes de verificação**.
+- **Nem todos têm formalização em Lean**, e o próprio README avisa que alguns resultados não formalizados **podem ter problemas**.
+- A estatística declarada: cerca de **42% dos resultados principais** estão formalizados.
+
+Vale registrar a discrepância de contagem, porque ela aparece em toda a cobertura: a [The Verge noticiou 722 manuscritos](https://www.theverge.com/ai-artificial-intelligence/1005004/openai-math-release-github) no dia do anúncio, enquanto o README que eu li lista **719**. Antes de repetir qualquer número deste episódio, confira a fonte direta.
+
+## O que uma prova em Lean verifica
+
+O [Lean](https://lean-lang.org/learn/) é uma linguagem de programação e assistente de provas de código aberto. A ideia é a mesma da verificação formal em software: você descreve o objeto em termos matemáticos e a máquina confere a demonstração.
+
+Se o arquivo compila, o **teorema que está escrito no arquivo** está provado. Ponto. O kernel do Lean checa cada passo da derivação contra as regras do sistema.
+
+O problema começa antes disso, na tradução. O processo se chama **autoformalização**: um modelo lê o argumento em linguagem natural e o reescreve em Lean. São dois artefatos diferentes, e a seta entre eles não é neutra.
+
+O paper [Navier–Stokes lost in translation](https://arxiv.org/abs/2610.08144) (Bastounis, do King's College London; Circelli e Hansen, de Cambridge; submetido em 06/10/2026, 25 páginas) ataca exatamente essa seta.
+
+## O buraco está na tradução, não no compilador
+
+O argumento central do paper é forte e é o tipo de coisa que vale levar pra qualquer área.
+
+Traduzir um texto matemático em linguagem natural para uma linguagem formal exige **resolver ambiguidades**: o que exatamente aquele "se" significa, qual quantificador está implícito, qual hipótese se aplica. Os autores mostram que esse problema de resolução de ambiguidades está **arbitrariamente alto na hierarquia do Solvability Complexity Index (SCI = ∞)**.
+
+Traduzindo: encontrar uma tradução fiel é, no limite, **mais difícil que qualquer problema computacional, incluindo o problema da parada** (que tem SCI = 1). Não é um detalhe de engenharia a ser corrigido na próxima versão. É um limite.
+
+E aí vem a parte concreta. No resultado de blow-up das equações de Navier–Stokes anunciado pela OpenAI, a **Lemma 8.6, equação (8.19)**, pede **m + 4 derivadas** da entrada para controlar as derivadas de saída. A declaração Lean citada na formalização usa **m + 5**, uma derivada de entrada a mais.
+
+Uma derivada a mais não é arredondamento: é **outro enunciado**, com uma hipótese diferente da que o paper em linguagem natural declara. Quem lê "prova verificada em Lean" sem olhar isso está confiando num selo que certifica outra coisa.
+
+E os autores são explícitos sobre o escopo da crítica, o que dá ainda mais credibilidade ao texto: **eles não afirmam que a prova em linguagem natural da OpenAI está errada**. Afirmam que a formalização em Lean não é uma tradução fiel dela. A conclusão do paper:
+
+> "Por causa do fenômeno das mistranslations, a prova em linguagem natural da OpenAI e outras provas em Lean autoformalizadas não deveriam, prima facie, ser confiadas sem o mesmo processo de revisão por pares e escrutínio ao qual outras provas são submetidas."
+
+Os autores também documentam casos em que a tradução vai para o lado oposto: uma prova errada em linguagem natural que virou uma prova correta em Lean (porque o modelo consertou o argumento ao traduzir) e uma prova correta que virou uma prova diferente, igualmente correta, com outro argumento.
+
+Nos três casos, **a correção do artefato formal não diz nada sobre a correção do argumento original**.
+
+## O que a AGMAI exige dos laboratórios
+
+Existe um grupo independente cuidando disso: a **Advisory Group on Mathematics and Artificial Intelligence** ([agmai.org](https://agmai.org/)), sediada no Institute for Advanced Study, em Princeton, com nove matemáticos, entre eles Timothy Gowers, Martin Hairer, Edward Witten e Melanie Matchett Wood.
+
+O grupo se formou depois que a OpenAI procurou alguns dos membros para montar um conselho consultivo. Eles decidiram criar uma instância independente, que não aceita pagamento das empresas.
+
+Os dois documentos que importam:
+
+- As **guidelines de 29/09/2026**, "Responsible Release of AI-Generated Mathematics", escritas a partir de **mais de 600 respostas** a uma enquete com a comunidade.
+- A **declaração de 06/10/2026** sobre o release da OpenAI, que chama a publicação de "o começo, não a conclusão, do processo de entendimento humano".
+
+O que as recomendações pedem, em termos práticos, é um **mínimo de proveniência** para qualquer resultado matemático gerado por IA:
+
+- **Nome do modelo, prompts, chain of thought resumido, tempo gasto e custo estimado de compute.** Tudo público, para cada resultado.
+- **Formalização sempre que possível**, com padrões da comunidade (cabeçalho de copyright, arquivo de desafio para o comparator, `formalization.yaml`) e **metadados legíveis por máquina correlacionando o texto em linguagem natural e o artefato formal**. Onde a formalização demoraria demais, o status dela deve ser declarado.
+- **Depósito em repositório acadêmico** que não seja controlado pelo laboratório, com identificador citável e histórico de revisões.
+- **Não tratar o anúncio como marketing**, e não testar problemas avançados em modelos proprietários inacessíveis à comunidade científica.
+
+A parte do "marketing" não é retórica: as guidelines descrevem o caso de uma prova que os autores não entendem sendo publicada sem material que permita a qualquer outra pessoa entender.
+
+A [TechCrunch reportou](https://techcrunch.com/2026/10/08/openais-math-solutions-arent-meeting-the-fields-standards-yet/) que a OpenAI **ficou aquém** desses padrões neste release: só **10 dos 719 manuscritos** vinham com resumo do raciocínio, e a primeira recomendação da AGMAI (parar de testar problemas avançados em modelos fechados) não foi seguida, já que o laboratório declara avaliar modelos proprietários em problemas de pesquisa abertos.
+
+Terence Tao, um dos matemáticos mais citados do mundo, resumiu o problema do modelo de publicação em uma frase reproduzida pela TechCrunch: problemas sendo resolvidos por quem **não entende o resultado o suficiente para responder perguntas, dar palestra ou dialogar com o resto do campo**.
+
+## E o prêmio do Clay?
+
+Não, e isso não é um detalhe burocrático. As [regras do Clay Mathematics Institute](https://www.claymath.org/millennium-problems/rules/) para os Millennium Prize Problems, revisadas em 26/09/2018, exigem três coisas antes de qualquer análise, e o instituto **não aceita submissão direta de solução**:
+
+- Publicação em um "Qualifying Outlet".
+- **Pelo menos dois anos** desde a publicação.
+- **Aceitação geral** da comunidade matemática global.
+
+Nenhum resultado gerado por IA neste episódio entrou nesse processo. Chamar o release de "solução de um Millennium Problem" é usar a moldura do prêmio para um artefato que não passou por nenhuma das três condições.
+
+## Checklist: como verificar um resultado de matemática feito por IA
+
+Isto vale pra qualquer anúncio de "IA resolveu X", em matemática ou fora dela.
+
+1. **Separe a afirmação da prova.** Qual é exatamente o enunciado do teorema? Se a manchete fala de um problema famoso e o paper trata de uma versão derivada dele, a resposta é: são coisas diferentes.
+2. **Procure a formalização e leia o que ela prova.** "Tem formalização em Lean" não basta. Compare o enunciado formal com o enunciado em linguagem natural, hipótese por hipótese.
+3. **Cheque quantas das afirmações foram de fato formalizadas.** No caso da OpenAI, cerca de 42% dos resultados principais, com o próprio repositório avisando que os não formalizados podem ter problemas.
+4. **Cobre o disclosure mínimo:** nome do modelo, prompts, chain of thought, tempo, custo de compute. Dez resumos de raciocínio para 719 manuscritos é cobertura de 1,4%.
+5. **Exija metadados que liguem linguagem natural e código formal.** Sem isso, ninguém do lado de fora consegue fazer a checagem que o paper de Cambridge e King's College fez.
+6. **Trate repositório como pré-publicação, não como revisão por pares.** Histórico de revisões e identificador citável são o piso, não a linha de chegada.
+7. **Confira os números na fonte primária.** 719 ou 722? Três horas de compute por resultado ou o quê? Manchetes divergem, e as regras do prêmio são um teste objetivo de maturidade do resultado.
+
+## O mesmo erro no código que você gera com IA
+
+Se você programa, provavelmente já viveu a versão em miniatura disso.
+
+O compilador passa, os tipos fecham, a suíte de testes fica verde, o CI dá check. E mesmo assim o sistema faz outra coisa, porque **o que você verificou não é o que você queria**.
+
+É o mesmo descompasso da autoformalização: entre a intenção e o artefato existe uma tradução, e a tradução é feita por um modelo probabilístico que pode te entregar um teorema correto sobre a afirmação errada.
+
+A defesa é a mesma que o blog defende desde o post sobre [avaliar um agente pelo estado final, não pelo resumo](/blog/como-avaliar-um-agente-de-ia-que-mexe-no-banco-estado-final-nao-resumo): olhe o artefato, não a narrativa.
+
+E é a mesma disciplina de crédito que aparece em [problema de atribuição](/blog/problema-de-atribuicao-o-que-e-e-como-resolver-com-o-solver-que-o-meta-abriu): quando uma máquina produz o resultado, alguém precisa ser capaz de rastrear de onde ele veio.
+
+## Perguntas frequentes
+
+**O que é autoformalização?**
+É a tradução automática de um texto matemático em linguagem natural para uma linguagem formal, como o Lean. O texto formalizado pode ser checado por computador; o texto original, não.
+
+**Se o Lean compila, a prova está correta?**
+O teorema **escrito no arquivo Lean** está provado. Isso não garante que aquele teorema seja a tradução fiel do que o paper em linguagem natural afirma. São duas perguntas distintas, e a segunda é estritamente mais difícil.
+
+**O que é o SCI?**
+O Solvability Complexity Index é uma hierarquia que mede o quão difícil é resolver um problema computacionalmente. O paper mostra que resolver as ambiguidades necessárias para uma tradução fiel fica em SCI = ∞, acima do problema da parada (SCI = 1).
+
+**A OpenAI ganhou o prêmio do Clay pela prova do Navier–Stokes?**
+Não. As regras exigem publicação em veículo qualificado, dois anos de espera e aceitação geral da comunidade matemática. Não existe submissão direta, e nenhum resultado deste episódio entrou nesse processo.
+
+**O que é a AGMAI?**
+A Advisory Group on Mathematics and Artificial Intelligence, um grupo independente de nove matemáticos sediado no Institute for Advanced Study. Ele publica recomendações para laboratórios de IA e não aceita pagamento das empresas.
+
+## Schema recomendado
+
+Para esta página, vale publicar marcação `Article` (headline, `author`, `datePublished` e `dateModified`) e um `FAQPage` com as cinco perguntas acima. Como o texto mistura explicação conceitual e definições, um `DefinedTermSet` com autoformalização, Lean e SCI ajuda o motor de busca a montar as entidades. O básico continua valendo: um único `H1`, um `H2` por seção e links internos relativos.
+
+## Classificação editorial
+
+**Estável (núcleo durável).** O que sustenta o artigo não depende do release de outubro: verificação formal certifica o artefato, não a intenção; a tradução de linguagem natural para linguagem formal é um limite computacional, não um bug; e o requisito de proveniência vale para qualquer resultado gerado por IA. Isso sobrevive ao próximo lote.
+
+O que envelhece são as contagens e os ponteiros:
+
+- o total de manuscritos do repositório openai/math (719 hoje) e o percentual formalizado (cerca de 42%) mudam a cada atualização declarada pelo próprio README;
+- o status das formalizações em Lean dos resultados não formalizados, que a OpenAI diz que vai completar;
+- se algum resultado entrar oficialmente no processo do Clay, as regras e a data passam a ser o fato novo;
+- novas recomendações da AGMAI ou de grupos equivalentes, que hoje são as de 29/09/2026;
+- o comportamento dos laboratórios sobre disclosure (nome do modelo, prompts, chain of thought, compute), que é o indicador mais fácil de acompanhar.
+
+Sobre o cluster: o blog já tinha um artigo sobre matemática e IA em agosto, quando a OpenAI anunciou resultados do modelo Astra, mas aquele texto tratava do anúncio. Este abre a pauta de **verificação de resultados de IA**, que conversa diretamente com [avaliar um agente pelo estado final](/blog/como-avaliar-um-agente-de-ia-que-mexe-no-banco-estado-final-nao-resumo) e com [problema de atribuição](/blog/problema-de-atribuicao-o-que-e-e-como-resolver-com-o-solver-que-o-meta-abriu). Não há canibalização: nenhum post publicado cobre Lean, autoformalização, AGMAI ou as regras do Clay.
+
+## Fontes
+
+- [OpenAI — repositório openai/math (README: 719 manuscritos, 372 famílias, ~42% formalizados, 3h de compute por resultado)](https://github.com/openai/math)
+- [Bastounis, Circelli e Hansen — Navier–Stokes lost in translation: Why Lean verification of AI autoformalisation does not guarantee correct natural language proofs (arXiv:2610.08144, 06/10/2026)](https://arxiv.org/abs/2610.08144)
+- [OpenAI — Sharing AI progress in mathematics (anúncio do release, 06/10/2026)](https://openai.com/index/sharing-ai-progress-in-mathematics/)
+- [OpenAI — On the Navier–Stokes Millennium Prize Problem (writeup e prova em Lean)](https://openai.com/index/navier-stokes-solution/)
+- [AGMAI — Responsible Release of AI-Generated Mathematics (guidelines de 29/09/2026)](https://agmai.org/general-sep29/)
+- [AGMAI — On OpenAI's Release of Mathematical Results (declaração de 06/10/2026)](https://agmai.org/)
+- [TechCrunch — OpenAI's math solutions aren't meeting the field's standards yet (08/10/2026)](https://techcrunch.com/2026/10/08/openais-math-solutions-arent-meeting-the-fields-standards-yet/)
+- [The Verge — OpenAI drops another batch of mathematical breakthroughs (06/10/2026)](https://www.theverge.com/ai-artificial-intelligence/1005004/openai-math-release-github)
+- [Last Week in AI #346 — 719 math manuscripts, 2 Western open models, 1 more safety resignation (09/10/2026)](https://lastweekin.ai/p/last-week-in-ai-346-719-math-manuscripts)
+- [Clay Mathematics Institute — Rules for the Millennium Prize Problems](https://www.claymath.org/millennium-problems/rules/)
+- [Lean — Lean Programming Language (linguagem de programação e assistente de provas de código aberto)](https://lean-lang.org/learn/)
