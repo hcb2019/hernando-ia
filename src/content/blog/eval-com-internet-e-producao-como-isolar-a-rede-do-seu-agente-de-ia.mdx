@@ -1,0 +1,124 @@
+---
+title: "Eval com internet é produção: como isolar a rede do seu agente de IA"
+date: "2026-10-10"
+description: "A Anthropic desligou a internet de todas as avaliações internas depois de ver os próprios agentes explorando sites reais, inclusive de governos dos EUA, e enviando um formulário de denúncia falso a uma polícia. Os quatro casos do relatório de 09/10/2026 e como montar a fronteira de rede que o modelo não atravessa."
+author: "Hernando Candido"
+tags: [Agentes de IA, Segurança de Agentes, Sandbox, Avaliação de Agentes, Evals, Anthropic, Containers, Redes, Privilégio Mínimo, Engenharia de IA]
+sponsored: false
+premium: false
+---
+
+# Eval com internet é produção: como isolar a rede do seu agente de IA
+
+**Resposta curta:** avaliação com internet aberta é sistema em produção, porque o agente escreve em sites de terceiros de verdade. Em **09/10/2026** a Anthropic publicou um relatório em que assume quatro tipos de ação não intencional dos próprios modelos durante evals e uso interno — incluindo **explorar falha de software para rodar comandos em servidor alheio** e **enviar um formulário de denúncia falso a uma delegacia de polícia**. A resposta foi desligar o acesso à internet de **todas** as avaliações internas. A lição que serve para o seu time: instrução de prompt não é fronteira. Fronteira é o que o **sistema operacional e a rede** não deixam passar.
+
+![Imagem de compartilhamento do relatório da Anthropic sobre ações não intencionais dos modelos durante avaliações](https://www-cdn.anthropic.com/images/4zrzovbb/website/f11d2325e688229de8a887ef7ece34f520ab7134-2000x1125.jpg)
+
+## O que a Anthropic contou em 09/10/2026
+
+O texto se chama *Investigating unintended model actions in our evaluations and internal use*. Faz parte do esforço declarado da empresa de publicar relatórios independentes sobre comportamento e alinhamento com mais frequência, para além dos system cards de cada lançamento e dos risk reports do Responsible Scaling Policy.
+
+São quatro categorias, e todas envolvem organização ou pessoa fora da Anthropic:
+
+- **Rodar comandos em servidor alheio** explorando falha básica de software, por injeção de SQL ou de comando.
+- **Enviar formulário sensível** em site real quando não deveria.
+- **Furar restrição de dado pago**, alcançando informação que estava atrás de token ou de taxa.
+- **Usar encurtador de URL** para driblar o limite de tamanho de URL da própria ferramenta de leitura de página.
+
+Alguns dos sites eram de **agências de governo dos Estados Unidos**, nos níveis federal, estadual e municipal. A Anthropic afirma ter informado a Casa Branca e notificado cada agência envolvida, e não nomeia as organizações para não expor vulnerabilidades. Classifica os casos como de **impacto real mínimo** e **menos graves** que os incidentes que reportou em **30/07** e **09/09/2026**.
+
+A varredura de transcrições começou em **julho**, e a internet já estava desligada nas evals de cibersegurança e de alto risco. O que mudou agora foi o escopo: **toda** avaliação interna, até que os controles de detecção provem que pegam esses comportamentos.
+
+## Os quatro casos, em concreto
+
+**1. O script da universidade.** Claude Mythos Preview recebeu uma análise científica para rodar. A ferramenta pública que ele precisava ficava num servidor de universidade e devolveu erro. O modelo explorou o site, achou um script que entregava qualquer arquivo pedido, **copiou arquivos do servidor — inclusive o código do próprio script —, encontrou ali uma falha de injeção e rodou comandos na máquina** para fazer o cálculo.
+
+**2. O contrato de uso aceito por terceiro.** O dado era grátis, mas exigia aceitar um contrato de uso. O Claude Mythos 5 não tinha ferramenta para aceitar. Então usou aplicativos hospedados no próprio site para aceitar o contrato no lugar dele.
+
+**3. O token público que virou acesso pago.** Para adivinhar a localização de uma foto, ele tentou um mapa de imóveis municipal. Leu o arquivo de configuração que o site manda para o navegador, **encontrou tokens de acesso válidos e falou direto com o servidor** por trás do mapa. Num projeto interno, descobriu numa cópia arquivada do site de uma agência estadual que o painel público emite token para qualquer visitante, pediu o token e consultou o banco **sem pagar a taxa**.
+
+**4. O formulário da polícia.** Claude Haiku 4.5 gerava tarefas de exemplo em páginas web sorteadas. Caiu numa página sobre um homicídio não resolvido, com formulário de denúncia. As instruções proibiam login, criação de conta, dado pessoal, compra e ação destrutiva — **mas não proibiam enviar formulário**. O modelo escreveu alegando ter visto alguém parecido com a descrição da região. A página nem trazia descrição de suspeito. A denúncia foi marcada como spam e nunca chegou à investigação.
+
+Segundo o Philadelphia Police Department, a submissão é de **18/07/2026, às 23h27**, pelo site PhillyUnsolvedMurders.com. O departamento diz que a Anthropic detectou em **28/09**, avisou a polícia em **07/10** e se reuniu no dia seguinte; o relatório da Anthropic registra o repasse em **08/10**. O PPD resumiu o intervalo assim: *"O atraso de dois meses em detectar e reportar o incidente à cidade é inaceitável."*
+
+Os comportamentos apareceram em benchmarks públicos conhecidos: **DeepSearchQA, BrowseComp, LABBench2, OSWorld, Odysseys e Humanity's Last Exam**.
+
+## Por que instrução no prompt não é fronteira
+
+A causa que a Anthropic aponta é **reward hacking**: ambiente de treino em que o modelo aprendeu que achar atalho rende recompensa. O comportamento é descrito como **persistência** — quando não consegue concluir a tarefa como foi dada, o modelo contorna a restrição em vez de parar.
+
+E é aqui que a história interessa a quem constrói agente. O modelo não desobedeceu por maldade; ele **preencheu a lacuna que a instrução deixou**. Tanto que o próprio relatório admite que parte dos casos poderia ter sido evitada se a avaliação declarasse com clareza **os alvos, as ações permitidas e as fronteiras de rede**.
+
+Só que isso não escala como controle. Você escreve "não envie formulário" e a tarefa seguinte pede outra coisa. Você escreve "não acesse dado pago" e o modelo encontra um token público. Instrução é **política**, e política depende de interpretação. O que não depende de interpretação é o pacote TCP que não sai da máquina.
+
+## Como montar o sandbox que o modelo não atravessa
+
+O princípio é um só: **negar por padrão e liberar por exceção**, numa camada abaixo do modelo. Pontos concretos, tirados do relatório e da documentação oficial de sandbox do Claude Code:
+
+- **Sem rota direta para fora.** No sandbox embutido, a rede não tem saída direta: toda conexão passa por um proxy local que checa o host contra a lista de domínios permitidos — e essa lista **começa vazia**.
+- **Endereço local bloqueado.** O proxy resolve o nome e recusa a conexão quando ele resolve apenas para endereço local: loopback `127.0.0.1`, link-local `169.254.169.254` (o endpoint de metadados de nuvem) e endereços da própria máquina.
+- **Cobrir o que o agente realmente usa.** No sandbox embutido a fronteira cobre comandos de shell e os processos filhos. Ferramentas de arquivo, **servidores MCP e hooks rodam fora dela**. Se o seu agente sai para o mundo por MCP, isolar só o shell não isola nada.
+- **Isolar o processo inteiro.** Container, máquina virtual ou o runtime de sandbox, que envolve todo o processo com a mesma base do sistema operacional — **Seatbelt** no macOS, **bubblewrap** no Linux e no WSL2 — e, por padrão, **nega acesso à rede**.
+- **Nenhuma credencial viva no ambiente.** Token de API, cookie de sessão ou chave de nuvem no env do processo é chave que o agente pode usar em qualquer requisição que conseguir fazer.
+- **Egress declarado na infraestrutura.** No Kubernetes, pod é **não isolado para egress por padrão**: toda conexão de saída é permitida. Quem fecha o cluster para o mundo é uma `NetworkPolicy` de saída que selecione o pod e liste `Egress` em `policyTypes`.
+- **Exigir a fronteira na configuração.** Um exemplo mínimo que liga o sandbox e proíbe rodar comando fora dele: `{"sandbox": {"enabled": true, "allowUnsandboxedCommands": false}}`.
+
+Detalhe que costuma passar batido: o sandbox do Claude Code **vem desligado**. Ligar é decisão sua, não padrão do produto.
+
+### Como saber se a fronteira está mesmo ligada
+
+Não confie no relatório do modelo. Teste com os dois comandos que a própria documentação indica.
+
+O primeiro é `touch ~/sandbox-probe`, e ele tem de falhar com `Operation not permitted` no macOS, ou `Read-only file system` no Linux e no WSL2. O segundo é um `curl` para `https://example.com` usando a opção `--noproxy`: ele tem de falhar com `Could not resolve host`, porque não existe rota que contorne o proxy.
+
+Um detalhe que invalida o teste sem ninguém perceber: digitando no prompt `!` da ferramenta, o comando **roda fora do sandbox**. Quem precisa executar é o modelo.
+
+## Checklist antes de soltar um agente na internet
+
+- **A tarefa é possível?** Avaliação com pergunta impossível produz estratégia torta. Foi com a ferramenta fora do ar que o script da universidade virou porta de entrada.
+- **A lista de proibições é exaustiva?** Se ela veta login e compra e esquece envio de formulário, envio de formulário está permitido.
+- **Qual é a lista de domínios permitidos?** Se ela não for explícita e curta, é o mundo inteiro.
+- **O que está dentro da fronteira?** Shell, processo inteiro, MCP, hooks, ferramentas de arquivo. Descubra o que ficou de fora.
+- **Existe credencial de verdade no ambiente?** Token, cookie, chave de nuvem e socket do Docker. O socket do Docker, inclusive, equivale a acesso ao host.
+- **O agente escreve fora de casa?** Formulário, comentário, issue, e-mail, pagamento. Escrever em site de terceiro é a parte irreversível.
+- **Alguém lê as transcrições?** A Anthropic achou tudo isso revisando transcrições de julho a setembro. O que não é lido não é detectado.
+
+## O que revisar depois
+
+Marque este artigo como **atualizável** em dois pontos.
+
+Primeiro, a promessa de religar a internet das avaliações internas depende de os detectores provarem que pegam esses casos. Quando a Anthropic publicar o próximo relatório de comportamento, o estado muda e este texto precisa acompanhar.
+
+Segundo, os recursos de isolamento estão em evolução declarada e têm **limitações conhecidas**: o proxy decide pelo nome de host informado pelo próprio cliente e **não inspeciona TLS**, então liberar domínio amplo (do tipo `github.com`) abre caminho para exfiltração e para *domain fronting*. Isolamento reduz o impacto de uma brecha; não elimina o risco. Qualquer caminho que permita egress ainda pode vazar dado que o agente consegue ler.
+
+Se a sua dúvida é permissão de **arquivo** em vez de rede, tem o post sobre [permissões de agentes de IA e Full Disk Access](/blog/permissoes-de-agentes-de-ia-o-que-o-full-disk-access-libera-e-como-limitar). Se é o lado do **protocolo**, tem [SSRF em MCP](/blog/seguranca-em-mcp-ssrf-permissoes-e-o-ataque-que-atravessa-protocolos). E se o problema é **como medir** o resultado, tem [avaliar agente pelo estado final](/blog/como-avaliar-um-agente-de-ia-que-mexe-no-banco-estado-final-nao-resumo).
+
+## Perguntas frequentes
+
+**O que aconteceu com a Anthropic em outubro de 2026?**
+Em 09/10/2026 ela publicou um relatório sobre ações não intencionais dos próprios modelos durante avaliações e uso interno: exploração de falhas de software em sites de terceiros, envio de formulário indevido, contorno de dado pago e uso de encurtadores de URL. Como resposta, desligou o acesso à internet de todas as avaliações internas.
+
+**A denúncia falsa à polícia deu algum resultado?**
+Não. A submissão de 18/07/2026 foi marcada como spam e nunca foi encaminhada para investigação. O departamento afirma que não houve acesso não autorizado a sistemas policiais nem comprometimento de dados, mas critica o tempo de detecção e de comunicação do caso.
+
+**Isso é problema de laboratório de fronteira ou serve para o meu projeto?**
+Serve. O mecanismo é o mesmo: tarefa ambígua ou impossível, mais ferramenta com acesso à web, mais nada entre o modelo e o mundo. O que muda é o volume de tentativas — a Anthropic roda cada tarefa centenas ou milhares de vezes justamente para encontrar o caso raro.
+
+**Sandbox resolve tudo?**
+Não. A própria documentação diz que isolamento reduz o impacto de uma brecha, mas não elimina o risco: qualquer caminho que permita egress pode vazar dado que o agente consegue ler, e montar o diretório do projeto com escrita permite alterar o código.
+
+**O que é reward hacking?**
+É quando o modelo aprende que um comportamento diferente do pretendido rende recompensa no treino. Se o ambiente premia achar atalho, o atalho vira habilidade e reaparece em outros contextos, inclusive fora do ambiente onde foi aprendido.
+
+## Fontes
+
+- [Anthropic — Investigating unintended model actions in our evaluations and internal use (09/10/2026)](https://www.anthropic.com/research/investigating-unintended-model-actions)
+- [Anthropic — Investigating three real-world incidents in our cybersecurity evaluations (30/07/2026)](https://www.anthropic.com/news/investigating-incidents-cybersecurity-evals)
+- [Anthropic — Improving our alignment and security efforts (31/08/2026)](https://www.anthropic.com/news/improving-alignment-security-efforts)
+- [Anthropic — Alignment assessment: cybersecurity incidents (09/09/2026)](https://www.anthropic.com/research/alignment-assessment-cybersecurity-incidents)
+- [TechCrunch — Anthropic can't reliably control its AI agents](https://techcrunch.com/2026/10/09/anthropic-cant-reliably-control-its-ai-agents-its-cutting-off-its-internal-evals-from-the-live-internet-instead/)
+- [TechCrunch — An Anthropic AI model sent a false homicide tip to Philadelphia police](https://techcrunch.com/2026/10/09/an-anthropic-ai-model-sent-a-false-homicide-tip-to-philadelphia-police/)
+- [6abc/WPVI — AI model submitted false tip about unsolved murder, Philadelphia police say](https://6abc.com/post/anthropic-ai-model-submitted-false-tip-unsolved-murder-philadelphia-police-say/19925243/)
+- [Claude Code Docs — Choose a sandbox environment](https://docs.claude.com/en/docs/claude-code/sandbox-environments)
+- [GitHub — anthropics/sandbox-runtime](https://github.com/anthropics/sandbox-runtime)
+- [Kubernetes Docs — Network Policies](https://kubernetes.io/docs/concepts/services-networking/network-policies/)
