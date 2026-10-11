@@ -1,0 +1,181 @@
+---
+title: "Cluster de GPU: como dividir a capacidade entre times sem leilão de prioridade"
+date: "2026-10-11"
+description: "Sem fila justa, cluster de GPU vira terra sem dono: workload no-op para segurar máquina, 100% dos jobs em prioridade alta e plantão negociando desligamento de job alheio. É assim que a Ai2 trocou prioridade por orçamento de GPU-hora, fair-share em janela de 7 dias e contrato de tempo mínimo — com os números do rollout e o equivalente no SLURM, no Kubernetes e no YARN."
+author: "Hernando Candido"
+tags: [Infraestrutura de IA, GPU, Agendamento, Fair Share, SLURM, Kubernetes, Treino de Modelos, Capacidade, Custos, Engenharia de IA]
+sponsored: false
+premium: false
+---
+
+# Cluster de GPU: como dividir a capacidade entre times sem leilão de prioridade
+
+**Resposta curta:** fila de GPU decidida só por prioridade acaba sempre no mesmo lugar. A prioridade inflaciona até **100% dos jobs ficarem em alta**, gente estaciona job no-op para segurar máquina, e o plantão passa o dia negociando o desligamento do job alheio. Em **09/10/2026**, o time de infraestrutura de IA da **Ai2** (Allen Institute for AI) publicou como trocou esse modelo por três peças: **orçamento de GPU-hora definido por gerente**, **fair-share hierárquico com janela de 7 dias** e um **contrato de tempo mínimo** por job. Depois do rollout, entregaram **98% das GPU-horas devidas** e a espera p90 dos jobs curtos de depuração caiu de **2 horas para 30 segundos**.
+
+![Imagem de abertura do artigo da Ai2 sobre agendamento de GPU em cluster](https://cdn-uploads.huggingface.co/production/uploads/638e39b249de7ae552d977b5/Kj0n5ea3ItoNIc2ha2SVL.png)
+
+## O que a Ai2 contou em 09/10/2026
+
+A Ai2 opera milhares de GPUs **NVIDIA H100, B200 e B300**, em clusters de **88 a 1024 GPUs**, para cerca de **150 pesquisadores internos** — treino de LLM e VLM, simulação de RL para robótica e pós-treino de casos agênticos científicos.
+
+Em qualquer momento, a demanda por GPU passa da oferta em **2 a 3 vezes**. Ou seja: cada hora de GPU disponível tem dois ou três trabalhos de pesquisa disputando ela, segundo o próprio time.
+
+O time organiza o problema como uma pirâmide de quatro métricas: **disponibilidade** (hardware saudável), **ocupação** (fração do tempo disponível já atribuída a algum workload), **impacto** (com que frequência os workloads mais valiosos ganham o recurso) e, no topo, **utilização** (quanto da capacidade é realmente usada durante a vida do job).
+
+O post não é sobre o topo da pirâmide. É sobre o terceiro andar: como decidir **quem** recebe a GPU quando ela é escassa.
+
+## Como prioridade degenera em leilão
+
+O modelo antigo da Ai2 era prioridade mais opção de sair da preempção. Cada time tinha um limite de GPUs simultâneas protegidas, e workload preemptível podia passar desse limite usando GPU ociosa.
+
+O resultado foi previsível, e os três sintomas valem para qualquer cluster:
+
+- **Squatting de GPU.** Como não havia latência baixa para subir um job de depuração, pesquisadores passaram a **estacionar workloads no-op** conectados ao cluster, só para ocupar a máquina quando precisassem.
+- **Inflação de prioridade.** Como prioridade alta não custava nada, **100% dos workloads agendados acabaram em HIGH**. Quem ficou nos níveis de baixo simplesmente não era mais escalado.
+- **Plantão refém.** Preempção era opcional, então o engenheiro de plantão gastava a maior parte do tempo de atendimento **negociando o desligamento organizado** de jobs não preemptíveis que estavam em hosts com problema conhecido de manutenção.
+
+O time chama isso pelo nome: uma **tragédia dos comuns**. Todo mundo maximizando o próprio resultado, com o resultado global pior e o recurso abusado.
+
+E isso não é novidade de 2026. O post lembra o caso que **Ghodsi et al.** contam no paper de 2011 que introduziu o **Dominant Resource Fairness (DRF)**: uma empresa de busca só dava máquinas dedicadas a quem garantisse alta utilização — e logo descobriu que os usuários **enchiam o código de laços infinitos** para inflar a utilização artificialmente. Muda o hardware, permanece o mesmo problema de incentivo.
+
+## Orçamento de GPU-hora no lugar de prioridade
+
+A primeira mudança foi parar de distribuir GPU e passar a distribuir **tempo de GPU**.
+
+Em vez de atribuir servidores a times, gerentes alocam **proporções** de capacidade em uma hierarquia que segue a estrutura de pesquisa. Um projeto folha pode ter, por exemplo, **35% de direito sobre a capacidade total**, independentemente de quanta gente está na fila em outro canto do cluster.
+
+A regra que faz o sistema funcionar é essa: **todo pedido de GPU precisa ter orçamento, senão não é protegido da preempção**.
+
+Com isso, nenhum truque sai de graça. Job estacionado para segurar máquina gasta o orçamento do time em nada. A estratégia declarada é simples: **tornar o jogo mais caro do que a conversa honesta sobre o orçamento**.
+
+Quem decide o quê: o pesquisador líder dentro do projeto, o investigador principal dentro do programa, e o gerente de programa ou o CEO entre programas. A decisão saiu da operação do dia e virou **processo de orçamento administrativo**, discutido antes de o job existir.
+
+Vale comparar com o que você já tem: é parente direto do [roteamento de modelos por custo e latência](/blog/roteamento-de-modelos-llm-como-equilibrar-custo-latencia-e-qualidade-em-producao), só que aplicado a GPU-hora em vez de token. E lembra o susto que os [times que estouraram o orçamento com agentes de codificação](/blog/agentes-de-codificao-com-ia-esto-estourando-os-oramentos-replit-kilo-code-e-symb) levaram em 2026.
+
+## Fair-share: a fila olha o histórico, não o grito
+
+Orçamento sozinho não basta — alguém precisa ordenar a fila a cada segundo.
+
+A Ai2 colocou um **fair-share hierárquico** sobre uma **janela de ocupação de 7 dias** (configurável). O algoritmo ordena workloads de alocações **subutilizadas** antes das **sobreutilizadas**, dentro da mesma estrutura de orçamento.
+
+Nada disso é invenção nova, e o post é honesto quanto a isso: a linhagem vem do **Fair Scheduler do Hadoop (2009)** e segue viva no **Fair Tree do SLURM** e no **Fair Scheduler do YARN**. O que muda é a entrada do cálculo: a árvore espelha o programa de pesquisa e os pesos são **orçamentos definidos por gerente**, não cotas estáticas.
+
+Para entender o motor, dois detalhes técnicos importam:
+
+- No SLURM, o Fair Tree (padrão do fair-share desde a versão **19.05**) calcula o **Level Fairshare** como **S dividido por U**: shares normalizados entre irmãos divididos pelo uso efetivo normalizado. Associação **abaixo** do justo fica com valor **maior que 1.0**; acima do justo, entre 0 e 1. O comando `sshare -l` mostra esse valor por associação.
+- No YARN, as filas formam uma hierarquia a partir de `root` e o **peso** define a proporção (peso 2 recebe aproximadamente o dobro de recursos), com arquivo de alocação recarregado a cada 10 segundos.
+
+O DRF, citado como base, generaliza o max-min fairness para **múltiplos tipos de recurso** — em vez de igualar CPU, iguala a **dominant share**, a maior fração que o usuário tem de qualquer recurso. E vem com quatro propriedades que explicam por que esse desenho durou 15 anos: incentivo a compartilhar, à prova de estratégia, sem inveja e Pareto eficiente.
+
+## O contrato de tempo mínimo: o que torna a preempção aceitável
+
+Treino distribuído roda por horas, dias, às vezes semanas. Uma vez agendado, o job podia ficar uma semana na GPU — e era isso que tornava o squatting possível.
+
+A saída foi um **contrato de tempo mínimo**. Em troca do acesso ao cluster, o workload declara **o tempo de execução mínimo** para fazer progresso real. Durante essa janela, ele é protegido da preempção. Depois disso, o scheduler tem direito de reequilibrar e **re-enfileirar o job se ele for retomável**.
+
+O ciclo fica assim:
+
+- O job entra com **tempo mínimo** e um aviso se é **retomável**.
+- É agendado pelo fair-share, ponderado pela razão entre ocupação real e tempo alocado na janela.
+- Roda o mínimo, que é **cobrado** do orçamento.
+- Continua se a alocação dele ainda tiver prioridade sobre as outras — pagando pelo tempo extra.
+- Pode ser preemptado e **voltar para a fila**.
+- Ao terminar, libera a reserva.
+
+Duas consequências operacionais que você sente no dia a dia:
+
+- **Host doente se esvazia sozinho.** O host em manutenção drena os workloads quando eles atingem o tempo mínimo, o que automatiza o reparo. Na Ai2, isso cortou em **74%** os reparos que exigiam humano no meio.
+- **Uma GPU só pode ficar livre.** Existe a categoria de **ocupação não alocada**: tempo que não é cobrado de nenhum orçamento, não é protegido e pode ser preemptado por qualquer pedido alocado. É o que impede a GPU de ficar parada e o que faz o time nunca recusar ciclo grátis.
+
+O teto de tempo mínimo protegido foi definido em **8 horas** — não por intuição, mas depois de rodar um simulador que reproduzia o histórico de submissões e cenários construídos, para ver onde as esperas iam aparecer antes de mexer na produção.
+
+Se você usa SLURM, existe um botão que decide se esse desenho funciona: para o job ser preemptado **e voltar para a fila**, ele precisa ter sido submetido com `--requeue` (ou o parâmetro `JobRequeue` no `slurm.conf`). Sem isso, o modo `REQUEUE` **cancela** o job. A alternativa é suspender, com `PreemptMode=SUSPEND`, que mantém o processo em memória.
+
+## Os números depois do rollout
+
+A Ai2 foi cluster por cluster, começando no fim de julho. O que voltou em 30 dias de teste:
+
+- **98%** das GPU-horas devidas foram efetivamente entregues aos times. Entre as 15 alocações, **13 receberam 95% ou mais**, e o pior caso ficou em **90%**.
+- **Ocupação estável em 98%** antes e depois da mudança, com demanda ainda 2 a 3 vezes acima da capacidade.
+- **18% do tempo de GPU entregue era não alocado** — foi assim que mantiveram o cluster cheio quando os casos financiados não estavam prontos para rodar.
+- Jobs curtos de depuração: espera **p90 caiu de 2 horas para 30 segundos** na produção. A simulação, feita com dados construídos à mão, tinha previsto de 6 horas para 5 minutos — o time avisa que a amostra desses jobs era pequena, então a variância é alta.
+- No maior cluster H100: espera **mediana de 5 minutos para 24 segundos**, e p90 caindo cerca de um terço, de **2,8 horas para 1,8 horas**.
+- Reparos com humano no meio: **queda de 74%**.
+
+Um efeito colateral interessante: a prioridade **não foi removida**, só foi rebaixada de escopo. Ela continua existindo, mas agora **só ordena dentro do próprio time**. Quem tem que monitorar o uso de prioridade passou a ser o gerente, porque cada nível gasto é orçamento que ele não usa depois.
+
+## Como aplicar isso no seu cluster hoje
+
+Você não precisa de 1024 GPUs para copiar o desenho. As peças estão nos agendadores que já rodam no seu rack.
+
+### A regra que vale em qualquer tamanho
+
+- **Fila dentro do time, orçamento entre times.** Se a disputa é entre squads, o gargalo não é prioridade de job — é ausência de orçamento.
+- **Torne a preempção barata.** Checkpoint com frequência, submissão retomável e tier de depuração com tempo mínimo curto. Sem job retomável, preempção é destruição de trabalho.
+
+### Kubernetes
+
+- `PriorityClass` define a prioridade por classe, estável desde a v1.14, e existe a classe **não preemptiva** com `preemptionPolicy: Never` (estável desde a v1.24): o pod passa na frente da fila, mas **não derruba trabalho em execução** — o caso de uso declarado na documentação é justamente payload de ciência de dados.
+- Saiba o custo para a vítima: ela recebe o período de **graceful termination**, **30 segundos por padrão**, e depois é morta à força. O `PodDisruptionBudget` é respeitado **apenas como melhor esforço** — se nenhuma vítima o satisfizer, a preempção acontece mesmo assim.
+
+### SLURM
+
+- `PriorityType=priority/multifactor` liga o cálculo de fair-share, com Fair Tree como padrão e `sshare -l` para o usuário ver o próprio Level FS.
+- O banco de contabilidade é pré-requisito: sem dados de uso, não existe cálculo de fair-share.
+- `PriorityCalcPeriod` define a frequência do cálculo, e um `scontrol reconfigure` **não** força o recálculo imediato.
+
+### YARN
+
+- A preempção **vem desligada** (`yarn.scheduler.fair.preemption` é `false` por padrão) e, quando ligada, só dispara acima do **limite de utilização do cluster**, `0.8` por padrão.
+- Os timeouts por fila (`minSharePreemptionTimeout`, `fairSharePreemptionTimeout`) existem para dar tempo a quem está abaixo da cota.
+
+## O que a Ai2 errou e o que ainda está em aberto
+
+O post não esconde as partes ruins, e é aí que ele fica útil.
+
+- **Documentação não ensina escala.** O rollout incremental fez clusters com comportamentos diferentes, e a interface manteve termos antigos (como prioridade de workload) com significado novo. O que resolveu foi **sessão ao vivo explicando a decisão do scheduler com exemplo real**, não texto.
+- **Nem todo caso melhorou.** Sessões interativas de análise de dados podiam durar até uma semana no modelo antigo. Com time-slicing, caíram no teto de 8 horas de proteção e quem fosse preemptado perdia o estado volátil e tinha que refazer tudo à mão. A resposta é de roadmap: um cluster **só de CPU** para sessões de desenvolvimento e sessões restauráveis.
+- **Fica um risco novo em investigação:** **fragmentação de capacidade**. Proteger tempo mínimo pode reduzir as oportunidades de interromper muitos jobs de uma vez para encaixar um job grande — o que puxaria a espera dos maiores workloads. O time está reproduzindo isso no simulador e medindo na produção.
+- **O topo da pirâmide continua aberto.** Agora o alvo é **utilização**: bootstrap, checkpoint e a própria eficiência do treino.
+
+## Checklist para dividir GPU sem virar leilão
+
+- **Cobre por tempo, não por máquina.** Orçamento de GPU-hora por time, com hierarquia que segue a estrutura real.
+- **Faça a proteção custar.** Se prioridade alta é grátis, em uma semana ela é a prioridade de todo mundo.
+- **Ordene por histórico.** Fair-share com janela deslizante impede que quem chegou primeiro monopolize o mês.
+- **Exija tempo mínimo declarado.** É o contrato que dá garantia ao job e direito de reequilibrar ao scheduler.
+- **Deixe a GPU nunca ociosa.** Ocupação não alocada, preemptível e não cobrada, é o que sustenta a taxa de uso.
+- **Antes de mudar, simule.** Rode a política nova no histórico de submissões e veja onde a espera aparece.
+- **Meça três coisas:** horas devidas por time, ocupação e espera por faixa de job. Foi isso que provou a mudança.
+
+## Perguntas frequentes
+
+**Preciso de um cluster grande para usar fair-share?**
+Não. O desenho vale para 8 GPUs com três pessoas. O que muda é o agendador: SLURM, YARN e Kubernetes já têm o mecanismo; o trabalho é definir orçamento e tempo mínimo.
+
+**Fair-share é a mesma coisa que prioridade?**
+Não. Prioridade ordena job contra job no mesmo instante. Fair-share olha o **acumulado** em uma janela — quem usou menos ganha preferência. Na Ai2, a prioridade ficou reduzida a desempate dentro do time.
+
+**O que é squatting de GPU?**
+É manter um job sem utilidade conectado ao cluster só para garantir a máquina quando a demanda subir. Acontece quando subir job de verdade demora minutos. Com fila rápida e orçamento cobrado, deixa de valer a pena.
+
+**Preempção sempre perde o progresso do job?**
+Só se ele não for retomável. Com checkpoint e submissão retomável, o job volta para a fila e continua depois. No SLURM, isso depende de `--requeue`; no Kubernetes, dos 30 segundos de encerramento gracioso e da aplicação tratar o sinal.
+
+**Qual a métrica que diz se a fila está justa?**
+Horas devidas versus horas entregues por time. A Ai2 usou **98%** de aderência como prova, com ocupação constante — se a fila fica justa e a ocupação cai, você trocou desperdício por outro desperdício.
+
+## O que revisar depois
+
+- **Estável:** os princípios (orçamento, fair-share por janela, contrato de tempo mínimo, ocupação não alocada) não devem mudar em 12 meses.
+- **Atualizável:** os números da Ai2 e os padrões dos agendadores — o teto de 8 horas, o default `0.8` de utilização no YARN e a janela de 7 dias são escolhas de configuração, não leis.
+- **Gatilho de revisão:** quando a Ai2 publicar os resultados sobre fragmentação de capacidade ou as sessões restauráveis, a seção de riscos precisa de atualização.
+
+## Fontes
+
+- [Ai2 — Impactful scheduling for GPU clusters (09/10/2026)](https://huggingface.co/blog/allenai/impactful-scheduling)
+- [SLURM — Fair Tree Fairshare Algorithm](https://slurm.schedmd.com/fair_tree.html)
+- [SLURM — Preemption](https://slurm.schedmd.com/preempt.html)
+- [Apache Hadoop — Fair Scheduler (YARN)](https://hadoop.apache.org/docs/current/hadoop-yarn/hadoop-yarn-site/FairScheduler.html)
+- [Kubernetes — Pod Priority and Preemption](https://kubernetes.io/docs/concepts/scheduling-eviction/pod-priority-preemption/)
+- [Ghodsi et al. — Dominant Resource Fairness (NSDI 2011)](https://www.usenix.org/legacy/events/nsdi11/tech/full_papers/Ghodsi.pdf)
