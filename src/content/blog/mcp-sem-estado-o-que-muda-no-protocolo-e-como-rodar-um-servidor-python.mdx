@@ -1,0 +1,181 @@
+---
+title: "MCP sem estado: o que muda no protocolo e como rodar um servidor Python"
+date: "2026-10-12"
+description: "A revisão 2026-07-28 do MCP acabou com o handshake e com a sessão: cada requisição carrega versão e capacidades no _meta e o servidor decide sozinho. O que quebrou, o que foi depreciado e como servir um MCP em Python no SDK v2."
+author: "Hernando Candido"
+tags: [MCP, Model Context Protocol, Agentes de IA, Python, Streamable HTTP, Protocolos, Arquitetura, Engenharia de IA]
+sponsored: false
+premium: false
+---
+
+# MCP sem estado: o que muda no protocolo e como rodar um servidor Python
+
+**Resposta curta:** desde a revisão **2026-07-28** o MCP é um protocolo **sem estado**. O handshake `initialize` e o header `Mcp-Session-Id` sumiram: cada requisição carrega a versão do protocolo e as capacidades do cliente no campo `_meta`, e o servidor aceita ou rejeita cada requisição de forma independente. O ganho é concreto — qualquer instância atrás de um load balancer atende qualquer requisição, sem afinidade de sessão. O custo também é concreto: o que antes morava na sessão agora precisa viajar explicitamente, como **handle devolvido pelo servidor e reenviado como argumento comum de tool**.
+
+![Capa do tutorial do KDnuggets sobre construir um servidor MCP sem estado em Python](https://www.kdnuggets.com/wp-content/uploads/kdn-build-your-first-mcp-server-in-python-stateless-spec-edition-feature.png)
+
+*Imagem: [KDnuggets — Build Your First MCP Server in Python, Stateless Spec Edition (09/10/2026)](https://www.kdnuggets.com/build-your-first-mcp-server-in-python-stateless-spec-edition)*
+
+Essa é uma daquelas mudanças de protocolo que passam batido no dia do anúncio e aparecem três meses depois, na hora de escalar.
+
+Quem escreve servidor MCP para produção vive o mesmo problema desde sempre: a sessão amarra a requisição à instância. Escala horizontal vira sticky session, restart derruba o cliente, e o health check mente porque o processo está de pé mas o estado da sessão se foi.
+
+O MCP resolveu isso na raiz. E resolveu tirando coisa, não adicionando.
+
+## O que a revisão 2026-07-28 tirou do protocolo
+
+O documento de mudanças da especificação lista as remoções antes das adições. Vale ler a lista inteira, porque cada item é uma linha de código que você pode simplesmente apagar:
+
+- **A sessão.** O header `Mcp-Session-Id` saiu do transporte Streamable HTTP, e os endpoints de listagem (`tools/list`, `resources/list`, `prompts/list`) deixaram de variar por conexão. (SEP-2567)
+- **O handshake.** `initialize` e `notifications/initialized` não fazem mais parte do protocolo. (SEP-2575)
+- **A requisição iniciada pelo servidor.** `roots/list`, `sampling/createMessage` e `elicitation/create` saíram do núcleo — servidores não iniciam requisições JSON-RPC.
+- **O `ping`.**
+- **O `logging/setLevel`.** O nível de log passou a ser definido por requisição.
+- **A notificação `notifications/roots/list_changed`.**
+- **A retomada de stream SSE.** O header `Last-Event-ID` e os event IDs SSE saíram. Stream quebrado perde a requisição em voo, e o cliente precisa reenviá-la como uma requisição nova, com um ID novo.
+
+Repare no efeito combinado: sem sessão, sem handshake e sem canal de volta, o servidor vira uma função de `requisição` para `resposta`. É a arquitetura que qualquer dev de backend já conhece de HTTP.
+
+## Cada requisição carrega o que antes era da sessão
+
+A parte que substitui o handshake é um punhado de metadados por requisição. São eles que fazem o servidor saber com quem está falando sem ter guardado nada:
+
+- `io.modelcontextprotocol/protocolVersion` — a versão do protocolo que o cliente está usando.
+- `io.modelcontextprotocol/clientCapabilities` — o que o cliente suporta.
+- `io.modelcontextprotocol/clientInfo` — identificação do cliente, recomendada em toda requisição.
+
+E na resposta, o servidor se identifica em cada resultado com `io.modelcontextprotocol/serverInfo`.
+
+No transporte Streamable HTTP, os mesmos campos são espelhados em headers HTTP para que intermediários possam rotear e inspecionar sem abrir o corpo. O contrato é claro: **o corpo é a fonte da verdade** e divergência entre corpo e header é rejeitada com `400 Bad Request` e erro `HeaderMismatch`. O header de versão aparece como `MCP-Protocol-Version: 2026-07-28`, e as requisições de ferramenta ainda precisam dos headers `Mcp-Method` e `Mcp-Name`. (SEP-2243)
+
+Se a versão pedida não for suportada, o servidor responde `UnsupportedProtocolVersionError` — código JSON-RPC **-32022** — já trazendo a lista de versões que ele aceita e a versão que foi pedida. O cliente escolhe uma compatível e repete.
+
+Fechando o pacote, o servidor agora **é obrigado** a implementar um RPC de descoberta, o `server/discover`, que anuncia versões suportadas, capacidades e identidade. O cliente pode chamar antes de qualquer outra coisa para escolher a versão de largada.
+
+## Onde foi parar o estado que a sessão guardava
+
+Essa é a pergunta prática. A resposta da especificação é direta: se o servidor precisa de estado entre chamadas, ele **emite um handle** e passa esse handle como argumento comum de tool. O cliente reenvia o handle na próxima chamada. Nada de estado implícito na conexão. (SEP-2567)
+
+Para cache, o modelo ficou explícito. Resultados de listagem e de leitura agora aceitam dois campos obrigatórios: `ttlMs`, a dica de frescor em milissegundos, e `cacheScope`, que diz se um intermediário compartilhado pode guardar a resposta. E o `tools/list` deve ser devolvido **em ordem determinística**, justamente para permitir cache no cliente e melhorar a taxa de acerto do cache de prompt do modelo. (SEP-2549)
+
+Já as notificações de mudança passaram a ter um canal único: `subscriptions/listen`, um stream POST-resposta de longa duração onde o cliente faz opt-in por tipo de evento — lista de tools, de prompts, de recursos, assinaturas de recurso — e o servidor marca cada notificação com `io.modelcontextprotocol/subscriptionId`. Notificações com escopo de requisição, como progresso e mensagem, continuam viajando no stream da própria requisição.
+
+E quando o servidor precisa pedir informação no meio de uma chamada? Aí entra o padrão de **Multi Round-Trip Requests**, que substituiu as requisições iniciadas pelo servidor. Em vez de o servidor fazer uma pergunta por conta própria, ele devolve um resultado com `resultType` igual a `input_required` e o campo `inputRequests` com o que falta. O cliente responde repetindo a requisição original com `inputResponses`. Todo resultado passou a carregar o campo `resultType` obrigatório: `complete` ou `input_required`. (SEP-2322)
+
+Um detalhe que morde quem já integrou: resultado vindo de um servidor de protocolo anterior que não traz o campo `resultType` precisa ser tratado pelo cliente como `complete`.
+
+As tarefas assíncronas saíram do núcleo e viraram extensão oficial, identificada como `io.modelcontextprotocol/tasks`. O método bloqueante `tasks/result` saiu; ficaram o polling em `tasks/get` e o novo `tasks/update` para entrada do cliente.
+
+## Moderno, legado e dual-era
+
+Migração de protocolo nunca é binária, e a especificação trata isso explicitamente com três rótulos: **moderno** (revisão 2026-07-28 e depois), **legado** (2025-11-25 e anteriores, que abrem sessão com `initialize`) e **dual-era**, para quem atende os dois.
+
+A descoberta da era depende do transporte:
+
+- **stdio:** o cliente sonda com `server/discover` e cai para `initialize` em qualquer erro que não seja um erro moderno reconhecido.
+- **Streamable HTTP:** o cliente tenta uma requisição moderna e inspeciona o corpo de um `400 Bad Request` antes de decidir.
+
+Em ambos os casos, um erro JSON-RPC moderno reconhecido — como o `UnsupportedProtocolVersionError` — identifica um servidor moderno, e o cliente repete com uma versão suportada em vez de cair para o modo antigo. Qualquer outra coisa identifica um servidor legado.
+
+Tem uma sutileza aqui que vale guardar: **a era é propriedade do servidor, não da requisição**. O cliente deve cachear essa conclusão enquanto o processo (stdio) ou a origem HTTP viver, e pode persistir entre reinícios.
+
+O caso que dá errado é o cliente legado contra servidor moderno. Ele falha e não tem como subir de versão sozinho. Por isso a especificação recomenda que servidores modernos nomeiem as versões que suportam em qualquer erro devolvido a um `initialize`: essa mensagem pode ser o único diagnóstico que aquele cliente consegue mostrar para o usuário.
+
+## As depreciações e o relógio que começou a andar
+
+A revisão estreou uma política de ciclo de vida com três estados — ativo, depreciado e removido — e uma **janela mínima de doze meses** entre a depreciação e a remoção. Na prática: recurso depreciado continua funcionando, mas implementação nova não deve adotar.
+
+O que entrou no registro de depreciados:
+
+- **Roots** — caminho sugerido: passar diretórios e arquivos por parâmetro de tool, URI de recurso ou configuração do servidor.
+- **Sampling** — caminho sugerido: integrar direto com a API do provedor de LLM.
+- **Logging** — caminho sugerido: stderr no transporte stdio; OpenTelemetry para observabilidade.
+- **Dynamic Client Registration** — substituído por Client ID Metadata Documents.
+- **O transporte HTTP+SSE**, já sinalizado desde 2025-03-26 e reclassificado agora. O caminho é Streamable HTTP.
+- **Os valores `thisServer` e `allServers`** do `includeContext`.
+
+Para Roots, Sampling e Logging, a remoção mais cedo possível é a primeira revisão lançada em **2027-07-28 ou depois**. Nada foi removido ainda sob a política nova.
+
+## Como rodar um servidor MCP sem estado em Python
+
+O SDK oficial de Python também mudou de linha: o v2 é a linha estável, `pip install mcp` instala a série 2.x, e o requisito é Python 3.10 ou mais novo.
+
+O comando de instalação com o extra de ferramentas de linha de comando é `uv add "mcp[cli]"` ou `pip install "mcp[cli]"`. O `cli` adiciona o comando `mcp` (dev, run, install); sem ele, instala-se só o SDK.
+
+A renomeação que todo código v1 encontra no primeiro import: `FastMCP` virou `MCPServer`, e o caminho é `from mcp.server import MCPServer`. O módulo antigo `mcp.server.fastmcp` não existe mais — não é depreciação, é remoção.
+
+O esqueleto de um servidor continua sendo dois decoradores e uma função tipada: `mcp = MCPServer("Demo")`, depois `@mcp.tool()` para uma função como `add(a: int, b: int)` e `@mcp.resource("greeting://{name}")` para um recurso. O schema de entrada continua saindo das anotações de tipo, sem JSON Schema escrito à mão.
+
+Para ver funcionar localmente, `uv run mcp dev server.py` abre o servidor no MCP Inspector. Para servir em HTTP, `uv run mcp run server.py --transport streamable-http` sobe o endpoint em `http://localhost:8000/mcp`.
+
+Do lado cliente, o v2 juntou as três camadas que o v1 obrigava a montar na mão — transporte, `ClientSession` e `await session.initialize()` — em um objeto só: `from mcp import Client`, e `async with Client("http://localhost:8000/mcp") as client`. Depois de conectado, `client.server_capabilities`, `client.protocol_version` e `client.instructions` estão simplesmente lá, e `client.server_info` também quando o servidor se identifica. Uma URL significa Streamable HTTP; o mesmo objeto aceita um subprocesso stdio ou o próprio objeto do servidor, em memória, para teste.
+
+Se em vez de subir o servidor direto você quer montá-lo dentro de uma aplicação ASGI, o caminho é `app = mcp.streamable_http_app()` e servir com uvicorn. Ao montar isso em Starlette, o lifespan da aplicação hospedeira precisa entrar no `mcp.session_manager.run()` — sem isso a aplicação sobe e toda requisição ao caminho montado falha com erro de task group não inicializado.
+
+### Configuração de transporte mudou de lugar
+
+`host`, `port`, `streamable_http_path`, `stateless_http` e `json_response` saíram do construtor do servidor e agora são passados na hora de subir ou de construir a app: `run()` e as fábricas `sse_app()` e `streamable_http_app()`. A porta existe apenas em `run()`. Quem mutava `mcp.settings.port` depois de construir o servidor passa a receber erro.
+
+### A proteção contra DNS rebinding liga sozinha
+
+Quando o host é `127.0.0.1`, `localhost` ou `::1`, a validação de Host é ativada automaticamente com uma allowlist de padrões `host:porta`. Um cliente de teste que manda `Host: localhost` sem porta é rejeitado com `421 Invalid Host header`. Para servir um hostname real, é preciso passar explicitamente uma configuração de segurança de transporte com os hosts e origens permitidos.
+
+Fora isso, o v2 remodelou o servidor de baixo nível e trouxe um jeito novo de obter dados que não vêm do modelo: um parâmetro de tool anotado com `Resolve(fn)` é preenchido por uma função sua, invisível para o modelo, e essa função pode devolver uma pergunta para o usuário.
+
+## A segurança que continua obrigatória
+
+Tirar a sessão não tira responsabilidade. A página do transporte Streamable HTTP é explícita em quatro pontos:
+
+- **Validar o header `Origin` em toda conexão de entrada** para prevenir DNS rebinding. Origin inválido responde `403 Forbidden`.
+- **Rodando local, escutar só em `127.0.0.1`**, e não em todas as interfaces.
+- **Implementar autenticação** para todas as conexões.
+- **Toda mensagem é um POST novo** no endpoint do MCP, com `Accept` listando `application/json` e `text/event-stream`. Notificação aceita responde `202 Accepted` sem corpo; requisição responde com um objeto JSON ou um stream SSE.
+
+Se você ainda não tratou a superfície de tools como hostil, esse é o outro lado da moeda. O mesmo erro de SSRF já apareceu em cinco organizações sem relação entre si, e o detalhamento está em [Segurança em MCP: SSRF, permissões e o ataque que atravessa protocolos](/blog/seguranca-em-mcp-ssrf-permissoes-e-o-ataque-que-atravessa-protocolos). E se o seu caso é colocar um agente para executar código de verdade, o [caminho de transformar um script Python em agente sem perder o controle](/blog/como-transformar-um-script-python-em-agente-de-ia-sem-perder-controle) continua sendo o pré-requisito.
+
+## Por que isso é maior do que parece
+
+Sem estado não é detalhe de implementação. É a diferença entre um servidor MCP que escala como API e um que escala como fila com afinidade.
+
+Na prática, três coisas destravam de uma vez. Autoscaling passa a funcionar sem sticky session, porque nenhuma instância guarda contexto privilegiado. Deploy vira substituição limpa de pods, porque derrubar um processo não invalida nada do cliente. E cache se torna uma decisão explícita do protocolo, com `ttlMs` e `cacheScope`, em vez de efeito colateral de manter conexão aberta.
+
+O preço é que a arquitetura fica mais honesta: quem guarda estado precisa dizer isso em voz alta, emitindo um handle. Meu palpite é que boa parte dos servidores MCP em produção hoje carrega estado escondido que só funciona porque ninguém tentou rodar duas instâncias. Esse bug não aparece em teste local — aparece no dia em que o tráfego sobe.
+
+## Perguntas frequentes
+
+**MCP sem estado quer dizer que meu servidor não pode guardar nada entre chamadas?**
+Pode. A especificação só proíbe guardar estado implícito na conexão. Se precisa de contexto entre chamadas, o servidor emite um handle e o cliente reenvia esse handle como argumento de tool; se precisa de mais que isso, use um armazenamento externo.
+
+**Preciso reescrever meu servidor agora?**
+Se ele continua respondendo `initialize`, ele é dual-era e atende os dois mundos. O problema é o oposto: um servidor que fala só legado deixa clientes modernos sem caminho, porque o cliente legado tem como cair para o modo antigo, mas o moderno não tem como descer.
+
+**O que é a flag `stateless_http` do SDK, então?**
+É configuração de transporte. Ela faz o servidor atender cada requisição com um transporte novo, sem `Mcp-Session-Id` e sem estado entre requisições — e continua sendo o caminho de compatibilidade para clientes de sessão, que ainda recebem resposta ao `initialize`.
+
+**O que substitui o sampling, que foi depreciado?**
+A recomendação oficial é integrar direto com a API do provedor de LLM. No protocolo moderno, pedidos que dependiam de requisição iniciada pelo servidor viajam como multi round-trip, dentro do resultado da própria chamada.
+
+**O que muda nos códigos de erro que eu já trato?**
+Três: `HeaderMismatch` passou a `-32020`, `MissingRequiredClientCapability` a `-32021` e `UnsupportedProtocolVersion` a `-32022`. A faixa de `-32000` a `-32019` segue livre para a implementação e `-32020` a `-32099` agora pertence à especificação.
+
+## O que revisar depois
+
+- **Estável:** o modelo de metadados por requisição, a remoção do handshake, a sessão ausente, o padrão multi round-trip e a política de depreciação com janela de doze meses. Isso é desenho de protocolo, não vai mudar em doze meses.
+- **Atualizável:** os nomes de classe e parâmetro do SDK v2 (`MCPServer`, `streamable_http_app`, `stateless_http`), que são código em evolução, e os defaults de proteção contra DNS rebinding.
+- **Gatilhos de revisão:** quando sair a primeira revisão a partir de 2027-07-28, Roots, Sampling e Logging vão para o estado removido. Quando o SEP-2596 chegar a Final, o HTTP+SSE tem três meses de prazo. E quando o SDK publicar uma v3, os nomes desta seção precisam de conferência.
+
+## Schema recomendado
+
+Para esta página, vale publicar marcação `Article` com headline, autor, `datePublished` e `dateModified`, e um `FAQPage` com as cinco perguntas acima — são elas que têm chance de puxar resposta direta em busca generativa. Como o texto gira em torno de entidades de protocolo, um `DefinedTermSet` com MCP, Streamable HTTP, `Mcp-Session-Id` e `server/discover` ajuda o motor a montar o grafo de entidades. O básico segue valendo: um único `H1`, um `H2` por seção e links internos relativos.
+
+## Fontes
+
+- [MCP — Key Changes da revisão 2026-07-28](https://modelcontextprotocol.io/specification/2026-07-28/changelog)
+- [MCP — Base Protocol: Versioning and Compatibility](https://modelcontextprotocol.io/specification/2026-07-28/basic/lifecycle)
+- [MCP — Transports: visão geral](https://modelcontextprotocol.io/specification/2026-07-28/basic/transports)
+- [MCP — Transports: Streamable HTTP](https://modelcontextprotocol.io/specification/2026-07-28/basic/transports/streamable-http)
+- [MCP — Registro de recursos depreciados](https://modelcontextprotocol.io/specification/2026-07-28/deprecated)
+- [SDK Python do MCP — What's new in v2](https://py.sdk.modelcontextprotocol.io/whats-new/)
+- [SDK Python do MCP — Migration Guide v1 para v2](https://py.sdk.modelcontextprotocol.io/migration/)
+- [Repositório do SDK Python do MCP](https://github.com/modelcontextprotocol/python-sdk)
+- [KDnuggets — Build Your First MCP Server in Python, Stateless Spec Edition (09/10/2026)](https://www.kdnuggets.com/build-your-first-mcp-server-in-python-stateless-spec-edition)
