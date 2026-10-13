@@ -1,0 +1,140 @@
+---
+title: "O que a IA ainda não vê: o benchmark que mede raciocínio visual intuitivo"
+date: "2026-10-13"
+description: "O Humanity's Sixth Sense (HSS), da Scale AI com a Elorian, mede o raciocínio visual intuitivo em 522 tarefas abertas: humanos acertam 93,1% e o melhor modelo para em 53,6%, mesmo com esforço máximo de raciocínio. Em 8.573 falhas analisadas, 94% são de percepção ou de inferência, não de lógica — e mais raciocínio pode derrubar o acerto. Entenda o que o benchmark mede e o que isso muda no seu produto."
+author: "Hernando Candido"
+tags: [Raciocínio Visual, Modelos Multimodais, Benchmarks, Evals, Agentes de IA, Scale AI, Elorian, Engenharia de IA, GEO]
+sponsored: false
+premium: false
+---
+
+# O que a IA ainda não vê: o benchmark que mede raciocínio visual intuitivo
+
+**Resposta curta:** o **Humanity's Sixth Sense (HSS)**, benchmark da Scale AI com a Elorian cujo paper saiu no arXiv em **06/10/2026**, mede o raciocínio visual intuitivo — a inferência que uma pessoa faz de relance sobre o que uma cena implica e não mostra. Em **522 tarefas abertas**, humanos acertam **93,1%** e o melhor modelo, o **GPT-6-astra** com esforço máximo de raciocínio, para em **53,6%**; a mediana dos **25 modelos** avaliados é de **30,9%**. O achado que interessa a quem constrói produto: das **8.573 falhas** analisadas, **94% vêm de ver ou de inferir errado** e apenas **5% de lógica** — e subir esforço de raciocínio não fecha a lacuna, chegando a piorar o resultado em alguns subdomínios.
+
+![Capa do dataset Humanity's Sixth Sense no Hugging Face, com o placar do benchmark](https://cdn-thumbnails.huggingface.co/social-thumbnails/datasets/ScaleAI/HSS.png)
+
+*Imagem: [dataset ScaleAI/HSS no Hugging Face](https://huggingface.co/datasets/ScaleAI/HSS)*
+
+Esta é uma daquelas medições que trocam a pergunta. Até agora, quase todo benchmark de visão perguntava se o modelo reconhece o que **está** na imagem. O HSS pergunta outra coisa: o modelo consegue deduzir o que a imagem **implica**?
+
+É a diferença entre identificar um cavalo puxando um arado e saber se as correntes ali estão sustentando o peso do arado.
+
+Para quem já colocou modelo multimodal em produção, o resultado é desconfortável — e útil, porque mostra onde exatamente a coisa quebra.
+
+## O que é raciocínio visual intuitivo
+
+Olhe para uma foto e você sabe, sem pensar, quem está no comando da sala, se uma caixa passa por uma porta e o que aconteceu um segundo antes do clique. O paper chama isso de sexto sentido e cita o clássico de Thorpe e colegas, de 1996: a gente categoriza uma cena natural em cerca de **150 milissegundos**.
+
+O ponto é que essa informação **não está nos pixels**. Ela é reconstruída a partir do que os pixels deixam implícito — o passado da cena, as forças em jogo, as intenções das pessoas, as regras do lugar.
+
+O HSS organiza essa capacidade em **4 domínios e 11 subdomínios**, com **522 tarefas** (288 de imagem e 234 de vídeo, 17,6 horas de vídeo no total, mediana de 76 segundos por clipe) e **723 critérios de rubrica**, de 1 a 7 por tarefa:
+
+- **Dinâmica temporal e causal — 134 tarefas.** Retrodicção (o que aconteceu antes do momento mostrado), causalidade mecânica (o que está fisicamente puxando o evento) e extrapolação (o que acontece depois).
+- **Lógica física e espacial — 176 tarefas.** Propriedades escondidas e invisíveis (objetos ocluídos, massa, forças), possibilidade e encaixe (isso cabe?), ponto de vista alheio (como a cena é vista de onde a câmera nunca esteve) e alcance espacial (dá para chegar lá?).
+- **Entendimento social — 110 tarefas.** Teoria da mente (crenças, lacunas de conhecimento, emoções) e papel social, norma e poder (quem se curva a quem).
+- **Inferência abstrata e contextual — 102 tarefas.** Mudança e consequência (o que decorre de uma alteração que a cena não mostra) e padrões e pareidolia (estrutura em arranjos, rostos em objetos).
+
+Repare no que a taxonomia tem de incomum: nada ali exige conhecimento especializado. Nenhuma questão depende de ler um balanço financeiro ou resolver uma integral. São perguntas que uma criança responde olhando — o mesmo tipo de raciocínio que aparece quando um modelo precisa julgar o que acontece numa cena física, como já apareceu na corrida por [modelos de mundo e representações de física](/blog/modelos-de-mundo-o-que-sao-os-world-models-que-a-amd-compra-por-us-8-2-bilhoes).
+
+## Que perguntas o benchmark faz
+
+Cada item do HSS nasce de um anotador treinado, que escolhe uma imagem ou um clipe e escreve pergunta, resposta de referência e rubrica de critérios verificáveis. Três regras eliminam o resto: a tarefa tem de exigir inferência **além** do que está retratado (se um recorte em alta resolução deixa a resposta óbvia, ela é recusada), não pode exigir conhecimento especializado e precisa ter concordância humana unânime.
+
+O funil é brutal. De **3.466 tarefas escritas**, sobrevivem **1.164** ao primeiro crivo, **559** ao segundo e **522** ao terceiro — **15,1%** de aceitação. O primeiro crivo derruba **2.302** itens, dois em cada três, quase sempre porque a resposta já estava visível na cena ou porque os revisores não concordavam sobre o gabarito.
+
+Alguns exemplos publicados pela Elorian mostram o padrão de erro. Numa estante de biblioteca, a pergunta é se dois livros brancos do mesmo tamanho caberiam ali: GPT-6-astra, Gemini-3.8-Flash e Claude-Opus-5.5 responderam que não havia espaço, nas três tentativas. Numa foto de arado puxado por cavalos, a pergunta é se as correntes sustentam o peso: os três disseram que elas estavam frouxas. Numa foto de um motor de aeronave, a pergunta é se a gaiola em volta do eixo gira junto: os três disseram que sim, e a gaiola é parafusada na carcaça.
+
+E a correção não vem de múltipla escolha. A resposta é aberta, julgada contra a rubrica por um juiz LLM — no paper, o **Claude-Opus-5**. Uma tarefa só conta como acerto quando **todos** os critérios dela são cumpridos. Cinco modelos foram reavaliados com juízes de três fornecedores diferentes: o ranking ficou idêntico (correlação de 1,0) e a concordância passou de 95%.
+
+Um detalhe vale para produção: uma resposta que nunca se compromete — inclusive a que gasta todo o orçamento de saída em raciocínio — é reprovada em todos os critérios.
+
+## Os números: 93,1% contra 53,6%
+
+- **Humanos: 93,1%.** Vinte anotadores responderam nas mesmas condições dos modelos. Eles se declararam inseguros em apenas **63 das 522 tarefas** (12,1%) e acertaram **94,1%** nas 459 em que estavam seguros. Mesmo nas respostas inseguras, o acerto foi de **85,7%**.
+- **Melhor modelo: 53,6%** — GPT-6-astra, em esforço máximo, com intervalo de confiança de 95% em ± 4,1. Na sequência vêm GPT-6.1-Sol (46,6%), Claude-Opus-5.5 (44,6%), Gemini-3.8-Flash (41,6%) e Claude-Fable-5.1 (40,8%).
+- **Mediana: 30,9%**, e a maioria dos **25 modelos de oito fornecedores** fica abaixo de 40%. Na lanterna: GPT-6-Luna (21,0%), GPT-5.6-Luna (21,6%) e GPT-5.6-Terra (22,7%).
+- **Controle cego: 6,6%.** Rodando o GPT-6-astra sem a imagem nem o vídeo, o placar desaba para 6,6% — e só **4 das 522 tarefas** passam no controle cego nas três tentativas. Ou seja: não dá para resolver o HSS com palpite de texto.
+- **Vídeo é mais difícil que imagem** para 23 dos 25 modelos, com queda média de **7,3 pontos**.
+- **Entendimento social é o pior domínio:** é o desempenho mais baixo para 21 dos 25 modelos, com média de **24,4%**, contra **34,1%** nos outros três domínios.
+
+## Onde os modelos erram: percepção, não lógica
+
+A equipe rotulou a causa primária de **8.573 falhas** de primeira tentativa em 24 modelos, numa taxonomia de 11 causas agrupadas em três famílias:
+
+- **Percepção — 53% dos casos.** O modelo leu errado algo que **está** na imagem: escala, geometria, direção em que o objeto está virado, alinhamento espacial.
+- **Inferência latente — 41%.** O modelo não ligou o que vê ao que está implícito: evento passado, quantidade escondida atrás de um obstáculo, intenção de alguém.
+- **Raciocínio abstrato — 5%.** Dedução lógica errada a partir de fatos visuais corretos.
+
+As duas causas isoladas mais comuns são **perder o detalhe que decide a resposta (21%)** e **identificar errado um objeto, pessoa ou papel (20%)**.
+
+E isso não é idiossincrasia de um modelo. Nas **503 tarefas em que cinco ou mais modelos falham**, uma mediana de **80% falha pela mesma causa** (90% pela mesma família). A assinatura do erro vem da tarefa, não do modelo — o que torna o problema previsível.
+
+Cada subdomínio tem sua digital: em possibilidade e encaixe, 62% dos erros são de tamanho e ajuste; em alcance espacial, 56%; em extrapolação, 42% são de orientação; em propriedades escondidas, 44% são de quantidade oculta. Nas tarefas de imagem, os erros são 66% de percepção, dominados por orientação lida ao contrário (18%), identificação errada (18%) e tamanho e encaixe (16%).
+
+## Mais raciocínio não resolve
+
+O resultado que mais deveria incomodar quem calibra modelo em produção é este: **os modelos gastam, em média, cerca de 4.000 tokens de raciocínio por tarefa** — em perguntas que uma pessoa responde de relance.
+
+Subir o esforço de raciocínio melhora o placar geral, mas não em todo lugar. No subdomínio de retrodicção, o GPT-6-astra **perde 14 pontos** ao passar do esforço alto para o nível xhigh. O acerto de pico costuma aparecer em nível intermediário, não no máximo da configuração.
+
+Com ferramentas de agente, o quadro melhora pouco e de forma desigual. Em um subconjunto de **388 tarefas**, dentro do Codex, o GPT-6-astra sai de 54,4% para **59,3%** — ganho de 4,9 pontos em 14 a 18 passos. Arranjos no estilo Claude Code ganham mais, de **16,5 a 25,6 pontos**, mas gastando **mais de 42 mil tokens de pensamento por tarefa**.
+
+A segunda olhada conserta o que é visível: as falhas totais caem de **944 para 759**. Erro de objeto ou papel cai de 181 para 147; de orientação, de 117 para 93; de tamanho e ajuste, de 137 para 105; de detalhe perdido, de 154 para 110. O que **não** cai é erro de profundidade — ler uma sobreposição 2D como alinhamento 3D —, que fica em **102 para 101**. Ampliar uma imagem 2D não devolve profundidade que não foi capturada.
+
+Tem ainda um efeito colateral que quem já operou agente reconhece na hora: em alguns casos o modelo conversou consigo mesmo até abandonar uma resposta que tinha acertado de primeira.
+
+## O que fazer com isso no seu produto
+
+- **Não terceirize julgamento de cena para o modelo.** Se a decisão depende de "cabe?", "está tensionado?", "quem manda aqui?", o modelo acerta em algum lugar entre um terço e metade dos casos — e no domínio social, perto de um quarto.
+- **Ataque a percepção primeiro.** O gargalo é ver. Entregue a maior resolução possível e permita uma segunda olhada: isso derrubou as falhas de percepção de 944 para 759. Mas não espere que zoom resolva profundidade, porque ali o placar não se moveu.
+- **Meça o custo de pensar.** Cerca de 4.000 tokens por pergunta de relance, mais de 42 mil em arranjo de agente. Teste o acerto em esforço intermediário antes de pagar pelo máximo — o pico pode estar no meio.
+- **Use rubrica, não impressão.** O HSS só conta acerto quando todos os critérios são cumpridos, e é isso que separa "parece certo" de "está certo". Se o seu eval olha a resposta escrita e não o resultado verificável, o problema é o mesmo dos outros benchmarks: [medir o estado final, não o resumo](/blog/como-avaliar-um-agente-de-ia-que-mexe-no-banco-estado-final-nao-resumo). Quando o assunto é escolher entre caminhos, vale olhar [como avaliar qualidade de decisão de um agente](/blog/como-avaliar-a-qualidade-de-decisao-de-um-agente-de-ia-taste-bench).
+- **Não coloque tarefa social em autonomia.** Com média de 24,4% no domínio social, leitura de intenção e hierarquia não é coisa para decidir sozinha, sem humano no meio.
+- **Rode no seu caso.** O dataset é aberto: 522 tarefas, split de teste, anotações sob licença MIT e código de avaliação publicado. Vale como régua externa do seu pipeline multimodal antes de confiar nele em produção.
+
+## Por que isso é maior do que parece
+
+Modelos passam em prova profissional, escrevem código de produção e leem gráfico melhor que muita gente. Mesmo assim, erram a pergunta que qualquer pessoa responde olhando — e erram por não ver, não por não pensar.
+
+Eu desconfio de benchmark de fornecedor por padrão, e este é publicado por quem vende avaliação. A parte que eu levo a sério não é o ranking: é o método. Rubrica publicada, juiz auditado com três fornecedores, controle cego que derruba o melhor modelo de 53,6% para 6,6%, taxa de aceitação de 15,1% e uma lista de limitações escrita pelos próprios autores. Ranking é marketing; protocolo é engenharia.
+
+O outro ponto que eu levo para o meu trabalho é o do esforço. A gente aprendeu a tratar raciocínio como sinônimo de qualidade — mais tokens de pensamento, melhor resposta. Aqui ele aparece como imposto: 4.000 tokens para responder o que uma pessoa responde de relance, com queda de 14 pontos em um subdomínio ao subir o esforço. Antes de comprar o nível máximo de raciocínio no seu produto, meça o acerto por nível. O pico pode estar no meio.
+
+E, se você constrói agente que olha tela, o recado é direto: o teto não está no raciocínio, está na percepção. Ferramenta de agente ajuda o modelo a olhar de novo, e isso conserta detalhe perdido. O que não conserta é aquilo que a cena nunca mostrou.
+
+## Perguntas frequentes
+
+**O que é o Humanity's Sixth Sense (HSS)?**
+É um benchmark de raciocínio visual intuitivo, com 522 tarefas abertas de imagem e vídeo, construído pela Scale AI em parceria com a Elorian, com paper no arXiv em 06/10/2026 (revisão em 08/10/2026). Ele mede a inferência que uma pessoa faz de relance sobre o que uma cena implica — o que ocorreu antes, o que está escondido, o que as pessoas pretendem e quais regras o lugar sugere.
+
+**Qual a diferença entre raciocínio visual intuitivo e percepção visual?**
+Percepção é ler o que está nos pixels: escala, cor, geometria, direção. Raciocínio visual intuitivo é inferir o que não está nos pixels a partir do que eles insinuam. O HSS rejeita na criação qualquer tarefa que possa ser resolvida com um recorte em alta resolução, justamente para separar as duas coisas — e o resultado mostra que os modelos erram mais na primeira do que se imaginava.
+
+**Mais esforço de raciocínio melhora o resultado no HSS?**
+Melhora no geral, mas não em todo subdomínio. O GPT-6-astra perde 14 pontos em retrodicção ao ir do esforço alto para o xhigh, e o acerto de pico aparece com frequência em nível intermediário. Em média, os modelos gastam cerca de 4.000 tokens de raciocínio por tarefa em perguntas que uma pessoa responde de relance.
+
+**Um benchmark feito por um fornecedor de avaliação é confiável?**
+Confie no método, não no placar. Os pontos fortes: rubrica verificável, controle cego, juiz auditado (ranking idêntico com juízes de três fornecedores, concordância acima de 95%) e limitações declaradas. Os limites: as notas passam por um juiz LLM, a mídia vem da web pública (pode ter aparecido em treino) e os vídeos chegam sem áudio nem transcrição. Como os fornecedores atualizam modelos toda semana, qualquer número aqui é uma foto de outubro de 2026.
+
+**Posso usar o dataset e o código no meu projeto?**
+Pode. São 522 tarefas em split de teste, com anotações sob licença MIT e código de avaliação publicado; a mídia continua sendo dos criadores originais, com pedido de remoção previsto. O paper pede explicitamente que o conjunto não seja usado para treino.
+
+## O que revisar depois
+
+- **Estável:** a taxonomia (4 domínios, 11 subdomínios), o desenho da tarefa (inferência além do retratado, rubrica, concordância humana unânime) e a conclusão estrutural — o erro se concentra em percepção e inferência latente, não em lógica. Isso descreve uma lacuna, não um placar.
+- **Atualizável:** todos os números do ranking — 53,6% do melhor modelo, 30,9% de mediana, 24,4% no domínio social. Modelo muda de versão toda semana, e o placar acompanha.
+- **Gatilhos de revisão:** (1) algum modelo passando de forma clara de 70% no HSS, o que muda a leitura de "lacuna estrutural" para "lacuna em fechamento"; (2) nova revisão do paper ou do leaderboard com reavaliação; (3) lançamento de modelo multimodal cujo material de imprensa declare foco em intuição de cena — aí a seção de números precisa de nova rodada.
+
+## Schema recomendado
+
+Para esta página, vale publicar marcação `Article` com headline, autor, `datePublished` e `dateModified`, mais um `FAQPage` com as cinco perguntas acima — são elas que têm chance de puxar resposta direta em busca generativa. Como o texto gira em torno de um conjunto pequeno de entidades (Humanity's Sixth Sense, Scale AI, Elorian, raciocínio visual intuitivo, pass@1), um `DefinedTermSet` ajuda o motor a montar o grafo do tema. O básico continua valendo: um único `H1`, um `H2` por seção, links internos relativos e imagem de capa com alt descritivo.
+
+## Fontes
+
+- [Humanity's Sixth Sense: Benchmarking Intuitive Visual Reasoning in Multimodal Models — arXiv 2610.08966 (06/10/2026, revisão v2 de 08/10/2026)](https://arxiv.org/abs/2610.08966)
+- [Scale Labs — Introducing Humanity's Sixth Sense: Measuring Intuitive Visual Reasoning](https://labs.scale.com/blog/introducing-humanitys-sixth-sense)
+- [Elorian — Introducing Humanity's Sixth Sense (HSS)](https://elorian.ai/blog/humanitys-sixth-sense)
+- [Scale — Leaderboard do Humanity's Sixth Sense](https://labs.scale.com/leaderboard/hss)
+- [Hugging Face — dataset ScaleAI/HSS (card e licenças)](https://huggingface.co/datasets/ScaleAI/HSS)
+- [Import AI 476 — Creativity and RSI; worse-than-China open weight models; AI goes to space (12/10/2026)](https://importai.substack.com/p/import-ai-476-creativity-and-rsi)
