@@ -1,0 +1,154 @@
+---
+title: "Aprendizado federado: como treinar IA quando o dado não pode sair do lugar"
+date: "2026-10-14"
+description: "Aprendizado federado é levar o modelo até o dado. Um paper do DOE com quatro supercomputadores mostra o que quebra em produção — memória na agregação, fila de cluster e governança — e onde a LGPD entra."
+author: "Hernando Candido"
+tags: [Aprendizado Federado, Privacidade de Dados, LGPD, Infraestrutura de IA, Treino de Modelos, Supercomputação, Governança de Dados, Federated Learning]
+sponsored: false
+premium: false
+---
+
+# Aprendizado federado: como treinar IA quando o dado não pode sair do lugar
+
+**Resposta curta:** aprendizado federado é treinar o modelo onde o dado já está, em vez de juntar o dado num só lugar — só pesos e atualizações cruzam a rede. Foi assim que o Departamento de Energia dos EUA ajustou um modelo de linguagem em **quatro supercomputadores** (Aurora, Polaris, Frontier e Perlmutter) de **três fabricantes de GPU** diferentes, usando mais de **1.700 GPUs**, com a loss global caindo de **1,39 para 0,37 em oito rodadas de agregação** e ficando abaixo do modelo local de cada site. O valor do paper `arXiv:2609.39803` não está no placar: está em mostrar que, quando o dado não pode se mover, o gargalo deixa de ser treinar e passa a ser memória na agregação, fila de cluster e governança.
+
+![Figura do paper sobre o iceberg da produção em aprendizado federado, com o modelo treinado na ponta visível e cinco estratos abaixo da linha d'água](https://arxiv.org/html/2609.39803v1/iceberg.png)
+
+*Imagem: figura 1 do paper "From Pilots to Production", no [texto integral no arXiv](https://arxiv.org/html/2609.39803).*
+
+Tem uma frase que resume o deslocamento inteiro, e ela está no repositório da sessão de aprendizado federado do Trillion Parameter Consortium 2026: os modelos viajam entre instituições, o dado sensível nunca viaja.
+
+Isso inverte o paradigma que a gente aprendeu. O caminho padrão é juntar o dado num data lake, subir um cluster e treinar. Quando o dado é proprietário, de exportação controlada, classificado ou preso a regra de soberania, esse caminho não existe — e o modelo é que tem de ir até o dado.
+
+O paper que sustenta este texto saiu no arXiv em **30/09/2026** e não é um paper de método único: é uma síntese de **cinco esforços independentes**, escrita por 13 autores de laboratórios do DOE, com dois deployments em escala de fronteira. O assunto voltou à pauta em **12/10**, quando o Import AI 476 resumiu os dois projetos do governo americano. O que interessa aqui não é o anúncio: é o que eles aprenderam operando.
+
+## O que é aprendizado federado, sem rodeio
+
+O mecanismo é por rodadas. Cada site treina localmente nas suas próprias partições de dado. O que sobe para o agregador é a atualização ou o peso — não o dado. O agregador combina, produz o modelo global e devolve. Repete.
+
+A ideia foi formalizada por McMahan e colegas em 2017, no artigo que apresentou o FedAvg, e é a base de quase tudo que existe hoje em produção.
+
+O que a federação resolve: o dado bruto nunca sai do site. O que ela não resolve: privacidade. E esse é o mal-entendido que mais custa caro, porque a garantia de que o dado não saiu não é a mesma coisa que a garantia de que nada vazou.
+
+## O que o DOE fez na prática
+
+O paper descreve dois deployments que compartilham a mesma arquitetura: um servidor de agregação central coordenando clientes nas login nodes de cada site, de modo que os pesos cruzam a rede e o dado bruto fica onde estava.
+
+- **Tri-lab do NNSA (Sandia, LLNL e Los Alamos).** LLNL entra com o El Capitan, máquina de AMD MI300A que é a **nº 2 do TOP500 de junho de 2026, com 1,809 Exaflop/s**; Sandia e Los Alamos entram com máquinas de H100. Os clientes rodam em login nodes, o treino é submetido como job **Slurm ou Flux** e a comunicação acontece por túneis SSH iniciados pelo cliente. Dado de acesso restrito nunca deixa o site de origem. O backend principal é o **torchtitan**, com paralelismo de dados, tensor, pipeline e contexto nos dois fabricantes. Nessa perna foram avaliados três frameworks de federação — **NVFlare, Flower e APPFL** — com pré-treino continuado de Llama 3.x em 1B, 8B e 70B sobre documentos do arXiv publicados depois do corte de treino do Llama 3, divididos igualmente entre os três sites.
+- **ASCR (Argonne, Oak Ridge e Berkeley).** Aqui, com **APPFL e Globus**, o alvo foi ajuste fino de um LLaMA-2 7B em SMolInstruct, um dataset de química particionado por grupo de tarefa entre as facilities para criar um split **non-IID** que espelha especialização institucional — química de reação em Aurora, predição de propriedade em Polaris. A reserva foi co-agendada em 64 nós por facility, mais de **1.700 GPUs** no total, de **três fabricantes** (Intel, NVIDIA e AMD).
+
+O resultado que vale citar: a loss global de teste cai de forma monotônica de **1,39 para 0,37 em oito rodadas de agregação**, e fica abaixo do modelo local de cada facility em todos os casos. Ou seja, o modelo federado integrou conhecimento complementar sem que ninguém centralizasse dado bruto.
+
+## As três lições de sistemas
+
+São três, e todas apareceram nos dois deployments:
+
+- **Memória na agregação foi o primeiro gargalo.** Um modelo de 70B ocupa cerca de **130 GB por cópia** em precisão de 32 bits, e isso estoura login nodes compartilhadas. A saída veio de **quantização de mensagens**, transferência nativa de tensores e streaming por arquivo — resolvida em conjunto por times dos laboratórios e mantenedores dos frameworks. Quem já escolheu formato de peso para caber em hardware conhece esse cálculo — [4 ou 8 bits, GPTQ ou AWQ muda o que entra na VRAM](/blog/quantizacao-de-llm-como-escolher-4-bit-8-bit-gptq-e-awq) — e sabe o tamanho da briga, só que aqui ela acontece na camada de mensagem entre sites.
+- **Confiabilidade precisa ser desenhada.** Quanto maior o modelo e mais longa a execução, menos estado persistente no framework é conveniência e mais ele é requisito: a execução longa precisa ser **retomada**, não recomeçada do zero.
+- **Sincronização é a próxima fronteira.** A comunicação síncrona entre servidor e clientes domina falhas e tempo perdido em escala. É por isso que protocolos assíncronos ou de sincronização relaxada aparecem como o problema de sistemas mais consequente da agenda aberta.
+
+## A fila do cluster é parte do algoritmo
+
+Num estudo companheiro, sem reserva de nós, os jobs entram na fila de produção real de cada facility — e o atraso de admissão varia de forma substancial e imprevisível entre os sites, chegando a **dominar o tempo de parede** do treino.
+
+A resposta foi o **FedQueue**, que trata o atraso do scheduler como sinal de primeira classe: em vez de esperar todos os sites no mesmo compasso, o protocolo usa a fila para decidir quando agregar. O paper reporta **20% de melhora na loss final** e **60% mais rapidez** para atingir a acurácia-alvo, comparado a FedAvg, FedAsync, FedBuff e FedCompass.
+
+![Gráfico do paper com a curva do FedQueue em comparação com os protocolos síncronos e assíncronos avaliados](https://arxiv.org/html/2609.39803v1/figures/anl_fedqueue.png)
+
+*Imagem: figura do FedQueue no [texto integral do paper](https://arxiv.org/html/2609.39803).*
+
+É a mesma família de problema de quem divide GPU entre times sem leilão de prioridade, como na [política de fair-share que a Ai2 adotou para dividir capacidade](/blog/cluster-de-gpu-como-dividir-a-capacidade-entre-times-sem-leilao-de-prioridade). A diferença é de camada: lá se decide quem pega a máquina antes do job começar; aqui a fila entra **dentro do protocolo de treino**.
+
+## O iceberg: cinco estratos abaixo do modelo
+
+A figura que abre este texto é a melhor parte do paper, porque desmonta a ilusão de que federação é uma decisão de rede. O modelo treinado é a ponta visível. Abaixo da linha d'água existem cinco estratos, e cada um é um lugar onde a federação quebra:
+
+- **Arquitetura de dados.** O dado bruto fica local; o que precisa ser comum é o modelo de dados — ETL versionado, controle de qualidade, checagem de modalidade. E vale o aviso do paper: mesmo schema não garante mesmo significado. É assim que uma federação morre devagar, com os números fechando e as definições divergindo.
+- **Controles de privacidade e segurança.** Escolhidos contra um modelo de ameaça explícito, não adotados por padrão, com checagem de risco de liberação antes de qualquer coisa sair de um site.
+- **Confiança e verificação.** Como um site decide que código que ele não escreveu é seguro para rodar nos dados dele? A resposta é assinatura mais política de confiança por site: publishers e revisores assinam as aplicações, um hub distribui com as assinaturas e cada site aplica a sua própria política sobre os revisores em que confia. Sem isso, sobra revisão de segurança duplicada em cada site ou um revisor central que vira gargalo e ponto único de confiança. É a mesma pergunta que vale para qualquer artefato que você baixa de terceiros — e que já rendeu um [método para verificar um repositório do Hugging Face antes de confiar nele](/blog/modelo-e-codigo-nao-dado-como-verificar-um-repositorio-do-hugging-face).
+- **Governança e fatores sociotécnicos.** Modelo operacional, incentivos e catálogos que decidem o que de fato é compartilhado. O paper é direto: federações falham mais por coordenação entre pessoas, processo e tecnologia do que por falta de compute, e o compartilhamento segue capital social mais do que política escrita.
+- **Operações.** Onboarding, monitoramento, recuperação e offboarding entre sites que não compartilham hardware nem confiança.
+
+## Os cinco domínios de prontidão
+
+O paper adapta um quadro de prontidão de cinco domínios (vindo da sessão de prontidão do TPC 2026, de Roth e colegas) e mapeia cada domínio em um dos estratos. Serve como checklist antes de escalar:
+
+- **Purpose & Value.** Razão mensurável de existir: pergunta estreita e testável, disponibilidade de dado confirmada no site, limiares de sucesso acordados antes. Não corresponde a nenhum estrato — se isso não fecha, nada é construído.
+- **Agreements & Approvals.** Modelo operacional responsável, caminho de aprovação, termos de colaboração. Em domínio regulado, é frequentemente **o caminho crítico**. Traduzindo: o que atrasa é contrato, não GPU.
+- **Data Fitness.** Insumos harmonizados, validados e versionados.
+- **Risk & Justification.** Controles escolhidos contra ameaças explícitas, sustentados por uma cadeia de evidência de três partes: modelo de ameaça nomeando cenários e sensibilidades, justificativa de quais controles aquilo exige e checagem de risco de liberação antes de compartilhar modelo, métricas ou saídas.
+- **Run & Recover.** Reprodutível, observável e resiliente entre sites, com runtime aprovado do on-premise ao HPC.
+
+A disciplina é avaliar cada domínio com evidência, não com opinião: lacuna vira plano de remediação ou motivo para não escalar ainda.
+
+## Federar reduz movimento de dado, não risco
+
+Essa é a frase que eu levaria para qualquer reunião sobre o assunto. Atualizações, gradientes, métricas e saídas podem vazar informação mesmo quando o dado bruto nunca sai do site — e extrair o raciocínio de um modelo a partir dos pesos compartilhados é [ataque conhecido, não hipótese de laboratório](/blog/destilacao-adversarial-de-llm-o-que-e-o-ataque-que-extrai-o-raciocinio-do-modelo).
+
+O paper organiza a defesa em três perguntas, que dá para usar como roteiro:
+
+- **Quem pode conectar?** Identidade, autorização e gestão de certificados e chaves definem quem entra na federação.
+- **O que pode se mover?** Atualizações, métricas e saídas precisam de tecnologias de privacidade casadas com o modelo de ameaça, em camadas: encriptação, agregação segura, privacidade diferencial e computação confidencial, de modo que nenhum mecanismo sozinho seja o ponto único de falha.
+- **Onde pode rodar?** Execução confiável e atestação para os ambientes mais sensíveis.
+
+No tri-lab, só pesos cruzam as conexões entre sites — e o risco residual disso é exatamente o que a checagem de liberação e os controles ao redor administram.
+
+## Onde a evidência acaba
+
+Duas ressalvas que separam este texto de propaganda de fornecedor.
+
+**A primeira é a privacidade diferencial.** Ela pode degradar materialmente a utilidade do modelo, e a força da garantia costuma estar acoplada à perda de acurácia. As melhorias que aparecem na literatura recente — estimativa estatística sob ruído, aprendizado de subespaço de gradiente, orçamentos heterogêneos por cliente — foram demonstradas em ambientes controlados, não em sistemas de fronteira em produção, e muitas vezes em orçamentos de privacidade que deveriam ser reportados com clareza. O paper é explícito sobre não exagerar a conclusão.
+
+**A segunda é a generalização.** Os dois deployments compartilham um regime: sistemas on-premise de classe leadership, clientes em fila batch e âncoras de confiança co-localizadas. Os esforços do mesmo paper que rodam em saúde usam nuvem e respondem a estatuto — HIPAA nos EUA, PHIPA em Ontário, PIPEDA no Canadá — e não à política do site. Nesse regime, a pressão de memória desaparece, porque o agregador vira instância elástica; mas confiabilidade e sincronização voltam disfarçadas, já que cliente de nuvem não enfileira, porém rotaciona, e a rodada continua limitada pelo participante menos disponível. Não há nenhum deployment em centro da NSF, então parte das lições pode refletir o substrato do DOE mais do que a federação em si.
+
+## O que isso muda no Brasil
+
+A LGPD dá o enquadramento. O **art. 11** restringe o tratamento de dado pessoal sensível a hipóteses específicas, e o **art. 33** só permite transferência internacional nos casos que ele lista. Para saúde, financeiro e setor público, centralizar dado em um bucket único deixa de ser decisão puramente técnica e passa a ser decisão jurídica documentada.
+
+É exatamente aí que o argumento de federação fica forte: reduzir movimentação de dado e administrar o risco residual com controles, que é o princípio que o paper formula no fim da seção de prontidão.
+
+O segundo recado é menos óbvio e mais útil: em federação, **a velocidade de contratação, não o compute, define o ritmo**. Em setores regulados, quem manda no cronograma é o jurídico, o DPA e o comitê de dados — não a GPU. Quem entra num projeto desses planejando semanas de infraestrutura e ignorando meses de acordo costuma descobrir o gargalo tarde.
+
+## Como começar sem ser um laboratório nacional
+
+- **Piloto mínimo.** Dois ou três sites, uma tarefa clara, um modelo pequeno, agregação síncrona (FedAvg) e uma métrica local além da global. A régua é o modelo local de cada site: se o global não supera **todos** eles, a federação não pagou o próprio custo. No experimento do ASCR foi exatamente isso que apareceu — e é o resultado que justifica o investimento.
+- **Escolha o framework pelo teu chão.** O NVFlare é a plataforma orientada a produção; o APPFL ataca federação entre facilities de HPC via Globus; o Flower aposta em amplitude de ecossistema, com extensões de domínio como o NeuroFL, em neurociência. Os três têm documentação própria e aparecem no paper.
+- **Trate governança como código.** Contrato de dados versionado e validado, que viaja com a federação em vez de ser renegociado a cada projeto, é um dos itens que o paper lista como não resolvido. Justamente por isso: quem fizer primeiro deixa de renegociar do zero.
+
+## Perguntas frequentes
+
+**O que é aprendizado federado, em uma frase?**
+É treinar o modelo onde o dado está: cada site treina localmente e só pesos e atualizações vão para um agregador, que combina tudo num modelo global. O dado bruto nunca é centralizado.
+
+**Aprendizado federado dispensa a LGPD?**
+Não. Ele reduz a movimentação de dado, e isso muda o enquadramento de transferência internacional (art. 33), mas o dado continua sendo pessoal e a base legal continua necessária. E o risco não zera: atualizações, gradientes e métricas também podem revelar informação.
+
+**Dá para fazer federação sem supercomputador?**
+Dá. O próprio paper cita deployments em nuvem, em contexto de saúde, sob estatuto em vez de política de site. O que não escala de graça é o resto: identidade, contratos de dado, auditoria e processo de aprovação.
+
+**Federar deixa o treino mais lento?**
+Por rodada, quase sempre fica — a comunicação entre sites e a espera pelo participante mais lento cobram o preço. O estudo de fila do paper mostra que, sem reserva de nós, o atraso de admissão pode dominar o tempo de parede; é esse problema que o FedQueue ataca.
+
+**Por que não criptografar tudo e centralizar?**
+Criptografia em repouso move a pergunta para quem guarda a chave e para quem tem acesso ao ambiente, e não muda o que o estatuto ou o contrato permitem fazer com o dado. Além disso, o vazamento em federação não vem só do dado bruto: vem das atualizações, das métricas e das saídas — o que exige controle em camadas dos dois lados.
+
+## O que revisar depois
+
+- **Estável:** o mecanismo (o modelo viaja, o dado fica), os cinco estratos abaixo do modelo treinado, os cinco domínios de prontidão, as três lições de sistemas (memória na agregação, estado persistente para retomada, sincronização) e a cadeia de evidência de privacidade. Isso descreve a forma do problema, não um placar de fornecedor.
+- **Atualizável:** os números dos dois deployments (mais de 1.700 GPUs, loss de 1,39 para 0,37 em oito rodadas, os 20% e 60% do FedQueue), a posição do El Capitan no TOP500, as versões e capacidades dos frameworks citados e a lista de estatutos de saúde.
+- **Gatilhos de revisão:** (1) publicação de protocolo assíncrono estável com contabilidade de privacidade preservada em escala; (2) primeiro deployment fora do substrato DOE, em centro da NSF ou no EuroHPC; (3) mudança na regulamentação da ANPD sobre transferência internacional; (4) paper que quantifique vazamento residual de pesos compartilhados em federação real, e não em ambiente controlado.
+
+## Schema recomendado
+
+Para esta página, vale publicar marcação `Article` com headline, autor, `datePublished` e `dateModified`, mais um `FAQPage` com as cinco perguntas acima — são elas que têm chance de puxar resposta direta em busca generativa. Como o texto gira em torno de um conjunto estável de entidades (aprendizado federado, FedAvg, agregação segura, privacidade diferencial, NVFlare, Flower, APPFL, LGPD art. 11 e art. 33), um `DefinedTermSet` ajuda o motor a montar o grafo do tema. O básico continua valendo: um único `H1`, um `H2` por seção, links internos relativos e imagem de capa com alt descritivo.
+
+## Fontes
+
+- [From Pilots to Production: Lessons in Cross-Institutional Federated Training and Artificial Intelligence for Science — arXiv 2609.39803 (30/09/2026)](https://arxiv.org/abs/2609.39803)
+- [Texto integral do paper no arXiv, com figuras, tabelas e o apêndice do FedQueue](https://arxiv.org/html/2609.39803)
+- [Trillion Parameter Consortium 2026 — sessão Trustworthy Privacy-Preserved Federated Learning for Science, com os materiais e as palestras (ORNL)](https://github.com/ORNL/RealWorld_FL)
+- [Lei 13.709/2018 (LGPD) — texto legal com os arts. 11 e 33](https://www.planalto.gov.br/ccivil_03/_ato2015-2018/2018/lei/l13709.htm)
+- [ANPD — atos normativos e regulamentação da LGPD](https://www.gov.br/anpd/pt-br/acesso-a-informacao/institucional/atos-normativos)
+- [NVIDIA FLARE — documentação oficial da plataforma de federação](https://nvflare.readthedocs.io/en/main/index.html)
+- [Flower — documentação do framework de aprendizado federado](https://flower.ai/docs/framework/index.html)
+- [APPFL — documentação do framework para federação em HPC](https://appfl.ai/)
