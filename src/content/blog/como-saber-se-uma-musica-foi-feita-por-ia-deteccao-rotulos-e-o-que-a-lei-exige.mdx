@@ -1,0 +1,143 @@
+---
+title: "Como saber se uma música foi feita por IA: detecção, rótulos e o que a lei exige"
+date: "2026-10-15"
+description: "Deezer e YouTube Music já rotulam música gerada por IA, e o detector gratuito do Deezer varre playlists de 20 plataformas. Como a detecção funciona, onde ela erra e o que o artigo 50 do AI Act exige desde agosto de 2026."
+author: "Hernando Candido"
+tags: [Música com IA, Detecção de Conteúdo Sintético, Rotulagem de IA, EU AI Act, Deezer, YouTube Music, Proveniência, Direitos Autorais, Streaming]
+sponsored: false
+premium: false
+---
+
+# Como saber se uma música foi feita por IA: detecção, rótulos e o que a lei exige
+
+**Resposta curta:** existem três respostas para essa pergunta e elas não vêm do mesmo lugar. A plataforma pode **rotular** — o YouTube Music começou a exibir rótulo de música gerada por IA em **14/10/2026**, e o Deezer rotula desde **junho de 2025**. Você pode **testar** — o detector gratuito do Deezer varre playlists de **20 plataformas**, não só as dele. E existe a **lei**: desde **2 de agosto de 2026**, o artigo 50 do AI Act obriga quem gera conteúdo sintético a marcar a saída em formato legível por máquina. O detalhe que quase ninguém repete: **detecção é inferência estatística, não prova de autoria**. A própria Deezer fala em **99,8% de acurácia** e taxa de falso positivo **abaixo de 0,01%**.
+
+![Arte oficial do YouTube Music sobre os novos rótulos para música gerada por IA](https://storage.googleapis.com/gweb-uniblog-publish-prod/images/youtube-music-gen-ai-labels.max-1440x810.png)
+
+*Imagem: anúncio oficial dos rótulos de música com IA no YouTube Music, publicado em 14/10/2026.*
+
+Em **13/10/2026**, o Deezer anunciou um botão de ligar e desligar que remove música 100% gerada por IA da busca: faixas, álbuns e artistas relacionados. No dia seguinte, **14/10/2026**, o YouTube Music começou a exibir rótulo nas faixas criadas principalmente com IA generativa, com previsão de levar o rótulo para o app principal do YouTube.
+
+São duas notícias, mas um só movimento. E o movimento tem três camadas que costumam ser confundidas: **detecção** (o que a plataforma acha que sabe), **rotulagem** (o que ela te conta) e **marcação** (o que a lei obriga o gerador a embutir no arquivo).
+
+## O que a Deezer está fazendo, com números
+
+A Deezer foi a primeira plataforma a rotular música gerada por IA, em junho de 2025, e segundo ela mesma segue sendo a única a fazer isso de forma explícita. Os números que a empresa publicou em **13/10/2026**:
+
+- Mais de **42 milhões** de faixas geradas por IA detectadas e removidas das recomendações algorítmicas e editoriais **entre janeiro de 2025 e agosto de 2026**.
+- Mais de **14 milhões** de álbuns rotulados desde junho de 2025.
+- Cerca de **90 mil** faixas 100% geradas por IA por dia — em dias de pico, **mais de 50%** de tudo que é entregue à plataforma.
+
+O botão novo é mais estreito do que parece: ele tira o conteúdo sintético da **busca** e devolve para quem desativar. A música não é removida da plataforma. O que já acontece desde 2025 é a exclusão das recomendações algorítmicas e das playlists editoriais.
+
+Em **janeiro de 2026**, quando passou a licenciar a tecnologia para o resto da indústria, a Deezer já reportava cerca de **60 mil** faixas de IA por dia, ou **39%** da entrega diária. Em **junho de 2026**, a média era de **75 mil** por dia, **mais de 44%** do volume. O crescimento é a parte que interessa: em 18 meses, o conteúdo sintético saiu de anomalia para quase metade do que entra.
+
+## Como a detecção funciona de verdade
+
+Duas famílias de solução estão em campo, e elas resolvem problemas diferentes.
+
+- **Detecção de conteúdo.** O modelo olha o áudio e decide se aquilo foi gerado por máquina. É o que a Deezer faz: segundo a página corporativa da empresa, os modelos dela **analisam padrões de áudio em escala**, processando mais de **150 mil entregas por dia**, com falso positivo **abaixo de 0,01%**.
+- **Marcação de saída.** O gerador embute marca legível por máquina — marca d'água ou metadado de proveniência — no arquivo que produz. É o que o **artigo 50** exige de quem gera o conteúdo, não de quem distribui.
+
+A Deezer escolheu a primeira família e foi até o fim dela. A empresa depositou **duas patentes em dezembro de 2024**, publicadas pelos escritórios de patentes dos EUA e da Europa em **junho de 2026**, descrevendo dois métodos de detectar **assinaturas únicas** que separam conteúdo sintético de conteúdo autêntico. Em janeiro de 2026, ela dizia detectar música dos modelos generativos mais usados, citando **Suno** e **Udio**; em outubro, a lista incluía também o **Rifussion**. E afirmava ter avançado na generalização — detectar sem um dataset específico de treino. Em junho de 2026, falava em **99,8% de acurácia**.
+
+Por que essa distinção importa na prática? Porque **detecção generaliza e marcação é exata** — e as duas erram de formas opostas.
+
+A detecção funciona em qualquer faixa, inclusive nas que nunca passaram por um gerador conhecido, mas é probabilística: existe um resíduo de falso positivo. Aquela taxa de 0,01% parece pequena até você multiplicar pelo volume — são **dezenas de milhões** de faixas processadas por ano. A marcação é exata, porém depende de quem gera colaborar e sobrevive só enquanto ninguém remover o metadado. É por isso que a Deezer rotula e **exclui de recomendação** em vez de apagar: o custo do erro cai sobre um artista humano, e a empresa trata o rótulo como indicador, não como sentença.
+
+## Por que rotular deixou de ser escolha
+
+O **artigo 50 do AI Act** passou a valer em **2 de agosto de 2026**. Ele separa obrigações de quem **fornece** o sistema generativo e de quem **usa**:
+
+- **Fornecedores** de sistemas generativos precisam adicionar marcas legíveis por máquina que permitam detectar conteúdo gerado ou manipulado por IA.
+- **Usuários (deployers)** precisam informar quando expõem alguém a **deepfakes**, além de reconhecimento de emoções, categorização biométrica e texto gerado por IA publicado sobre assunto de interesse público sem revisão humana.
+- A fiscalização fica com as autoridades nacionais de vigilância de mercado, com o AI Office e, no caso das instituições da UE, com o EDPS.
+
+Isso vale para **todo** sistema generativo, não só para os classificados como de alto risco — inclusive para sistemas de código aberto, que não estão isentos.
+
+Quem já estava no mercado antes de 2 de agosto tem prazo extra para a parte de marcação legível por máquina: o acordo provisório do **AI Omnibus**, de maio de 2026, estendeu esse item até **2 de dezembro de 2026**. A data de 2 de agosto, porém, é a regra.
+
+Junto com a lei veio o manual: o **Código de Prática sobre Transparência de Conteúdo Gerado por IA**, versão final publicada em **10 de junho de 2026**, com cerca de **190 empresas e organizações** signatárias até o fim de julho de 2026. O código é voluntário, mas a obrigação é legal — a Comissão e o AI Board confirmaram que ele serve como ferramenta adequada para demonstrar conformidade. Quem não assinar vai ter que provar conformidade por meios próprios, caso a caso.
+
+O código tem duas seções: regras de **marcação e detecção** para fornecedores e regras de **rotulagem** para quem publica. E ele fecha uma taxonomia que a indústria estava improvisando:
+
+- **Totalmente gerado por IA** — quando o conteúdo inteiro saiu de um modelo, sem elemento humano nem controle editorial além do prompt.
+- **Parcialmente modificado por IA** — quando conteúdo humano pré-existente foi alterado por IA até virar deepfake ou texto de interesse público.
+
+Essa distinção é exatamente a que o Deezer usa na própria FAQ: música com elementos pontuais de IA dentro de um processo criativo humano é tratada de forma diferente de música 100% gerada.
+
+E rotular não é só conformidade: é o que o público está pedindo. Na pesquisa do Ipsos, **80%** concordam que música 100% gerada por IA deve ser rotulada e **45%** gostariam de filtrar esse conteúdo por completo. Do outro lado, a palavra IA usada sem contexto virou repelente para parte dos consumidores — o que já apareceu em [a crise de confiança na IA](/blog/a-crise-de-confiana-na-ia-60-dos-consumidores-rejeitam-e-as-empresas-comeam-a-ou), quando uma pesquisa mostrou 60% dos consumidores americanos rejeitando o rótulo de IA no marketing.
+
+A União Europeia publicou ainda um conjunto de **ícones oficiais** para rotular esse conteúdo — quatro variações, sendo que a lista de casos de uso do ícone de conteúdo totalmente gerado cita explicitamente **música ou arte totalmente compostas por IA**.
+
+![Ícone oficial da União Europeia para conteúdo totalmente gerado por IA](https://digital-strategy.ec.europa.eu/sites/default/files/2026-06/AI%20LABELS_3x2_AI%20GENERATED_black.png)
+
+*Imagem: ícone da UE para conteúdo totalmente gerado por IA, cuja lista de casos de uso inclui música composta inteiramente por IA.*
+
+![Ícone oficial da União Europeia para conteúdo parcialmente modificado por IA](https://digital-strategy.ec.europa.eu/sites/default/files/2026-06/AI%20LABELS_3x2_AI%20MODIFIED_black.png)
+
+*Imagem: ícone da UE para conteúdo humano parcialmente modificado por IA.*
+
+E tem uma brecha que interessa a quem faz música: quando o conteúdo faz parte de obra **evidentemente artística, criativa, satírica ou ficcional**, a obrigação de informar se reduz a uma divulgação que "não atrapalhe a exibição ou o aproveitamento da obra". A própria lista de casos de uso dos ícones repete a ressalva. Ou seja: a lei quer que o ouvinte saiba, e não quer destruir a experiência.
+
+Para áudio, a orientação em discussão é **aviso audível** — não legenda escondida. O texto de referência é o mesmo que já vale para o texto digital: aquele detalhe que abordei quando a Anthropic anunciou as marcas d'água do Claude, em [a marca d'água invisível do Claude não pega só quem cola](/blog/a-marca-dgua-invisvel-do-claude-no-pega-s-quem-cola-pega-voc-tambm). Lá a lição era que a marca prova **processamento**, não autoria. Aqui ela se repete em outra mídia.
+
+## O que isso muda para quem publica música
+
+Três consequências práticas, todas já em curso.
+
+**1. A detecção acontece na porta de entrada.** Desde janeiro de 2026, a Deezer licencia sua tecnologia de detecção para o resto do ecossistema: distribuidoras, detentores de direitos, sociedades de arrecadação e outras plataformas. Ela confirmou testes com a SACEM, sociedade de autores francesa, e a ferramenta é usada pela Billboard para identificar faixas de IA nos charts. Se você distribui música, a triagem pode acontecer antes de qualquer ouvinte te encontrar.
+
+**2. O dinheiro que some não é o da IA — é o do stream falso.** A Deezer reporta que faixas 100% de IA são uma fatia pequena do total de streams (entre **1% e 3%**), mas que até **85%** dos streams dessas faixas foram fraudulentos em 2025, contra **8%** de fraude no catálogo inteiro. Stream detectado como manipulado é **desmonetizado**. Quem usa IA e infla reprodução perde a receita além de perder o rótulo.
+
+**3. A pressão econômica é sobre o conjunto, não sobre a faixa.** Um estudo da CISAC com a PMP Strategy, citado pela Deezer, estima que cerca de **25%** da receita dos criadores esteja em risco até 2028, algo como **€ 4 bilhões**. É esse número que explica por que uma plataforma de streaming decidiu virar fornecedora de tecnologia de detecção.
+
+E no Brasil? Não existe regra equivalente em vigor. O **PL 2338/2023** foi aprovado pelo Plenário do Senado em dezembro de 2024 e remetido à Câmara dos Deputados em 17/03/2025, onde aguarda parecer do relator na comissão especial — situação consultada no site da Câmara em **15/10/2026**. Na prática, o artista brasileiro que distribui para plataformas globais já está sujeito às regras delas e, se o conteúdo circular na União Europeia, ao artigo 50.
+
+## Como verificar na prática
+
+1. **Varra suas playlists com o detector do Deezer.** É gratuito, funciona em **27 idiomas** e conecta contas de **20 das plataformas mais usadas**. A Deezer informou que **43%** das pessoas que migraram para ela tinham faixas de IA nas próprias playlists. O resultado é um retrato do que você já está ouvindo, não uma condenação.
+2. **Olhe o rótulo na plataforma.** No YouTube Music, o rótulo aparece na página do player e abre um menu com mais informação ao ser tocado. Faixas totalmente geradas na Deezer aparecem marcadas desde junho de 2025.
+3. **Desconfie do próprio ouvido.** No estudo encomendado pela Deezer ao Ipsos em novembro de 2025, com **9 mil pessoas em 8 países** — Brasil incluído —, **97%** não conseguiram distinguir duas músicas 100% de IA de uma música humana em teste cego.
+4. **Trate o resultado como indicador.** Falso positivo não é teoria: qualquer detector estatístico erra. Se você tem processo humano de composição, guarde projeto, stems e histórico de sessão. É o que responde a uma marcação errada.
+
+## Perguntas frequentes
+
+**Como saber se uma música foi feita por IA?**
+Você tem dois caminhos públicos: o rótulo que a plataforma exibe e o detector gratuito do Deezer, que varre playlists de 20 plataformas. Nenhum dos dois é prova de autoria — são inferências. A Deezer declara 99,8% de acurácia, o que implica erro em uma fração pequena, mas real, do volume processado.
+
+**O detector do Deezer é gratuito e funciona fora do Deezer?**
+É gratuito e foi feito exatamente para isso: conectar a conta de outra plataforma e escanear as playlists. Segundo a Deezer, 43% de quem migra para o serviço já carrega faixas de IA nas playlists, então o resultado costuma surpreender.
+
+**Usar IA na minha música me obriga a rotular?**
+Depende do quanto de IA entrou. A taxonomia que virou padrão separa conteúdo **totalmente gerado** de conteúdo **parcialmente modificado**, e o Deezer trata música com elementos pontuais de IA dentro de um processo humano de forma diferente da música 100% sintética.
+
+**E se minha música for marcada como IA por engano?**
+Quem tem processo humano documentado consegue contestar. Guarde projeto, stems, autosave e histórico de sessão. Sem material de processo, sobra a contestação por contrato com a distribuidora — e o ônus fica com você.
+
+**A regra europeia vale para artista brasileiro?**
+Vale para o conteúdo que circula na União Europeia e para as plataformas que operam lá, independentemente do país do artista. No Brasil, o PL 2338/2023 ainda depende de parecer do relator na Câmara e não tem regra equivalente em vigor.
+
+## O que revisar depois
+
+- **Estável:** o mecanismo (detecção por padrão de áudio versus marcação na saída), a divisão entre totalmente gerado e parcialmente modificado, a natureza estatística da detecção e a economia da fraude de streams. Isso descreve a forma do problema, não um placar de fornecedor.
+- **Atualizável:** os números da Deezer (90 mil faixas por dia, 42 milhões de exclusões, 14 milhões de álbuns rotulados, 99,8% de acurácia, falso positivo abaixo de 0,01%), a lista de modelos detectáveis, a contagem de signatários do código de prática, o prazo de 2 de dezembro de 2026 e a data de lançamento do botão de filtro.
+- **Gatilhos de revisão:** (1) segunda plataforma a rotular música de IA em escala; (2) aprovação final do PL 2338/2023, que traria obrigação equivalente em português; (3) norma técnica de marcação legível por máquina virando padrão reconhecido para áudio; (4) decisão judicial sobre falso positivo derrubando rótulo de artista humano.
+
+## Schema recomendado
+
+Para esta página, `Article` com headline, autor, `datePublished` e `dateModified`, mais `FAQPage` com as cinco perguntas acima — são elas que têm chance de resposta direta em busca generativa. O texto gira em torno de um conjunto estável de entidades (detecção de conteúdo sintético, rotulagem de IA, artigo 50 do AI Act, código de prática, Deezer, YouTube Music, proveniência de áudio), então um `DefinedTermSet` ajuda o motor a montar o grafo do tema. O básico segue valendo: um único `H1`, um `H2` por seção, links internos relativos e imagens com alt descritivo.
+
+## Fontes
+
+- [Deezer Newsroom — botão para excluir música gerada por IA (13/10/2026)](https://newsroom-deezer.com/2026/10/deezer-ai-music-toggle/)
+- [Deezer Newsroom — detector gratuito de música de IA para playlists (11/06/2026)](https://newsroom-deezer.com/2026/06/check-ai-generated-music-in-playlists-with-deezer-detector/)
+- [Deezer Newsroom — 85% dos streams de faixas de IA são fraude e foram demonetizados (29/01/2026)](https://newsroom-deezer.com/2026/01/ai-generated-music-deezer-selling-detection-tool/)
+- [Deezer for Business — como a tecnologia de detecção funciona](https://business.deezer.com/ai-detection/)
+- [YouTube Official Blog — rótulos de música com IA no YouTube Music (14/10/2026)](https://blog.youtube/news-and-events/youtube-music-ai-labels/)
+- [Comissão Europeia — Código de Prática sobre Transparência de Conteúdo Gerado por IA](https://digital-strategy.ec.europa.eu/en/policies/code-practice-ai-generated-content)
+- [Comissão Europeia — diretrizes sobre as obrigações de transparência do artigo 50](https://digital-strategy.ec.europa.eu/en/policies/guidelines-ai-transparency-obligations)
+- [Comissão Europeia — ícones da UE para rotular conteúdo gerado por IA](https://digital-strategy.ec.europa.eu/en/policies/eu-icons-labelling-ai-generated-content)
+- [EU AI Act — texto do artigo 50](https://artificialintelligenceact.eu/article/50/)
+- [EU AI Act — guia prático do artigo 50, com as datas e as quatro situações cobertas](https://artificialintelligenceact.eu/transparency-rules-article-50/)
+- [Câmara dos Deputados — tramitação do PL 2338/2023, aguardando parecer do relator](https://www.camara.leg.br/proposicoesWeb/fichadetramitacao?idProposicao=2487262)
