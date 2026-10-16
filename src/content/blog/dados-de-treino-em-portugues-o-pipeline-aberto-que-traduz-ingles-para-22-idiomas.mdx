@@ -1,0 +1,147 @@
+---
+title: "Dados de treino em português: o pipeline aberto que traduz inglês para 22 idiomas"
+date: "2026-10-16"
+description: "A NVIDIA e o AI4Bharat publicaram 2,8 trilhões de tokens em 22 línguas indianas gerados por tradução sintética, com o pipeline aberto junto. O que esse método ensina para quem precisa de dado em português: quatro etapas, rubrica de qualidade, reparo por feedback e romanização em dois passos."
+author: "Hernando Candido"
+tags: [Dados de treino, Pré-treino, LLM, Nemotron, NVIDIA, AI4Bharat, Dados sintéticos, Português, Tradução automática, Open source]
+sponsored: false
+premium: false
+---
+
+# Dados de treino em português: o pipeline aberto que traduz inglês para 22 idiomas
+
+**Resposta curta:** em 16 de outubro de 2026, a NVIDIA e o AI4Bharat (IIT Madras) publicaram o **Nemotron-pretraining-Indic-v1**: cerca de **2,8 trilhões de tokens** em **22 línguas indianas**, gerados por **tradução sintética** a partir de um corpus em inglês — e liberaram junto o **pipeline** que produziu tudo isso. O valor da notícia não está no corpus indiano. Está no **método**: quatro etapas (traduzir, avaliar com rubrica, reparar o que reprova, romanizar em dois passos), roteadas por **configuração por idioma**, não por código novo.
+
+![Diagrama das quatro etapas do pipeline de dados do Nemotron Indic: tradução de documentos, avaliação com rubrica, reparo e remapeamento de escrita](https://cdn-uploads.huggingface.co/production/uploads/68d2fec8856b85d927e44d32/PCtm5uAGrdrp8kgHXb6y3.png)
+
+*Figura 2 do anúncio da NVIDIA: o fluxo de quatro etapas para doze idiomas, implementado com NeMo Data Designer e Gemma-4-31B-it. Fonte: NVIDIA/Hugging Face, 16/10/2026.*
+
+## O gargalo nunca foi o modelo
+
+A frase que resume o problema veio de quem vive dele. **Mitesh Khapra**, que chefia o AI4Bharat, diz que a tecnologia de línguas indianas fica atrás do inglês porque **não existe dado suficiente** nessas línguas.
+
+Não é falta de arquitetura, GPU ou paper. É falta de **texto em quantidade e em variedade** — o tipo de material que a curadoria de anos já depositou em inglês: matemática, código, perguntas e respostas, texto web limpo.
+
+O mesmo vale para o português, com outro tamanho. O maior corpus monolíngue aberto de português que consigo verificar é o **Aurora-PT**, do Itaú Unibanco com o ICTi: **331 bilhões de tokens** no tokenizador do **GPT-2**. Os autores do paper que apresenta o corpus escrevem que, até onde sabem, ele é o maior corpus monolíngue de português disponível abertamente.
+
+Três vinte e oito trilhões contra trezentos e trinta e um bilhões. Mas **não compare esses dois números direto** — volto nisso na seção de armadilhas, porque é exatamente o tipo de conta que a própria NVIDIA avisa que não se deve fazer.
+
+## O que foi publicado, com números
+
+O corpus se chama **Nemotron-pretraining-Indic-v1** e cobre **22 línguas**, as que constam do Oitavo Anexo da Constituição indiana — a primeira língua de **97% dos indianos**, ou quase **1,2 bilhão** de pessoas no Censo de 2011. A conta de tokens é esta:
+
+- **2.601,0 bilhões** de tokens em escrita nativa;
+- **224,6 bilhões** de tokens romanizados (a língua escrita em alfabeto latino, não traduzida para inglês);
+- **34 configurações** de idioma e escrita no total; escrita nativa para os 22 idiomas, romanização para 12.
+
+![Gráfico de composição do corpus por tokens em escrita nativa e romanizada](https://cdn-uploads.huggingface.co/production/uploads/68d2fec8856b85d927e44d32/VmVFMKjOsoNkEKfQ7cRnh.png)
+
+*Figura 1 do anúncio: 2.601,0 bilhões de tokens em escrita nativa e 224,6 bilhões romanizados. Fonte: NVIDIA/Hugging Face, 16/10/2026.*
+
+Duas informações que a manchete costuma engolir. A primeira: a contagem usa o **tokenizador do Gemma-4**, e o próprio anúncio avisa que o número muda conforme o tokenizador. A segunda: o corpus **ainda não está disponível** — a NVIDIA diz que ele sai "em breve", junto com o pipeline aberto.
+
+O pipeline, esse já está no ar. E o que ele gera não veio da nada: a matéria-prima são **15 subconjuntos do Nemotron-CC-v2**, o corpus em inglês da própria NVIDIA que já passou por curadoria de web, código, matemática e perguntas e respostas.
+
+O modelo que recebeu esse dado é o **Nemotron 3.5 Super VL**, liberado em 15 de outubro de 2026 — aberto, com **120 bilhões de parâmetros** no total e **12 bilhões ativos** por token. Essa notação de dois números tem motivo de existir, e eu já expliquei a mecânica em [por que modelos esparsos cabem em uma GPU](/blog/mixture-of-experts-o-que-sao-modelos-esparsos-e-por-que-78b-cabem-em-1-gpu).
+
+## Como o pipeline funciona, em quatro etapas
+
+Antes de qualquer código, a lógica. O fluxo para os doze idiomas prioritários é este:
+
+1. **Traduzir o documento inteiro**, não parágrafo por parágrafo. O prompt separa o que deve ser traduzido do que deve ser preservado: código, equações, URLs e formatação ficam intactos.
+2. **Avaliar a tradução contra o original**, com rubrica inspirada no MQM — *faithfulness*, *fluency*, *terminology*, *style* e *format preservation* —, cada erro classificado como menor, maior ou crítico, tudo somado numa nota de **0 a 100**.
+3. **Reparar o que ficou abaixo do corte.** Nos doze idiomas prioritários, o corte é **75 de 100** e o feedback da avaliação vira instrução de reescrita; o resultado é reavaliado contra o mesmo corte. Esse laço recuperou **438,4 bilhões de tokens**, já incluídos no total.
+4. **Romanizar um subconjunto**, em **dois passos**: primeiro a tradução em escrita nativa, depois a conversão para o alfabeto latino. Cada resultado romanizado é verificado de novo, com checagem extra de conformidade de escrita.
+
+A parte técnica que eu acho mais bonita é que **nada disso é código por idioma**. Existe um único tipo de coluna, `document-translation`, e cada linha roda sempre a mesma sequência: traduzir, avaliar, corrigir. O que muda por idioma é configuração — `translation_mode`, `model_alias`, `evaluator_model_alias`, `enable_windowing`, `target_language_script`.
+
+O framework por trás é o **NeMo Data Designer**, com a coluna empacotada no plugin `data-designer-nemotron-indic-translation`. Ele não traz modelo embutido: você registra os *endpoints* (NVIDIA, OpenAI, vLLM) e o framework cuida de batching, paralelismo e validação.
+
+## Não é o mesmo problema 22 vezes
+
+Esse é o pedaço que separa o tutorial do engenheiro. A documentação da própria NVIDIA explica por que uma única chamada de tradução repetida 22 vezes não funciona: **nenhum modelo é o melhor em todos os lugares**, **nem toda escrita é alcançável** e **documento longo degrada qualidade**.
+
+A solução foi roteamento por dificuldade:
+
+- **12 idiomas de maior recurso** — bengali, gujarati, hindi, kannada, malaiala, marathi, nepalês, odia, punjabi, tâmil, telugu e urdu. Tradutor e juiz são o mesmo modelo de uso geral, **Gemma-4-31B-it**, com laço completo de avaliação e reescrita.
+- **8 idiomas de menor recurso** — assamês, bodo, dogri, caxemira, concani, maithili, sânscrito e sindi. Tradutor é o especialista **Bodhan AI Indic Translate**, julgado pelo Gemma no mesmo tipo de rubrica, com corte próprio — e **sem reescrita**. A razão é prática: reescrever nesses idiomas faz o tradutor entrar em laço de repetição em vez de melhorar.
+- **Santali** — tradução em **janelas sobrepostas** de até **2.048 tokens**, com extração da parte não sobreposta e remontagem do documento. Acima disso, a qualidade despenca.
+- **Manipuri** — o modelo até traduz Manipuri, mas não na escrita Meitei Mayek. A saída foi traduzir para Manipuri em escrita **bengali** e depois aplicar um **remapeamento determinístico** de caractere para caractere, porque as duas escritas representam a mesma língua. O remapeador não toca em blocos de código, código inline nem URLs.
+
+E por que a romanização vai em dois passos em vez de pedir a tradução latina direto? A NVIDIA comparou as duas rotas. A de um passo **alucinou mais e deixou mais inglês residual**; a de dois passos foi mais limpa em todos os casos, com ganho maior em idiomas como malaiala. Eles aceitaram o custo extra de cerca de **1,5 vez mais tokens** porque a diferença importava para dado de pré-treino.
+
+## O que melhorou de fato
+
+O teste mais direto é o do *continued pretraining*: o treino continuado do Nemotron 3.5 Super VL tinha orçamento configurado de **100 bilhões de tokens**, dos quais **10% (10 bilhões)** iam para uma mistura de texto indic sintético e natural. A comparação é entre o checkpoint imediatamente antes e o imediatamente depois dessa etapa.
+
+A nota subiu nos **cinco** benchmarks indianos reportados — **MILU**, **Indic MMLU-Pro**, **Indic ARC-Challenge**, **Indic ARC-Easy** e **Indic GSM8K** —, com ganhos de **4,98 a 9,82 pontos percentuais**.
+
+![Gráfico de antes e depois da etapa de treino continuado, com ganhos de 4,98 a 9,82 pontos percentuais](https://cdn-uploads.huggingface.co/production/uploads/68d2fec8856b85d927e44d32/ZPR2A2wDoNW6OVb4-GX63.png)
+
+*Figura 3 do anúncio: o Nemotron 3.5 Super VL antes e depois da etapa de treino continuado com dados indic. Fonte: NVIDIA/Hugging Face, 16/10/2026.*
+
+E aqui vem a parte que quase nenhum resumo do anúncio repete. O próprio texto diz que essa comparação **mistura dado sintético e natural** e é feita **entre etapas de treino** — portanto **não isola a contribuição do corpus sintético**. O que os números sustentam é a receita combinada, não a tradução sozinha. Bônus de leitura: o GSM8K não inclui odia, porque a avaliação estourou o limite de contexto de serviço.
+
+Comparando o modelo liberado com a geração anterior, o placar é mais misto: sobe em **cinco dos seis** benchmarks de tarefa, melhora nas **quatro** dimensões do **IndiVibe** (benchmark de prompts no estilo assistente da Sarvam AI) e **cai 2,04 pontos** no IFEval 1.5.
+
+## As cinco armadilhas que o próprio relatório admite
+
+Documentação boa é documentação que diz onde falha. Estas cinco estão escritas na fonte e valem para qualquer projeto de dado sintético, não só para este.
+
+1. **O tradutor é o juiz.** Nos doze idiomas, o mesmo Gemma-4-31B-it traduz e avalia a própria tradução. Modelo avaliando o próprio trabalho tem viés estrutural, e a NVIDIA assume isso.
+2. **A contagem de tokens depende do tokenizador.** É por isso que **331 bilhões** (Aurora-PT, tokenizador GPT-2) e **2.601 bilhões** (Indic, tokenizador Gemma-4) não são a mesma régua. Comparar os dois como se fossem é erro de quem quer manchete.
+3. **Corpus retido não é orçamento de treino.** O total de 2,8 trilhões descreve o que foi aceito e guardado, reescritas incluídas — não o número de tokens que o modelo viu.
+4. **Proveniência não é deduplicação semântica.** O pipeline mantém o identificador do documento-fonte, o que elimina duplicata de processamento. Dois textos parecidos vindos de fontes diferentes continuam sendo dois registros.
+5. **A avaliação é majoritariamente automática.** A revisão humana existe, mas é amostrada e de cobertura desigual entre idiomas. O texto admite que o material retido ainda pode conter erro.
+
+Junto disso vem a limitação honesta: **tradução não substitui texto escrito originalmente na língua**, nem garante conhecimento e cultura locais. A orientação é combinar com texto natural e avaliar a mistura para o caso de uso.
+
+## Como aplicar isso no português
+
+Nada aqui é exclusivo da Índia. O roteiro é genérico: documentos-fonte em uma língua com curadoria → tradução → rubrica → reparo → proveniência. O que muda é para onde você aponta o cano.
+
+- **Você não precisa de cluster para comer na ponta.** O plugin funciona com **qualquer endpoint compatível**, inclusive um servidor local. Para gerar dado de instrução e de Q&A em português, o custo é de inferência, não de treino.
+- **A escala pode ser menor.** Ninguém aqui vai gerar 2,8 trilhões de tokens. Mas o mesmo laço de avaliar-e-reparar serve para um conjunto de fine-tuning, com corte de nota que você define.
+- **Antes de usar qualquer corpus, confira cinco coisas:** qual tokenizador contou os tokens, qual a licença, se a proveniência está preservada, quanto do conjunto é sintético e quanto é natural, e se a separação de treino e teste foi feita considerando registros que derivam do mesmo documento. Esse último ponto é o que mais contamina avaliação.
+- **Trate geração e aceitação como etapas separadas.** O plugin devolve candidatos e notas; quem decide o que entra no seu corpus é a sua política de filtro.
+
+Se o que te preocupa é verificar o que já existe pronto antes de baixar, o mesmo tipo de disciplina vale para o outro lado do repositório: eu já escrevi sobre [como verificar um repositório do Hugging Face antes de confiar nele](/blog/modelo-e-codigo-nao-dado-como-verificar-um-repositorio-do-hugging-face). Aquele artigo era sobre modelo e código. Este fecha a terceira peça, que é o dado.
+
+E se o dado não pode sair do lugar — o cenário clássico de banco, saúde e jurídico no Brasil —, o problema muda de novo: aí não é gerar dado sintético, é [treinar sem mover o dado](/blog/aprendizado-federado-como-treinar-ia-quando-o-dado-nao-pode-sair-do-lugar).
+
+## Perguntas frequentes
+
+**Esse pipeline serve para português?**
+Serve como método, não como dado. O plugin traduz para 22 línguas indianas; o que você reaproveita é o desenho em quatro etapas, a rubrica de cinco critérios com erro classificado por severidade e o roteamento por dificuldade. Para português, a mesma lógica se aplica invertida: o inglês continua sendo a fonte mais curada e o português o destino.
+
+**O português precisa disso?**
+Depende do que você está construindo. O português tem corpus aberto substancial — o Aurora-PT tem 331 bilhões de tokens —, mas a distribuição não é a mesma do inglês: falta material denso em matemática, código e raciocínio em português. É exatamente essa lacuna que tradução de documentos curados ataca.
+
+**Preciso treinar um modelo para usar isso?**
+Não. O pipeline é uma ferramenta de geração de dado. O uso mais barato hoje é construir conjunto de instrução, avaliação e Q&A em português com um modelo que você já consegue rodar, aplicando a rubrica e o laço de reparo.
+
+**O corpus já está disponível?**
+O pipeline está aberto; o corpus de 2,8 trilhões de tokens a NVIDIA anuncia como "em breve". Se você for instrumentar alguma coisa com base nesse anúncio, conte com o plugin e a documentação, não com o dataset.
+
+**Quem assina o trabalho?**
+NVIDIA com o AI4Bharat, o laboratório de línguas indianas do IIT Madras, com o Bodhan AI. A curadoria humana de qualidade é amostrada, não exaustiva — está dito na fonte.
+
+## O que revisar depois
+
+- **Estável:** as quatro etapas do pipeline; a rubrica de cinco critérios com erros classificados por severidade e nota de 0 a 100; o roteamento por dificuldade (modelo de uso geral para línguas de maior recurso, especialista para as de menor); a janela sobreposta para documento longo; a romanização em dois passos; e a proveniência por identificador de fonte. Isso descreve a forma do problema, não o placar de um fornecedor.
+- **Atualizável:** os totais de tokens (2.601,0 + 224,6 bilhões), o valor recuperado por reparo (438,4 bilhões), o corte de 75 de 100, os ganhos de 4,98 a 9,82 pontos percentuais, a queda de 2,04 no IFEval 1.5, a lista de benchmarks e o par de modelos usado (Gemma-4-31B-it e Bodhan AI Indic Translate, que envelhecem rápido). A **disponibilidade do corpus** é o item mais volátil: hoje está anunciado, não publicado.
+- **Gatilhos de revisão:** (1) corpus disponibilizado no Hub, com número final diferente do anunciado; (2) corpus aberto em português, construído pelo mesmo método, com número verificável; (3) mudança de rubrica ou de corte no plugin, que quebra comparação com os números acima; (4) a NVIDIA publicar a contribuição isolada do corpus sintético, separada do texto indic natural.
+
+## Schema recomendado
+
+Para esta página, `Article` com headline, autor, `datePublished` e `dateModified`, mais `FAQPage` com as cinco perguntas acima — são elas que têm chance de resposta direta em busca generativa. O texto gira em torno de um conjunto estável de entidades (dados de pré-treino, dado sintético, tradução automática, rubrica de qualidade, proveniência, romanização, Nemotron, AI4Bharat, corpus em português), então um `DefinedTermSet` ajuda o motor a montar o grafo do tema. O básico segue valendo: um único `H1`, um `H2` por seção, links internos relativos e imagens com alt descritivo.
+
+## Fontes
+
+- [NVIDIA / Hugging Face — Scaling Indic Pretraining: 2.8 Trillion Tokens and an Open Data Generation Pipeline (16/10/2026)](https://huggingface.co/blog/nvidia/scaling-indic-pretraining)
+- [NVIDIA NeMo Data Designer — Creating Data Similar to the Nemotron Indic Corpus (documentação do plugin, com a rubrica e o roteamento por idioma)](https://docs.nvidia.com/nemo/datadesigner/latest/dev-notes/nemotron-indic-translation)
+- [GitHub — NVIDIA-NeMo/DataDesignerPlugins: plugin data-designer-nemotron-indic-translation](https://github.com/NVIDIA-NeMo/DataDesignerPlugins)
+- [NVIDIA — Open From Data Center to Desktop: Nemotron 3.5 Super VL e Bolt (15/10/2026)](https://blogs.nvidia.com/blog/nemotron-3-5-super-vl/)
+- [NVIDIA — dataset Nemotron-CC-v2, a matéria-prima em inglês do corpus indiano](https://huggingface.co/datasets/nvidia/Nemotron-CC-v2)
+- [arXiv 2605.00086 — NorBERTo: A ModernBERT Model Trained for Portuguese with 331 Billion Tokens Corpus (v1 em 30/04/2026, revisado em 29/07/2026)](https://arxiv.org/abs/2605.00086)
+- [Hugging Face — dataset Aurora-PT, 331 bilhões de tokens em português brasileiro (Itaú Unibanco e ICTi)](https://huggingface.co/datasets/Itau-Unibanco/Aurora-PT)
