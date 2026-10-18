@@ -1,0 +1,225 @@
+---
+title: "Avaliador não é auditor: acesso de funcionário não é auditoria de IA"
+date: "2026-10-18"
+description: "A Anthropic deu acesso nível funcionário a seis pesquisadores da METR e abriu mão do veto de publicação. Pelas definições que o próprio setor usa, isso ainda é avaliação, não auditoria: faltam critérios fixados antes e alguém a quem o auditor responda."
+author: "Hernando Candido"
+tags: [Auditoria de IA, Avaliação Independente, Anthropic, METR, Governança de IA, AEF-1, Segurança de IA, PACT AI, Transparência, Agentes de IA]
+sponsored: false
+premium: false
+---
+
+# Avaliador não é auditor: acesso de funcionário não é auditoria de IA
+
+**Resposta curta:** em 15/10/2026 a Anthropic deu a **seis pesquisadores da METR** o acesso que ela chama de nível funcionário: crachá, notebook da empresa, mesa e ferramentas internas equivalentes às do time de risco dela — **sem direito de veto** sobre o que eles publicam. É o único time no topo dos **três níveis** que a empresa está montando. Pelas definições que o próprio setor adotou, isso ainda **não é uma auditoria**. Auditoria exige critérios combinados antes do trabalho começar e alguém que responda a terceiros pela conclusão. Nenhuma das duas coisas existe. O que existe é **avaliação com poder de investigação** — e um contrato que decide, nos detalhes, quanto disso chega até você.
+
+A confusão não é acadêmica. É o que permite uma empresa dizer "somos auditados" sem ter passado por auditoria nenhuma.
+
+Em 25/09/2026, a PACT AI publicou um texto curto sobre exatamente isso: cobertura de imprensa usando **investigação, avaliação, assessment, auditoria e verificação** como sinônimos. São coisas diferentes, que respondem perguntas diferentes, com níveis de confiança diferentes.
+
+Vale aprender a diferença antes de aceitar a próxima manchete.
+
+## O que a Anthropic anunciou, em fatos
+
+O anúncio está no blog da empresa, com uma atualização no dia seguinte. Os pontos:
+
+- **Seis funcionários da METR** receberam hardware, espaço físico e acesso a ferramentas internas equivalentes ao do time de avaliação de risco da própria Anthropic.
+- Fora **três categorias** (dados de clientes, informação protegida por sigilo advogado-cliente e arquitetura dos modelos), os funcionários da Anthropic são orientados a compartilhar informação com eles como compartilhariam com um colega.
+- A Anthropic **não pode vetar a publicação**. Pode exigir tarja em informação que caia nas categorias acima.
+- A METR publica a própria análise de risco, incidentes e práticas — e pode dizer publicamente se as tarjas foram justificadas.
+- O time é **isolado** do resto da METR: outros pesquisadores da organização não veem o que ele vê.
+
+Junto veio a arquitetura de acesso, em **três níveis**:
+
+- **Nível 1:** investigação de escopo estreito, com acesso definido pela empresa e publicação **mediante aprovação** dela.
+- **Nível 2:** mais informação e publicação **sem aprovação**, com a empresa ainda podendo exigir remoção de categorias específicas — e o avaliador podendo dizer o que acha das remoções.
+- **Nível 3:** o acordo com a METR. Acesso nível funcionário e direitos de publicação do nível 2.
+
+Além da METR, a Anthropic cita **SecureBio** revisando o capítulo de armas químicas e biológicas do Risk Report de agosto, e uma parceria em construção com **Accenture e Faculty** (avaliação, red team, alinhamento e testes de salvaguarda). Conversas iniciais com a Hugging Face.
+
+A analogia usada pela empresa é a de **examinador residente em banco**: o regulador põe gente dentro da instituição porque quem está fora não enxerga a posição de risco real.
+
+## O que "não pode vetar" ainda deixa em aberto
+
+O detalhe mais importante do anúncio é uma frase que passa batido: **a Anthropic decide o que cai ou não nas categorias de tarja**.
+
+Ou seja, o veto formal saiu pela porta; a classificação entrou pela janela. Se uma informação é "arquitetura de modelo" ou "dado de cliente", quem responde é a empresa avaliada. A METR mantém o direito de dizer que recebeu pouco acesso — e essa é a salvaguarda real.
+
+Existe um mecanismo concreto para isso. Na sua política de transparência de processo, publicada em 14/10/2026, a METR descreve o que chama de **resumo de tarjas**: o direito de anexar unilateralmente e em destaque um resumo dizendo se a empresa tarjou informação importante para as conclusões do relatório.
+
+![Resumo de tarjas anexado pela METR ao seu Frontier Risk Report piloto](https://metr.org/assets/images/our-approach-to-working-with-ai-companies/frontier-risk-report-redaction-summary.png)
+
+É um desenho inteligente: a conversa sobre tarja deixa de ser "pode ou não pode" e vira "essa tarja muda a conclusão?". E o leitor recebe o aviso mesmo quando o conteúdo não vem.
+
+Só que o resumo é uma declaração, não uma checagem. Quem lê continua dependendo de duas partes negociarem de boa-fé.
+
+## O antes: dez dias úteis de API e revisão do texto
+
+Para medir o tamanho do que mudou, vale olhar o padrão anterior — o mesmo laboratório, um mês antes.
+
+Na avaliação de pré-lançamento do **Claude Opus 5.5**, publicada em 22/09/2026, a METR informa no topo: acordo **não remunerado**, acesso à API por **10 dias úteis**, cinco tarefas de teste. E a frase que interessa: a METR escreveu o resumo inicial e **a Anthropic teve a oportunidade de revisar e editar o texto**. A METR assinou a versão final que foi para o system card.
+
+![Trecho do relatório da METR sobre o escopo da avaliação do Claude Opus 5.5](https://metr.org/assets/images/our-approach-to-working-with-ai-companies/claude-opus-5-5-scoping.png)
+
+Isso não é acusação: era o formato da avaliação de pré-lançamento. O avaliador via o modelo pela API, escrevia, e o laboratório passava o pente antes da publicação. **Acesso raso com revisão editorial** — o oposto do que foi anunciado agora.
+
+Tem um detalhe nesse mesmo relatório que vale mais que a manchete. A METR menciona **um outro time da própria METR**, com acesso elevado, que investigava aceleração de P&D dentro da Anthropic. Esse time compartilhou as conclusões, mas **não pôde compartilhar as evidências nem o raciocínio** com quem escrevia o resumo público.
+
+Ou seja: a hierarquia de acesso já existe dentro da própria METR, e ela cobra pedágio na hora de publicar.
+
+## O que o acesso compra, na prática
+
+O argumento a favor do acesso profundo não é abstrato. Tem um caso documentado.
+
+Em março de 2026, um pesquisador da METR, **David Rein**, passou **três semanas** fazendo red team de parte dos sistemas internos de monitoramento de agentes da Anthropic. A empresa deu acesso substancial, disponibilizou equipe para responder perguntas e o exercício achou **várias vulnerabilidades novas** — algumas corrigidas depois. O relatório tem 26 páginas e a versão compartilhada com o resto da METR foi tarjada.
+
+O que ele encontrou não aparece em teste de API, nunca:
+
+- Uma **variável de ambiente** fazia o tráfego deixar de ser registrado como vindo do Claude Code, e o monitoramento caía.
+- Chamadas de **subagente não eram monitoradas** (corrigido em menos de 24 horas).
+- A estimativa dele: algo entre **5 e 20 bugs básicos** exploráveis por um agente que soubesse onde olhar.
+- **Jailbreak de monitor** simples e confiável: o próprio pesquisador estimou algo como **20% de sucesso** contra o monitor Opus 4.6 sem cadeia de raciocínio.
+
+A ressalva vem do próprio relatório e é importante: nada disso **derrubava** as alegações centrais do Sabotage Risk Report da Anthropic. E a conclusão geral foi que o monitoramento pegaria **alguns** ataques ao longo de dias ou semanas, não todos.
+
+Guarde esse parágrafo. Ele é a melhor defesa de que acesso de dentro vale algo — e, ao mesmo tempo, a prova de que a conclusão depende de quem está lendo.
+
+## Avaliador não é auditor
+
+Aqui está o vocabulário que o setor começou a fixar, e que a METR diz seguir explicitamente.
+
+**Investigador** estabelece o que aconteceu depois de um incidente. Reconstrói eventos, aponta causa provável, não dá veredito. O modelo maduro é o NTSB americano: apuração de fatos, sem parte adversa, sem poder de punir, e relatório inadmissível em ação civil. Segundo a PACT, no caso OpenAI/Hugging Face de agosto de 2026 a METR passou **seis dias dentro da OpenAI**, revisou cerca de **1.300 transcrições de agente** e **1,2 milhão de mensagens** de um fórum.
+
+**Avaliador** mede o que o sistema faz: testes, benchmarks, red team. Produz achados — não conclusão. A norma de assurance ISAE 3000 tem um lugar definido para esse papel, o de quem "mede ou avalia o objeto contra os critérios". E a PACT faz a advertência que todo mundo deveria colar na parede: **não presuma que avaliador é independente**. Independência depende de como ele foi escolhido, de quem paga e de quem decidiu o que ele testa.
+
+**Assessor** julga risco: emite uma caracterização fundamentada sobre se algo é adequado para um propósito. É a categoria em que caem as IVOs da lei californiana (SB 813) e do FRONTIER Act americano.
+
+**Auditor** conclui. E auditoria tem quatro condições que precisam valer **ao mesmo tempo**:
+
+- os critérios são definidos **antes** do trabalho começar;
+- o auditor é independente da empresa auditada;
+- o resultado é uma **conclusão**, não uma lista de observações;
+- o auditor responde a **alguém que não é o cliente** pela qualidade do trabalho.
+
+Repare no tamanho do buraco. Para IA de fronteira, não existe critério combinado antes — a ciência anda mais rápido que o padrão. O único standard internacional de IA com certificação de terceira parte acreditada é a **ISO/IEC 42001**, e ela certifica **processos de governança**, não o sistema de IA em si.
+
+Traduzindo: o que a Anthropic fez é o teto do que existe hoje. E o teto ainda não é auditoria.
+
+## As quatro perguntas antes de acreditar em "somos auditados"
+
+A PACT fecha o texto com um roteiro de quatro perguntas. É a parte mais útil de tudo que saiu nessas semanas:
+
+1. **Quais eram os critérios?**
+2. **Quem definiu esses critérios?**
+3. **Que informação isso me dá?**
+4. **De quem o executor é independente?**
+
+Se a resposta da primeira for "não havia critério formal", você não está diante de auditoria. Está diante de avaliação — o que pode ser ótimo, desde que ninguém chame de outra coisa.
+
+E tem um contraste que ilustra a pergunta 4 melhor que qualquer definição. A PACT registra que a **Accenture**, primeiro avaliador embarcado da Anthropic, é **financiada diretamente pela Anthropic** — informação dela, não do anúncio da empresa. A METR, na sua política, diz que **não aceita pagamento nem doação de laboratórios de fronteira** e que recusa verba quando uma empresa teria influência sobre ela.
+
+Mesmo rótulo ("avaliador embarcado"), níveis de assurance diferentes. E acesso físico parecido não iguala os degraus: o que separa o topo é poder publicar **sem aprovação**. A própria Anthropic admite no texto que "ainda não existem padrões sobre que informação avaliadores embarcados devem acessar".
+
+## O padrão que já existe: AEF-1
+
+Não é preciso inventar estrutura. Existe um standard pronto, do **AI Evaluator Forum**, versão 1 de 04/12/2025: o **AEF-1**, condições mínimas de operação para avaliação independente de terceiros.
+
+São cinco princípios, cada um com condições específicas:
+
+- **Acesso e recursos suficientes:** acesso técnico, informação, poder computacional, tempo e proteção contra represália (o que o standard chama de safe harbor).
+- **Conflito de interesse minimizado:** remuneração contingente, controle organizacional, política e declaração de conflito, recusa de integrantes, acordos separados.
+- **Autonomia analítica:** escopo, autonomia da avaliação, acesso direto e controle editorial.
+- **Métodos e resultados transparentes:** transparência metodológica, direito de divulgação, nenhuma liberação condicionada, nenhuma deturpação, prazos, tarjas e aviso de tarja.
+- **Proteção de informação sensível:** termos de publicação, integridade da avaliação, informação confidencial e divulgação responsável.
+
+O avaliador que segue o padrão publica o checklist junto com o resultado — e, quando não consegue cumprir um item, **registra qual não cumpriu e por quê**.
+
+Dois detalhes valem ouro para quem contrata esse tipo de trabalho. O primeiro é **remuneração contingente**: pagar o avaliador só se ele achar (ou não achar) um resultado é conflito de interesse listado no standard. O segundo é o **aviso de tarja**, que transforma "tarjamos por segurança" em item auditável.
+
+E tem um fato que muda a conversa de patamar: o **AI Office da União Europeia endossou partes centrais do AEF-1** como forma de provedores cumprirem as provisões de independência do Código de Prática para IA de Propósito Geral. Ou seja: o padrão deixa de ser boa prática voluntária e vira caminho de conformidade.
+
+## O limite honesto: tudo isso é voluntário
+
+A parte que quase ninguém cita está na mesma política da METR, e é dela:
+
+A METR continua **dependente** de as empresas aceitarem participar, dar acesso e permitir publicação. Boa parte da informação que ela usa não pode ser verificada por ela, e pode ter sido filtrada de forma adversária. E, mesmo com transparência sobre limitações, uma empresa pode usar o direito de negar acesso ou tarjar para controlar a evidência que chega ao público.
+
+Tem um exemplo burocrático que resume o problema: às vezes o **acordo de confidencialidade trata a própria existência do acordo como confidencial**. Você não pode nem dizer que assinou.
+
+A política da METR também admite o que **não** impede: entrar em acordo restritivo e dar à contraparte poder de veto sobre as conclusões — desde que seja permitido divulgar que esse poder existe.
+
+E não é só ela. A Apollo Research, em 30/09/2026, escreveu que o impacto da avaliação embarcada depende de três coisas: o acesso que o avaliador recebe, os recursos que tem e se o achado **carrega peso nas decisões** sobre o desenvolvimento. Sem a terceira, o resto vira relatório na gaveta.
+
+O que isso significa na prática? Que a pergunta certa não é "tem acesso?", e sim quatro outras: **quem escolhe, quem paga, quem pode publicar e quem responde pela conclusão.**
+
+Sobre a primeira, aliás, vale olhar a política de escala da Anthropic. Desde a versão 3.2 (29/04/2026), um órgão interno, o **LTBT**, pode pedir revisão externa de Risk Report e **aprovar a escolha** dos revisores externos. E a versão 3.4 (08/07/2026) passou a exigir que o Risk Report público **indique onde houve tarja** — além de permitir dividir a revisão entre vários avaliadores, desde que todas as partes do relatório sem tarja sejam vistas por pelo menos um deles.
+
+Avaliaram quem escolhe. Não quem conclui.
+
+## Minha opinião
+
+O anúncio em si é menos importante do que parece. O que vale mesmo é que o setor finalmente escreveu o próprio vocabulário — e agora dá para cobrar.
+
+Meu problema com a cobertura é o atalho. "A Anthropic abriu as portas para auditoria independente" é uma frase que soa definitiva e não é verdadeira. Abriu as portas para **avaliação com acesso profundo e direito de publicação**, que é um avanço real e mensurável — o suficiente para achar uma variável de ambiente que desliga monitor, coisa que auditoria de papel nunca acharia.
+
+Só que a palavra "auditoria" carrega uma promessa que ninguém entregou: critério acordado antes e responsabilidade profissional pela conclusão. Enquanto não existir isso, "auditado" é marketing com sotaque técnico.
+
+E tem o outro lado, que a própria METR escreve sem maquiar: ela depende de boa vontade. Um avaliador que precisa ser convidado, que não pode checar tudo e cuja publicação pode ser tarjada não é um fiscal. É um convidado com acesso — e a diferença entre os dois é exatamente o que separa evidência de relações públicas.
+
+## O que isso muda para quem constrói
+
+Se você vai **contratar** uma avaliação externa do seu modelo ou produto, essas são as cláusulas que decidem o valor do que você recebe:
+
+- **Escopo e prazo por escrito**, publicáveis. Sem isso ninguém consegue comparar dois relatórios.
+- **Lista de acesso** explícita: o que o avaliador vê, onde roda e por quanto tempo.
+- **Controle editorial**: quem escreve, quem revisa e se a empresa pode editar o texto.
+- **Categorias de tarja fechadas antes** e, idealmente, um terceiro classificando o que cai nelas.
+- **Direito ao resumo de tarja**: o avaliador pode dizer, em destaque, se algo importante foi escondido.
+- **Prazos para tarja**, senão a publicação vira refém.
+- **Titularidade ou licença forte** do que o avaliador produz, para a empresa não poder recolher o relatório depois.
+- **Sem remuneração contingente.** Se o pagamento depende do resultado, não é avaliação.
+
+Se você **constrói agentes**, o análogo interno vale igual: acesso em níveis, log que não pode ser desligado por variável de ambiente, monitoramento tratado como infraestrutura de segurança e relatório de incidente que diga o que foi omitido.
+
+Para o caso de incidente, a METR publicou em 28/07/2026 o roteiro mais concreto que existe: quais perguntas uma investigação externa precisa responder, que acesso isso exige e como os achados devem ser compartilhados.
+
+Isso conversa direto com dois textos daqui: [como isolar a rede de um agente de avaliação](/blog/eval-com-internet-e-producao-como-isolar-a-rede-do-seu-agente-de-ia) e [como avaliar um agente que mexe no banco sem confiar no resumo dele](/blog/como-avaliar-um-agente-de-ia-que-mexe-no-banco-estado-final-nao-resumo). E o motivo de o monitoramento importar tanto está no [microVM que separa o agente da máquina e não da rede](/blog/sandbox-para-agente-de-ia-o-que-o-microvm-isola-e-onde-a-rede-vaza).
+
+## Perguntas frequentes
+
+**A Anthropic foi auditada?**
+Não. Foi avaliada por terceiros com acesso nível funcionário e direito de publicação. Auditoria exige critérios definidos antes do trabalho e um auditor que responda a alguém que não seja o cliente — nenhuma das duas condições está atendida para IA de fronteira hoje.
+
+**Acesso nível funcionário garante independência?**
+Não. Independência depende de quem escolhe o avaliador, quem paga e quem define o que é testado. Um time com acesso total, mas financiado pela empresa avaliada, tem assurance diferente de um time sem pagamento dela.
+
+**O que é o AEF-1?**
+Um standard do AI Evaluator Forum, versão 1 de dezembro de 2025, com cinco princípios de condições mínimas para avaliação independente: acesso, conflito de interesse, autonomia analítica, transparência e proteção de informação sensível. O avaliador publica o checklist junto do resultado.
+
+**Por que tarja é o ponto crítico?**
+Porque a empresa avaliada decide o que cai nas categorias de tarja. Se a classificação for ampla, a publicação perde conteúdo sem que o leitor saiba o que faltou. O resumo de tarja e o direito de contestar são o contrapeso.
+
+**Isso importa para quem não é laboratório de fronteira?**
+Importa na hora de comprar avaliação externa ou montar um time interno de avaliação. Escopo, controle editorial, prazos e conflito de interesse são as cláusulas que separam um relatório útil de um selo decorativo.
+
+## O que revisar depois
+
+- **Estável:** a taxonomia investigador, avaliador, assessor e auditor; as quatro condições da auditoria; o mecanismo de resumo de tarja; os cinco princípios do AEF-1; a distinção entre acesso e independência. Isso descreve a estrutura do problema, não um anúncio.
+- **Atualizável:** os seis nomes e o acordo específico da METR; os três níveis da Anthropic e quem está em cada um; a lista de avaliadores parceiros (SecureBio, Accenture, Faculty, Hugging Face); a versão do AEF-1; o status da SB 813 e do FRONTIER Act.
+- **Gatilhos de revisão:** (1) publicação do primeiro relatório da METR sob o acordo de nível 3, que mostra na prática o que foi tarjado; (2) outro laboratório adotar o mesmo modelo — segundo o TechCrunch, OpenAI, Google, Meta, Nvidia e xAI também assinaram o acordo da Casa Branca sobre superinteligência; (3) o AEF-1 ganhar versão 2 ou virar exigência formal no Código de Prática europeu; (4) a ISO/IEC 42001 publicar esquema de certificação para sistemas, não só para processos.
+
+## Schema recomendado
+
+Para esta página: `Article` com headline, autor, `datePublished` e `dateModified`, mais `FAQPage` com as cinco perguntas acima — são as que têm chance de resposta direta em busca generativa. O grafo de entidades é estável (auditoria de IA, avaliação independente, AEF-1, ISO/IEC 42001, METR, Anthropic, conflito de interesse, tarja), então vale um `DefinedTermSet` para os quatro papéis da taxonomia. E o de sempre: um único `H1`, um `H2` por seção, links internos relativos e imagens com alt descritivo.
+
+## Fontes
+
+- [Anthropic — An update on independent evaluators (15/10/2026, atualizado em 16/10)](https://www.anthropic.com/news/an-update-on-independent-evaluators)
+- [METR — Our approach to working with AI companies (14/10/2026)](https://metr.org/blog/2026-10-14-our-approach-to-risk-assessment/)
+- [PACT AI — An AI Evaluator Is Not an Auditor (25/09/2026)](https://pactai.org/resources-news/an-ai-evaluator-is-not-an-auditor)
+- [AI Evaluator Forum — AEF-1: Minimum Operating Conditions for Independent Third Party AI Evaluations (v1, 04/12/2025)](https://aievaluatorforum.org/initiatives/minimum-operating-conditions)
+- [METR — Summary of the predeployment evaluation of Claude Opus 5.5 (22/09/2026)](https://metr.org/blog/2026-09-22-claude-opus-5-5/)
+- [METR — Red-Teaming Anthropic's Internal Agent Monitoring Systems (26/03/2026)](https://metr.org/blog/2026-03-25-red-teaming-anthropic-agent-monitoring/)
+- [METR — How independent researchers could investigate AI propensities after misalignment incidents (28/07/2026)](https://metr.org/blog/2026-07-28-investigating-ai-propensities-after-incidents/)
+- [Apollo Research — Principles for Embedded Evaluations (30/09/2026)](https://www.apolloresearch.ai/blog/principles-for-embedded-evaluations)
+- [Anthropic — Responsible Scaling Policy, versões 3.2 e 3.4 e Risk Reports](https://www.anthropic.com/responsible-scaling-policy)
+- [TechCrunch — Anthropic is letting METR researchers look under the hood with employee-level access (15/10/2026)](https://techcrunch.com/2026/10/15/anthropic-is-letting-metr-researchers-look-under-the-hood-with-employee-level-access/)
