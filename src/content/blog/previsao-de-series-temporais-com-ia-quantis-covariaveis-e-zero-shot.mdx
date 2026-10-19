@@ -1,0 +1,192 @@
+---
+title: "Previsão de séries temporais com IA: quantis, covariáveis e zero-shot"
+date: "2026-10-19"
+description: "Um modelo de 209M parâmetros passou a liderar GIFT-Eval, TIME e fev-bench sem ajuste por dataset, e roda em CPU. O que muda de verdade quando a previsão deixa de ser um número e vira 21 quantis — e por que cada covariável tem papel e direção."
+author: "Hernando Candido"
+tags: [Séries Temporais, Previsão, Modelos Fundacionais, Timestral, Mistral, Quantis, Covariáveis, GIFT-Eval, TimesFM, Engenharia de IA]
+sponsored: false
+premium: false
+---
+
+# Previsão de séries temporais com IA: quantis, covariáveis e zero-shot
+
+**Resposta curta:** em **15/10/2026** a Mistral lançou o **Timestral**, uma família de modelos de previsão de **5M a 209M** parâmetros. O maior deles ficou em primeiro entre os modelos **pré-treinados e zero-shot** nos três benchmarks públicos da área — **GIFT-Eval**, **TIME** e **fev-bench** — e roda **em CPU**: **140 ms** para prever um dia à frente a partir de três semanas de histórico de 15 minutos, em 8 threads. O ranking é a manchete. O que muda o seu pipeline é outra coisa: a saída não é um número, são **21 quantis** por passo de tempo, e cada coluna de entrada tem **papel** — alvo, covariável do passado ou covariável conhecida no futuro.
+
+Previsão de série temporal é onde a IA encosta no dado chato: medidor de fábrica, volume de acesso, pedido de cliente, consumo de energia.
+
+É também uma das poucas áreas em que a régua já existia antes de o modelo chegar. ARIMA, regressão linear, naive sazonal. Modelo fundacional não aposenta essa régua: ele muda o ponto de partida de "ajustar um modelo para cada série" para "usar um modelo que já viu muita série".
+
+A diferença é grande o bastante para virar benchmark próprio. E pequena o bastante para você não trocar nada antes de rodar um backtest no seu dado.
+
+## O que a Mistral lançou, em fatos
+
+Os números do anúncio e do cartão do modelo, separados do marketing:
+
+- **Quatro tamanhos:** 5M, 28M, 123M e 209M parâmetros, mesma arquitetura e mesma receita de treino.
+- **Saída probabilística:** 21 quantis por passo, de 0,01 a 0,99, sem cruzamento entre eles.
+- **Entrada multivariada:** as variáveis de uma mesma série são previstas em conjunto, não uma por vez.
+- **Contexto de até 32.768 passos** e horizonte de até **1.024 passos** em um único forward pass.
+- **Sem GPU na inferência.** Um dia à frente, a partir de três semanas de histórico de 15 minutos, em CPU de 8 threads: **10 ms** no 5M e **140 ms** no 209M.
+- **Pesos em fp32:** 21 MB (5M), 111 MB (28M), 490 MB (123M) e 837 MB (209M).
+- **Licença dividida:** o código do repositório é **Apache 2.0**, os pesos são **Modified MIT**. Não é a mesma licença.
+- **Deploy:** on-premise, VPC ou ambiente **air-gapped**, com adaptação via Mistral Forge.
+
+Agora o ranking, que é onde mora a confusão:
+
+- **GIFT-Eval**, MASE médio geométrico: **0,658** no Timestral-209M, contra **0,661** do t0-gamma, **0,667** do TimesFM-3, **0,696** do Toto-2.0-2.5B e **0,698** do Chronos-2. Menor é melhor.
+- **GIFT-Eval**, CRPS: **0,446** contra **0,452**, **0,456**, **0,476** e **0,485**.
+- **TIME**, MASE: **0,626** contra **0,637**, **0,640**, **0,642** e **0,662**. Em CRPS: **0,522** contra **0,534**, **0,536**, **0,539** e **0,556**.
+- **fev-bench**, MASE skill score: **39,49**, e aqui maior é melhor.
+
+![Gráfico de barras do GIFT-Eval por MASE médio geométrico, com o Timestral-209M no topo entre as dez primeiras entradas](https://mistral.ai/_astro/GMean%20MASE_ZLHXlK.webp)
+
+Repare na margem. No GIFT-Eval, primeiro e segundo lugar estão separados por **0,003** de MASE. Isso não é uma revolução, é uma vitória apertada em um benchmark que reúne 23 datasets, 144 mil séries e 177 milhões de pontos, em sete domínios e dez frequências.
+
+A Mistral também afirma que o modelo supera o estado da arte anterior usando **dois terços dos parâmetros**, e que o 28M bate o Chronos-2, cerca de quatro vezes maior, no GIFT-Eval e no TIME.
+
+Duas ressalvas que o próprio material carrega. A primeira: "primeiro" aqui significa primeiro **entre modelos pré-treinados e zero-shot**, não primeiro entre tudo. A segunda: os resultados foram **submetidos** aos leaderboards do GIFT-Eval e do TIME, e o relatório técnico com os detalhes ainda não havia sido publicado na data do anúncio.
+
+Ou seja: os números que você acabou de ler vêm do blog e do cartão do modelo, não de um paper revisado. Isso não os torna falsos. Torna-os verificáveis só até certo ponto.
+
+## Antes disso, o que era previsão
+
+Vale entender a linha do tempo, porque ela explica por que um modelo de 209M parâmetros é notícia.
+
+**Primeira geração:** ARIMA, regressão linear, suavização exponencial. São ajustados a **uma série** e aprendem só com o histórico daquela série. Funcionam muito bem quando a série é longa, estável e você tem paciência para diagnosticar estacionariedade.
+
+**Segunda geração:** redes profundas como PatchTST. Conseguem aprender padrões não lineares **entre séries relacionadas**, mas normalmente são treinadas do zero em cada dataset. O que aprenderam em um conjunto não viaja para outro domínio.
+
+**Terceira geração:** modelo fundacional. Pré-treinado em um corpus grande e diverso, aprende padrões que **transferem** entre séries. Prevê zero-shot em dados que nunca viu, inclusive onde há pouco histórico.
+
+Por que isso importa para quem trabalha no Brasil com varejo, energia, logística ou saúde? Porque o problema real dessas áreas não é uma série difícil. É **milhares de séries curtas** — produto por loja, medidor por subestação, exame por unidade — onde ajustar um modelo por série é exatamente o ponto em que o projeto morre, por custo operacional e não por falta de técnica.
+
+## A saída certa não é um número
+
+Aqui está a mudança de contrato que quase ninguém discute.
+
+Um previsor clássico devolve **um número** para cada passo futuro. Você decide com ele. Só que a decisão quase nunca é simétrica: sobrar estoque custa capital parado, faltar custa venda perdida e cliente irritado. Um número único esconde justamente a informação que separa os dois cenários.
+
+O Timestral devolve **21 quantis**. O `forecast.median` é o p50; o `forecast.quantile(0.9)` é o cenário em que 90% dos futuros ficam abaixo. Com isso você calibra decisões diferentes com o mesmo modelo: p90 para dimensionar capacidade, p10 para estoque de segurança, largura do intervalo para definir limiar de alerta.
+
+O treino usa **pinball loss sobre 21 quantis**, que é uma aproximação discreta do **CRPS**. E aí vem a parte que costuma passar batido em comparação de modelos.
+
+**MASE e CRPS medem coisas diferentes.** MASE é erro absoluto médio escalonado pelo erro de um baseline naive: mede acerto de ponto, e menor é melhor. CRPS é uma regra de pontuação própria para previsão probabilística: pune quem dá intervalo estreito demais e erra, e premia quem descreve a incerteza de forma honesta. Também menor é melhor.
+
+Um modelo pode ser ótimo em MASE e mediocre em CRPS. Por isso o leaderboard do GIFT-Eval expõe ranking separado para cada métrica, e por isso você deveria olhar as duas colunas antes de escolher.
+
+![Gráfico de barras do benchmark TIME por CRPS médio geométrico, com o Timestral-209M no topo entre as dez primeiras entradas](https://mistral.ai/_astro/GMean%20CRPS_2isTwd.webp)
+
+Na prática: se o seu consumo da previsão é "quantos pedir", MASE basta. Se é "qual o pior caso que eu aguento", CRPS é a métrica que importa.
+
+## Covariável tem papel e direção
+
+Segunda mudança de contrato, e a mais fácil de errar.
+
+No Timestral, cada série de entrada recebe um **papel**: alvo, **covariável do passado** (conhecida só dentro da janela de contexto) ou **covariável conhecida no futuro** (conhecida no contexto e no horizonte). As covariáveis passam informação para os alvos e **nunca leem os alvos**. E só a covariável conhecida no futuro enxerga a janela de previsão.
+
+Parece detalhe de API. É a defesa contra o erro que mais destrói projeto de previsão: **vazamento**.
+
+Exemplos concretos:
+
+- **Conhecida no futuro:** calendário de feriados, escala de produção, promessa de campanha já agendada, previsão meteorológica.
+- **Só do passado:** leitura de sensor, volume de pedidos do dia anterior, preço praticado no passado.
+- **Nunca:** o valor real do que você quer prever, nem uma coluna que só é preenchida depois do fato.
+
+Se você passar a versão "definitiva" de uma coluna que na operação só chega com atraso, o backtest fica maravilhoso e a produção decepciona. O modelo aprendeu a ler a resposta.
+
+Tem ainda a parte categórica, que é onde muita gente improvisa. Dia da semana e estado de máquina (rodando, parado, em manutenção) não são números: codificar como 1, 2, 3 impõe uma ordem e uma escala que não existem. O modelo aceita esses campos como **categóricos**.
+
+Para alvo univariado, cada linha categórica é codificada por alvo, série a série: a categoria `c` vira a média do contexto mais a soma dos desvios daquela categoria, dividida por um mais a contagem — a forma suavizada clássica de target encoding sobre o contexto preenchido para frente. Valor ausente forma categoria própria, e categoria que não apareceu no contexto cai na média da série. Alvo multivariado recebe os códigos crus.
+
+## Por que mascarar o alvo tira o alvo do contexto
+
+Essa é a contribuição técnica do artigo, e vale entender mesmo que você nunca use o Timestral.
+
+A abordagem comum em decoders causais — a mesma usada no Toto 2.0 e no TimesFM-3 — é **mascaramento de patch contíguo**: você esconde os valores que quer prever e treina o modelo para reconstruí-los. O problema é sutil: ao esconder o valor, ele também deixa de existir como **contexto** para previsões posteriores, porque fica idêntico a um valor faltante. O modelo perde a página junto com a resposta.
+
+O Timestral chama a alternativa de **Decoupled Horizon Forecasting (DHF)**. O histórico completo permanece na sequência e **tokens de previsão aprendidos** leem o histórico antes deles. Cada valor observado serve ao mesmo tempo como alvo e como contexto, lacunas reais continuam marcadas como faltantes, e o comprimento do horizonte de treino passa a ser ajustável de forma independente do aumento de dados faltantes.
+
+Traduzindo para o que isso muda: o modelo pode aprender com séries que têm buraco — e quase toda série de produção tem.
+
+O treino tem duas etapas. Primeiro, pré-treino em escala com dados **puramente sintéticos**, contexto de 8192 passos. Depois, pós-treino em mistura de dados reais e sintéticos com contexto **quatro vezes maior**, chegando aos 32.768. A maior parte do corpus de treino é sintética: processos univariados com tendência, sazonalidade e ruídos variados, combinados por um sintetizador multivariado que injeta dependências não lineares entre eles.
+
+Isso explica o resultado e explica o limite. Explica o resultado porque dados sintéticos cobrem dinâmicas que o mundo real não entrega em volume. Explica o limite porque, se a maior parte do treino é sintética, a adaptação ao seu domínio continua sendo sua — e a Mistral vende exatamente essa parte no Forge.
+
+## Como rodar, na prática
+
+O pacote é enxuto: PyTorch, NumPy, safetensors e huggingface_hub. Roda em CPU ou GPU.
+
+Instalação direto do repositório: `pip install git+https://github.com/mistralai/timestral.git`, com **Python 3.10 ou mais novo** e **torch 2.4 ou mais novo**. Ou clone e use `uv sync --frozen`.
+
+O uso mínimo é `from timestral import TimestralForecaster` e `from_pretrained("mistralai/Timestral-209M")`. O contexto aceita três formatos: uma série só, lote de séries, ou lote com várias variáveis por série. **NaN marca valor faltante**, e existe uma máscara de observação para marcar mais.
+
+Três comportamentos que você precisa saber antes de plugar isso em produção:
+
+- **Contexto é cortado em 32.768 passos**, mantendo os mais recentes. Série muito longa não ganha nada em passar disso.
+- **Horizonte acima de 1.024 passos** é previsto bloco por bloco, e a mediana de cada bloco volta como contexto do próximo. Isso significa que erro de previsão se acumula — não é o mesmo regime de um único forward pass.
+- **Covariáveis não são previstas.** Elas condicionam. Linhas de covariável conhecida no futuro cujos valores são todos 0 ou 1 são tratadas como indicadores.
+
+Sobre tamanho, o dado mais útil do anúncio é este: o 28M é **cinco vezes mais rápido** que o 209M, e o 123M fica a **0,2%** do score do 209M com **três quartos da latência**. Para a maioria dos casos, a resposta chata é o 123M. O 5M existe para rodar em fluxo contínuo, no limite.
+
+## Onde o benchmark não salva
+
+Benchmark mede desempenho geral. A Mistral diz isso no próprio texto, e é a frase mais importante do anúncio: dados de produção podem ser bem diferentes em comportamento e estrutura, e ainda mudam com o tempo, quando o mercado troca de regime, o equipamento degrada e o padrão de demanda se desloca.
+
+O que checar antes de confiar:
+
+- **O rótulo zero-shot tem definição.** No GIFT-Eval, um modelo só é marcado como zero-shot se não houver vazamento de dados de teste **e** ele não tiver usado nenhum split de treino do próprio benchmark. O leaderboard tem coluna separada para vazamento. Adjetivo não substitui coluna.
+- **O protocolo é generoso por desenho.** A avaliação usa os padrões do forecaster e o histórico completo até 32.768 passos como contexto, sem ajuste por dataset. Isso é ótimo para comparar modelos e diferente de "funciona assim no seu pipeline".
+- **Margem de milésimo não sobrevive ao seu dado.** 0,003 de MASE no GIFT-Eval é sinal de que os modelos de fronteira estão próximos, não de que existe um vencedor claro.
+- **Licença.** Se o jurídico perguntar se é MIT, a resposta correta é: o código é Apache 2.0, os pesos são Modified MIT, com restrição de uso que viole direitos de terceiros. Ler antes de embarcar.
+- **Primeiro entre zero-shot não é primeiro.** Modelos ajustados por dataset, ensembles e híbridos com ARIMA continuam na disputa em séries específicas.
+
+## Checklist antes de trocar o ARIMA
+
+Se você chegou até aqui pensando em testar, a ordem importa mais que o modelo:
+
+1. **Backtest com origem rolante**, no mesmo horizonte que você usa em produção, e com as covariáveis que existirão na hora da previsão.
+2. **Baseline obrigatório: naive sazonal.** Se o modelo não bate o naive no seu dado, o problema não é o modelo.
+3. **MASE para ponto, CRPS para distribuição.** Nunca compare as duas como se fossem a mesma coisa.
+4. **Congele as covariáveis pelo que está disponível no momento da previsão**, não pelo que o data warehouse tem hoje.
+5. **Meça o custo do erro nos dois sentidos.** Se sobra e falta custam diferente, otimize o quantil que reflete esse custo, não a média.
+6. **Versione o checkpoint e a janela de contexto.** Previsão sem versão não é reproduzível.
+
+E um atalho de leitura útil: se o seu problema é capacidade, [como dividir GPU entre times sem leilão de prioridade](/blog/cluster-de-gpu-como-dividir-a-capacidade-entre-times-sem-leilao-de-prioridade) usa a mesma lógica de orçamento e previsão de demanda. Se o assunto é escolher tamanho de modelo por latência, [roteamento de modelos](/blog/roteamento-de-modelos-llm-como-equilibrar-custo-latencia-e-qualidade-em-producao) tem o mesmo trade-off. E se a dúvida é por que 209M parâmetros resolvem, [modelos esparsos](/blog/mixture-of-experts-o-que-sao-modelos-esparsos-e-por-que-78b-cabem-em-1-gpu) explica a diferença entre parâmetro total e parâmetro ativo.
+
+## Perguntas frequentes
+
+**O que é um modelo fundacional de série temporal?**
+É um modelo pré-treinado em um corpus grande e diverso de séries temporais, capaz de prever séries que nunca viu sem treino adicional. A diferença em relação ao ARIMA é que o conhecimento não fica preso a uma série nem a um dataset.
+
+**Zero-shot quer dizer que não preciso treinar nada?**
+Para começar, sim: o modelo prevê direto no seu dado. Mas benchmark mede desempenho geral. Em produção, com mudança de regime e sazonalidade própria, o ajuste fino no seu domínio continua sendo o que separa um piloto de um sistema.
+
+**Quantil é a mesma coisa que intervalo de confiança?**
+Não. Intervalo de confiança descreve incerteza sobre um parâmetro estimado. Quantil de previsão descreve a distribuição do **valor futuro**: o p90 é o valor que 90% dos futuros ficam abaixo. É a leitura certa para dimensionar capacidade e estoque.
+
+**Dá para rodar sem GPU?**
+Sim, e é uma das razões do tamanho pequeno. Em CPU de 8 threads, um dia à frente a partir de três semanas de histórico de 15 minutos leva 10 ms no modelo de 5M e 140 ms no de 209M.
+
+**Serve para série curta, com pouco histórico?**
+É exatamente o caso em que a transferência zero-shot ajuda: o modelo não depende só dos seus dados. Ainda assim, valide com backtest e mantenha o naive como baseline, porque série curta também é série com pouco sinal.
+
+## O que revisar depois
+
+- **Estável:** os três papéis de covariável e a regra de direção única; a saída em 21 quantis e a diferença entre MASE e CRPS; a explicação do DHF contra mascaramento de patch; os limites de contexto e horizonte; a divisão de licença entre código e pesos.
+- **Atualizável:** as posições e os números de MASE e CRPS nos três leaderboards; a latência medida no seu hardware; a publicação do relatório técnico; a disponibilidade comercial do Mistral Forge; os resultados de TimesFM-3, Chronos-2 e Falcon-2.0 conforme forem atualizados.
+- **Gatilhos de revisão:** (1) sair o relatório técnico com os detalhes de treino e avaliação; (2) os leaderboards reordenarem com novas submissões; (3) surgir uma versão 2 da família ou um tamanho novo; (4) o seu próprio backtest discordar do benchmark — nesse caso, o seu backtest ganha.
+
+## Schema recomendado
+
+Para esta página: `Article` com headline, autor, `datePublished` e `dateModified`, mais `FAQPage` com as cinco perguntas acima, que são as que têm chance de resposta direta em busca generativa. O grafo de entidades é estável — modelo fundacional de série temporal, previsão probabilística, quantil, covariável conhecida no futuro, MASE, CRPS, GIFT-Eval, Timestral — então um `DefinedTermSet` para os termos técnicos ajuda a máquina a ligar os pontos. E o de sempre: um único `H1`, um `H2` por seção, links internos relativos e imagens com alt descritivo.
+
+## Fontes
+
+- [Mistral — Introducing Timestral (15/10/2026)](https://mistral.ai/news/timestral)
+- [Mistral — repositório timestral no GitHub (código Apache 2.0, pesos Modified MIT)](https://github.com/mistralai/timestral)
+- [Hugging Face — cartão do modelo Timestral-209M (tabelas de benchmark e arquitetura)](https://huggingface.co/mistralai/Timestral-209M)
+- [Hugging Face — dataset GIFT-Eval (23 datasets, 144 mil séries, 177 milhões de pontos)](https://huggingface.co/datasets/Salesforce/GiftEval)
+- [GitHub — GIFT-Eval, regras do rótulo zero-shot e colunas de vazamento de teste](https://github.com/SalesforceAIResearch/gift-eval)
+- [GitHub — fev, biblioteca de avaliação de previsão (janelas rolantes, métricas, covariáveis)](https://github.com/autogluon/fev)
+- [GitHub — TIME, benchmark de previsão para modelos fundacionais (ICML 2026)](https://github.com/zqiao11/TIME)
+- [MarkTechPost — cobertura que originou o sinal deste artigo (18/10/2026)](https://www.marktechpost.com/2026/10/18/mistral-timestral-time-series-foundation-model/)
