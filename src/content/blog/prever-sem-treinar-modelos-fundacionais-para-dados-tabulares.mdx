@@ -1,0 +1,214 @@
+---
+title: "Prever sem treinar: modelos fundacionais para dados tabulares"
+date: "2026-10-20"
+description: "Um modelo pré-treinado recebe suas linhas rotuladas como contexto e devolve a previsão sem ajustar um peso. O que muda no trabalho: tipo de coluna virou contrato, a saída deixou de ser um número e os dois erros que quebram o projeto — coluna que nunca chega ao modelo e futuro que entra no contexto — não dão erro nenhum."
+author: "Hernando Candido"
+tags: [Dados Tabulares, Modelos Fundacionais, Aprendizado em Contexto, NVIDIA, TabICL, KumoRFM, Previsão, XGBoost, Vazamento de Dados, Engenharia de IA]
+sponsored: false
+premium: false
+---
+
+# Prever sem treinar: modelos fundacionais para dados tabulares
+
+**Resposta curta:** modelo fundacional tabular é um modelo **pré-treinado** que recebe suas linhas já rotuladas como **contexto** e devolve a previsão das linhas novas em uma passada, **sem ajustar peso nenhum**. Na prática, você para de treinar um modelo por dataset e passa a declarar duas coisas: **o que cada coluna é** e **qual é o corte no tempo**. O resto do trabalho não desaparece — muda de lugar.
+
+A maior parte do dado que decide dinheiro neste país não é texto nem imagem.
+
+É planilha: limite de crédito, histórico de pedido, sinistro, churn, nota fiscal, exame. E, nesse mundo, o padrão de mercado há quinze anos é o mesmo: árvore com gradiente impulsionado, ajustada à mão, com feature engineering que ninguém documenta.
+
+A notícia desta semana é que esse padrão ganhou uma alternativa de biblioteca. A parte interessante não é a alternativa. É o que ela revela sobre onde estava o trabalho de verdade.
+
+![Diagrama do fluxo da biblioteca: tabela com tipos semânticos, receita de pré e pós-processamento, e modelo em aprendizado por contexto](https://nvidia.github.io/structured-data-models/_images/pipeline_light.svg)
+
+## O que muda quando o modelo deixa de ser treinado por dataset
+
+No fluxo clássico, cada dataset gera um modelo. Você separa treino e teste, ajusta hiperparâmetro, valida, versiona o artefato. O modelo **é** o resultado daquele treino.
+
+No fluxo de aprendizado em contexto, o modelo é fixo e o **dado de exemplo entra na chamada**. Você passa `x_context` (as features das linhas conhecidas), `y_context` (o alvo dessas linhas) e `x_query` (as linhas que quer prever).
+
+A documentação da biblioteca da NVIDIA é explícita nesse ponto: as linhas de contexto **não atualizam os pesos**. Elas são exemplos fornecidos na inferência, e o modelo prevê as linhas de consulta **atendendo a esse contexto rotulado**.
+
+A analogia mais honesta é prompt com exemplos, não treino. Só que em cima de tabela, com tipo de coluna preservado e sem passar por tokenizador.
+
+Isso tem uma consequência que passa batido: **a tarefa deixou de ser um argumento do modelo**. Não existe construtor de classificador nem de regressor. Alvo categórico é classificação, alvo numérico é regressão — a decisão acontece na fronteira do dado, não na instanciação.
+
+E tem o `fit` que não treina. Quando você chama `fit` e depois `predict`, a biblioteca guarda o estado do contexto — as projeções de chave e valor — para não recodificar as mesmas linhas a cada lote. Nada é aprendido: `fit` ali significa **memorize estes exemplos**.
+
+## O que o modelo enxerga é um contrato, não um default
+
+Aqui está o pedaço que separa quem vai usar isso bem de quem vai publicar número bonito e errado.
+
+Toda tabela entra como `TableTensor`, um tensor que mantém **um bloco por tipo semântico**: numérico, categórico, data e hora, texto e identificador. A doc chama de sem perdas, e é: nome de coluna, vocabulário categórico, valor ausente e string continuam lá.
+
+Cinco tipos, cinco decisões. E a inferência automática erra em pelo menos duas.
+
+No tutorial que a MarkTechPost publicou em **17/10/2026**, rodando a biblioteca em CPU, uma tabela de tickets mostra o problema: com os defaults, o campo de **comentário livre virou categórico com 400 níveis** e o `ticket_id` virou número. Os dois entrariam no modelo como feature. A correção é declarar `text="infer"` e `id="infer"`.
+
+Pior é o que nem aviso direito dá. A doc de processamento diz, com todas as letras, que o `TabICLv2` **não consome coluna de data e hora crua** — internamente ele só aceita feature numérica. Converter o resto é trabalho da **receita** (`Recipe`), que declara o que acontece antes e depois do modelo.
+
+A receita padrão do modelo, segundo o tutorial, só tem ramos para categórico e numérico. Data e texto **não viram feature**. E o aviso é do tipo que aparece **uma vez por processo** e depois fica silencioso.
+
+O efeito medido no mesmo tutorial, em tickets sintéticos gerados no próprio notebook cuja escalação depende de horário, fim de semana e palavras como "reembolso":
+
+- **Receita padrão:** AUC **0,525** — praticamente moeda.
+- **Com calendário** (`AddCalendarFields` em hora e dia da semana, codificação cíclica): AUC **0,634**.
+- **Com calendário e TF-IDF de 64 termos** nos comentários: AUC **0,789**.
+
+Repare no tamanho do buraco. Não é um modelo melhor ou pior. É a informação que nunca chegou.
+
+## O que sai também mudou: uma coluna por classe, 999 quantis por linha
+
+Classificação devolve **uma coluna de probabilidade por classe**, nomeada pelo rótulo — não um índice.
+
+Regressão devolve **quantis**, de `q001` a `q999`. A mediana é `q500`; a média sai de `out.numerical.mean(dim=-1)`. Ou seja: a saída padrão de um modelo tabular deixou de ser um número e virou uma **distribuição**.
+
+Isso é o mesmo salto que a previsão de série temporal deu — e vale a leitura de [quantis, covariáveis e zero-shot](/blog/previsao-de-series-temporais-com-ia-quantis-covariaveis-e-zero-shot) para a parte conceitual.
+
+Mas existe um detalhe que quase ninguém confere. Quantil só vale se a **cobertura** for honesta.
+
+No tutorial, com 300 linhas de contexto do dataset de diabetes: o erro da mediana ficou em **53,6** de RMSE, contra **54,3** de uma RidgeCV e **64,7** de um gradient boosting, os dois treinados nas mesmas 300 linhas.
+
+Agora a parte que interessa. O intervalo de 10 a 90 deveria conter 80% dos valores reais e conteve **81,0%**. O de 5 a 95 deveria conter 90% e conteve **91,5%**. O de 25 a 75 deveria conter 50% e conteve **43,7%**.
+
+Traduzindo: a cauda está calibrada e o miolo está **estreito demais**. Se a sua decisão usa a faixa central — "entre X e Y com 50% de chance" — esse modelo mente um pouco para o otimista.
+
+E aí vem a leitura mais importante de todas: **em 300 linhas, o modelo fundacional ficou no mesmo patamar da regressão logística e do gradient boosting**. Não ganhou. A vantagem ali não foi acurácia, foi não ter ajuste nenhum e sair com distribuição calibrada de brinde.
+
+Onde ele abriu distância foi em muitas classes: 20 classes balanceadas, 30 linhas por classe, **0,760** contra **0,615** do gradient boosting. O modelo lida com isso por códigos de saída com correção de erro, recombinando log-probabilidades — e o chamador nem vê.
+
+## A conta que ninguém faz: contexto é custo
+
+Chamar o modelo direto recodifica o contexto em toda chamada. Em um serviço que recebe lotes de consulta contra o mesmo conjunto de exemplos, isso é desperdício puro.
+
+`fit` + `predict` resolve: o contexto é codificado uma vez e cada lote roda só as linhas de consulta. `clear` libera. O doc diz também o que não dá para fazer: `predict` não suporta ajuste fino e levanta erro se o modelo estiver em modo de treino.
+
+Tem ainda o `num_estimators`, que é o botão de custo. Ele não é "mais inteligência": é o número de **visões pré-processadas diferentes** da mesma tarefa — embaralhamento de coluna, transformação, etc. — cujas saídas são empilhadas e reduzidas na pós-processing. Quatro estimadores custam quatro passadas.
+
+E existe um truque documentado que muda a escala: como a primeira dimensão é interpretada como dimensão de estimador, você pode dar **contextos diferentes para cada estimador**. Em vez de 100 mil linhas em um contexto só, quatro contextos de 25 mil. É assim que se ataca base grande com memória limitada, sem mudar o modelo.
+
+## Quando a tabela tem chave estrangeira, o contexto vira grafo
+
+Base de verdade não é uma tabela. É cliente, pedido, produto, pagamento — com chave entre elas.
+
+`KumoRelational` é o modelo da biblioteca que recebe um banco relacional em vez de uma tabela. Ele vem do **KumoRFM-2**, paper de abril de 2026, que processa várias tabelas conectadas ao mesmo tempo **sem achatar tudo numa tabela larga** e mantém consistência temporal.
+
+O contrato é explícito em três peças: `tables` (as tabelas), `relationships` (as chaves entre elas) e `task_links` (o ponto de entrada das suas linhas de tarefa). E uma regra que evita o erro clássico: coluna marcada como `id` serve **só para ligar tabela, nunca como feature**.
+
+![Diagrama de contexto relacional: uma linha de tarefa puxando vizinhos por chave estrangeira e por tempo](https://nvidia.github.io/structured-data-models/_images/graph_light.svg)
+
+O amostrador caminha pelas chaves a partir de cada linha, coletando até N vizinhos por salto — com backend em `pyg-lib` na CPU e `cugraph` na GPU.
+
+No tutorial, a mesma pergunta respondida de três jeitos num banco sintético de loja: o cliente compra de novo nos 30 dias seguintes ao corte?
+
+- **Só com dados cadastrais:** AUC **0,556**.
+- **Com seis features de histórico escritas à mão** (pedidos e gasto em 30 e 90 dias, dias desde o último pedido, total de pedidos): AUC **0,828**.
+- **Com o modelo relacional nas tabelas cruas, sem ninguém escrever feature:** AUC **0,823**.
+
+Leia com cuidado: o modelo relacional **empata** com o pipeline feito à mão. Não supera. O que ele elimina é o código de feature engineering — e o risco de escrever essa feature com o corte errado.
+
+O paper do KumoRFM-2 vai além e fala em até **8% acima** de abordagens supervisionadas e fundacionais em 41 benchmarks, com escala para bases relacionais de bilhão de linhas. É a afirmação do paper; o seu empate de 0,823 continua sendo o dado mais útil para decidir.
+
+## O erro que parece progresso: futuro dentro do contexto
+
+Essa é a parte que justifica o artigo inteiro.
+
+O amostrador é temporal quando você **declara a coluna de tempo**. Declarar `time_columns` faz o caminho pelas chaves respeitar o instante de cada linha: nenhum pedido com data posterior ao corte é elegível.
+
+Sem declarar, nada disso acontece. No tutorial, o mesmo modelo, mesma pergunta, sem `time_columns`: AUC **0,940**.
+
+Subiu 12 pontos. Não melhorou nada. Ele passou a **ler a resposta** — os pedidos que definem o rótulo estão no contexto.
+
+E não dá erro. Não dá warning. O número parece avanço.
+
+O próprio resumo da doc coloca a regra em uma linha: modelo relacional que não é temporal **não é previsor, é detector de vazamento**. A heurística prática que eu levaria para qualquer projeto: se o modelo relacional bate o seu baseline feito à mão com folga suspeita, a primeira coisa a rodar de novo é a declaração de tempo.
+
+## Explicar a previsão também trocou de contrato
+
+Em árvore, explicar é repartir ganho por split. Você audita caminho. Em modelo de contexto, não existe split: existe gradiente de uma saída escolhida em relação às entradas **já pré-processadas**.
+
+O `GradientExplainer` da biblioteca tem duas armadilhas, e as duas são invisíveis se você só olhar o gráfico.
+
+Primeira: a função de saída é chamada **uma vez por estimador** e cada chamada **sobrescreve** a anterior. Com quatro estimadores, você recebe a explicação do **último**, não a média. A saída é explicar com `num_estimators=1`.
+
+Segunda: cada estimador tem **ordem de classe própria**, porque a receita padrão embaralha rótulo por estimador. Selecionar a probabilidade da classe 1 por **posição** de coluna inverte o sinal de todas as features nos seeds em que a ordem virou. Selecionar **pelo nome** acertou o sinal em 6 de 6 seeds no teste do tutorial.
+
+E tem o detalhe que quase todo mundo esquece: o gradiente é em relação à entrada **padronizada**. O sinal vale, a magnitude não é em reais nem em dias.
+
+## O que isso faz com o trabalho de quem modela
+
+O trabalho não sumiu. Ele subiu de nível.
+
+Antes, o esforço estava em ajustar hiperparâmetro e caçar feature. Agora, os três pontos de falha são todos na **fronteira do dado**: o que cada coluna é, o que a receita faz com ela e qual contexto é permitido no instante da previsão.
+
+E os três falham em silêncio. Coluna descartada com aviso único. Intervalo estreito no miolo. Futuro entrando no grafo. Nenhum levanta exceção.
+
+Para quem constrói no Brasil, isso tem um efeito colateral bom e um ruim.
+
+O bom: base tabular de crédito, churn, fraude e sinistro é exatamente onde o custo de ajustar um modelo por carteira dói. Rodar um modelo que já vem pronto, em CPU ou GPU pequena, derruba a barreira de entrada de semanas para horas.
+
+O ruim: **o contexto é o dado**. As linhas rotuladas que você manda como exemplo são dado pessoal, quase sempre. Se o modelo roda na sua máquina, nada sai. Se roda como serviço, elas atravessam a fronteira — e aí entram base legal, contrato de operador e o resto do que a LGPD já exige.
+
+A biblioteca cobre os dois caminhos: roda no seu processo com PyTorch, ou como serviço de inferência em um host de GPU que você mesmo opera, com o cliente Python sem precisar de peso nem de GPU local. Também vale lembrar que o dado não sair do lugar já tem artigo próprio: [aprendizado federado](/blog/aprendizado-federado-como-treinar-ia-quando-o-dado-nao-pode-sair-do-lugar) trata o mesmo problema por outro ângulo.
+
+## Minha opinião
+
+Sempre desconfiei do discurso de "acabou o feature engineering". O que acabou foi a parte divertida dele.
+
+Por anos, o gargalo do ML tabular era o modelo: qual família, qual profundidade, qual regularização. A fundação pré-treinada tira isso da mesa e coloca no lugar uma responsabilidade mais chata e mais perigosa — **descrever corretamente o dado e o tempo**.
+
+É chato porque não rende post. É perigoso porque o erro não aparece: você vê 0,940 e comemora.
+
+Na minha visão, o ganho real aqui não é acurácia. É que o pipeline virou **inspecionável**. Uma receita é um objeto Python que você lê, copia e versiona. Um `TableTensor` carrega o tipo semântico junto. Isso é auditável de um jeito que um `pickle` de XGBoost com 400 features sem nome nunca foi.
+
+E é por isso que eu levaria a sério, mesmo sem trocar o modelo em produção este mês: quem entender esse contrato vai ganhar velocidade quando trocar. Quem não entender vai produzir número bonito e descobrir o vazamento no comitê de crédito.
+
+## Checklist antes de trocar o XGBoost
+
+Se você vai testar, a ordem importa mais que a biblioteca:
+
+1. **Baseline obrigatório nas mesmas linhas.** Mesmas linhas de contexto, mesmo corte, mesmo alvo. Sem isso você está comparando modelos diferentes com dados diferentes.
+2. **Declare os tipos de coluna na mão.** Texto e identificador não são inferidos por padrão, e identificador como feature é vazamento disfarçado.
+3. **Abra a receita e veja o que sobra.** Se tem data ou texto na sua tabela, confirme que existe um ramo que os transforma em número. O default não faz isso.
+4. **Toda tabela com coluna de tempo entra em `time_columns`.** Sem exceção.
+5. **Leia calibração, não só erro.** Compare a cobertura empírica com a nominal em pelo menos três faixas. Miolo estreito é o padrão.
+6. **Versione o contexto, não só o checkpoint.** Se a previsão depende das linhas de exemplo, o conjunto de exemplo é parte do artefato — e é ele que muda quando o negócio muda.
+
+## Perguntas frequentes
+
+**O que é um modelo fundacional tabular?**
+É um modelo pré-treinado em muitos datasets sintéticos e reais de tabela que prevê um dataset novo sem ajuste de peso. Ele recebe linhas rotuladas como contexto e devolve a previsão das linhas de consulta em uma passada, como um prompt com exemplos.
+
+**Zero-shot aqui quer dizer que não preciso de dado rotulado?**
+Não. Você precisa de linhas **com** rótulo para montar o contexto — só não precisa treinar com elas. A diferença é que o custo cai de treino para seleção de exemplo, e a qualidade depende de o contexto representar o problema.
+
+**Isso substitui o XGBoost?**
+Em dataset pequeno, o que se mediu foi empate, com a vantagem de não haver ajuste e de sair distribuição calibrada. Onde ele abriu distância foi em muitas classes e em dado relacional sem feature engineering. Benchmark não decide pelo seu dado: backtest decide.
+
+**Preciso de GPU? Dá para rodar dentro da empresa?**
+A biblioteca roda no seu processo, em CPU ou GPU, e também como serviço de inferência em host de GPU na sua rede. Rodar local é o caminho mais simples para o contexto não sair da empresa, o que importa quando as linhas de exemplo são dado pessoal.
+
+**Como evitar o vazamento temporal?**
+Declarando a coluna de tempo em todo amostrador relacional e cortando features de histórico estritamente antes do instante de cada linha. Se o resultado melhorar demais ao remover essa declaração, o que você encontrou foi vazamento.
+
+## O que revisar depois
+
+- **Estável:** a ideia de contexto como exemplo em vez de peso; os cinco tipos semânticos e a regra de que `id` liga tabela e não vira feature; a separação entre classificação e regressão decidida na fronteira do dado; a saída em quantis; a regra de que modelo relacional sem tempo é detector de vazamento; e a regra de selecionar classe por nome em explicador.
+- **Atualizável:** a lista de famílias de modelo embaladas, os números de AUC e RMSE deste artigo, as posições em TabArena e TALENT, as licenças de cada família de peso e a API de receita — que é a parte que mais deve mudar entre versões.
+- **Gatilhos de revisão:** (1) nova versão da biblioteca mudar a receita padrão ou a inferência de tipo; (2) um paper novo reposicionar TabICLv2, TabFM ou KumoRFM-2 em TabArena; (3) a sua própria base discordar do empate aqui descrito; (4) mudança de licença dos pesos, que hoje variam por família.
+- **Ressalva de método:** os números de AUC, RMSE e cobertura vêm de uma execução única publicada em tutorial, em datasets públicos pequenos e em bases sintéticas geradas no próprio notebook. Eles demonstram mecanismo, não estimam o seu resultado.
+
+## Schema recomendado
+
+Para esta página: `Article` com headline, autor, `datePublished` e `dateModified`, mais `FAQPage` com as cinco perguntas acima, que são as que têm chance de resposta direta em busca generativa. O grafo de entidades é estável — modelo fundacional tabular, aprendizado em contexto, tipo semântico, quantil, calibração, vazamento temporal, TabICLv2, TabFM, KumoRFM-2 — então um `DefinedTermSet` para os termos técnicos ajuda a máquina a ligar os pontos. E o de sempre: um único `H1`, um `H2` por seção, links internos relativos e imagens com alt descritivo.
+
+## Fontes
+
+- [NVIDIA — Structured Data Models, README do repositório (Apache 2.0, modelos embalados e licenças por família)](https://github.com/NVIDIA/structured-data-models)
+- [NVIDIA — documentação: In-Context Learning (contexto, fit e predict com cache, ensemble de estimadores)](https://github.com/NVIDIA/structured-data-models/blob/main/docs/source/icl.md)
+- [NVIDIA — documentação: Table Semantics (tipos semânticos e TableTensor)](https://github.com/NVIDIA/structured-data-models/blob/main/docs/source/tensor.md)
+- [NVIDIA — documentação: Data Processing (receita, processadores e o caso de datetime no TabICLv2)](https://github.com/NVIDIA/structured-data-models/blob/main/docs/source/processing.md)
+- [NVIDIA — documentação: NIM Inference (serviço de inferência em host de GPU e cliente leve)](https://github.com/NVIDIA/structured-data-models/blob/main/docs/source/nim.md)
+- [TabICLv2 — paper no arXiv (ICML 2026, v2 de 16/09/2026)](https://arxiv.org/abs/2602.11139)
+- [TabFM — paper no arXiv (29/09/2026, 51 datasets do TabArena)](https://arxiv.org/abs/2609.37959)
+- [KumoRFM-2 — paper no arXiv (14/04/2026, 41 benchmarks e escala relacional)](https://arxiv.org/abs/2604.12596)
+- [MarkTechPost — tutorial que originou o sinal deste artigo (17/10/2026, execução em CPU)](https://www.marktechpost.com/2026/10/17/how-to-make-zero-training-tabular-predictions-with-nvidia-structured-data-models/)
