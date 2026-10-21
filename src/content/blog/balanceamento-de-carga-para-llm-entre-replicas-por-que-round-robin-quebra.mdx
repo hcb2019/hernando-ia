@@ -1,0 +1,230 @@
+---
+title: "Balanceamento de carga para LLM entre réplicas: por que round-robin quebra"
+date: "2026-10-21"
+description: "Round-robin distribui requisições, mas não distribui trabalho: o cache que evita recomputar o prompt existe em uma réplica só. O roteamento de LLM fica previsível quando você identifica o gargalo, prefill ou decode, e calibra um único número no seu caminho de serving — que não transplanta entre modelo, engine e hardware."
+author: "Hernando Candido"
+tags: [Inferência de LLM, Balanceamento de Carga, KV Cache, Prefix Caching, vLLM, Kubernetes, llm-d, Desempenho, MLOps, Engenharia de IA]
+sponsored: false
+premium: false
+---
+
+# Balanceamento de carga para LLM entre réplicas: por que round-robin quebra
+
+**Resposta curta:** round-robin distribui requisições, e o que você precisa distribuir é **trabalho**. Como o cache que evita recomputar o prompt — o **KV cache de prefixo** — vive dentro de uma réplica, mandar a requisição para outra réplica joga fora exatamente a computação que você já pagou. Roteamento de LLM é a disputa entre **afinidade de cache** e **carga**, e ela só fica previsível quando você identifica o gargalo e calibra **um número** no seu próprio caminho de serving.
+
+Todo mundo já fez esse deploy: sobe o vLLM, mede 30 tokens por segundo numa GPU, replica quatro vezes atrás de um Service do Kubernetes e espera o throughput quadruplicar.
+
+Ele não quadruplica. O p95 piora, a GPU fica ociosa em três pods e a conta não fecha.
+
+O problema não está no servidor de modelo. Está na camada que escolhe para qual réplica a requisição vai — e na premissa silenciosa de que uma requisição de LLM é parecida com uma requisição HTTP.
+
+![Diagrama da arquitetura do llm-d: proxy na frente, Endpoint Picker escolhendo entre réplicas de vLLM ou SGLang, e o cache KV distribuído entre elas](https://llm-d.ai/img/versioned/1.0/assets/images/llm-d-arch.svg)
+
+O gatilho deste artigo é o llm-d 1.0, que saiu em 20/10/2026 (Apache 2.0, projeto CNCF sandbox fundado por Red Hat, Google Cloud, IBM Research, CoreWeave e NVIDIA). Mas o que interessa aqui não é o produto: é o mecanismo que ele documenta com número, e que vale para qualquer stack com mais de uma réplica.
+
+## As três premissas do round-robin que o tráfego de LLM quebra
+
+Round-robin é uma escolha boa quando as requisições são **rápidas, uniformes e independentes**. A documentação do llm-d é direta ao dizer que tráfego de LLM não é nenhuma das três coisas:
+
+- **Multi-turno.** Conversas e laços de agente reenviam o mesmo prefixo, cada vez maior, a cada passo.
+- **Lento.** Uma única requisição pode levar **mais de um minuto** gerando tokens.
+- **Não uniforme.** O intervalo vai de alguns milhares de tokens de raciocínio a um contexto de **100 mil tokens ou mais**.
+
+Distribuir por contagem de requisições ignora as três. Quatro requisições de 100 mil tokens e quatro de 1 mil token contam igual no round-robin, e custam coisas completamente diferentes.
+
+Em cima disso vem a parte que quase ninguém mede: o cache.
+
+## O cache que só existe em uma réplica
+
+O vLLM chama isso de **Automatic Prefix Caching**: ele guarda o KV cache das consultas já processadas, e uma consulta nova que compartilhe o mesmo prefixo **reaproveita aquele cache** em vez de recalcular a parte compartilhada.
+
+Os dois casos em que isso vale dinheiro, segundo a própria documentação, são o documento longo consultado várias vezes e a conversa de múltiplos turnos — exatamente os dois formatos de carga que dominam aplicação com agente.
+
+Só que esse cache é **local**. Ele está na memória daquela réplica, naquelas GPUs.
+
+Então o acerto de cache não depende do prompt. Depende de **onde a requisição caiu**. Duas réplicas com o mesmo modelo, o mesmo peso e o mesmo prompt produzem resultados diferentes: uma responde em 300 ms porque tem o prefixo, a outra gasta 14 segundos reprocessando.
+
+A granularidade também importa. As chaves de cache são calculadas em blocos, e o vLLM expõe a flag `--prefix-match-unit` para definir essa granularidade — quando não é definida, ela cai no maior divisor comum dos tamanhos de bloco do grupo de KV cache. A documentação recomenda **64** como ponto de partida e avisa que o valor precisa dividir o bloco de todo grupo cacheável. Prefixo que não fecha um múltiplo dessa granularidade não vira chave — e sem chave não tem acerto.
+
+Daí sai a frase que organiza o resto do artigo: **balancear carga e acertar cache são objetivos em conflito**. Quanto mais você espalha, menos acerta.
+
+## Dois gargalos, dois sinais
+
+Uma requisição no vLLM tem duas fases com perfis de recurso opostos: o **prefill**, que processa o prompt em blocos de `max-num-batched-tokens` e é limitado por compute; e o **decode**, que gera um token por vez e é limitado por memória de KV cache e pelo número de streams simultâneos.
+
+Qual das duas satura primeiro depende de uma razão simples: **tokens de prompt contra tokens de saída**.
+
+- **Prefill-bound** (prompt longo, saída curta). O gargalo é o throughput de prefill por endpoint. O sinal certo é **tokens de prefill ainda não cacheados em voo**.
+- **Decode-bound** (prompt curto, saída longa). O gargalo é o número de streams de decode. O sinal certo é **contagem de requisições ativas**.
+
+O time do llm-d chama cada pareamento de "configuração casada com o gargalo". No caso prefill, o scorer usa uma formulação de lookahead: **score = tokens não cacheados em voo no endpoint + tokens do prompt × (1 − taxa de acerto do endpoint)**. O segundo termo é o trabalho marginal que *esta* requisição adicionaria em cada candidato.
+
+Parece detalhe. É o que separa um roteador que você consegue explicar de um que você só consegue observar.
+
+## O filtro que pode estar desligado sem avisar
+
+Antes do scorer vem o filtro de afinidade. Ele restringe os candidatos aos endpoints que já têm o prefixo, com um limiar: `affinityThreshold=0.8` nas configurações publicadas — ou seja, 80% do prefixo precisa estar em cache para aquele endpoint ser considerado "quente".
+
+Agora o caso real que expõe a armadilha. No workload de raciocínio do benchmark, o prompt tem **250 tokens de system prompt compartilhado** e cerca de **1.000 tokens de pergunta única**. A afinidade máxima possível é 0,25.
+
+O filtro passa **todos** os candidatos. Ele está no pipeline, está configurado, e é um **no-op estrutural**.
+
+Se você não sabe disso, o diagnóstico que você vai fazer é o errado: vai culpar o scorer, aumentar réplica, mexer em limiar. O filtro nunca ia filtrar nada — porque o seu tráfego não tem prefixo compartilhado suficiente para chegar a 80%.
+
+Regra prática: **meça quanto do seu prompt é prefixo compartilhado**. Se a resposta for "o system prompt de 250 tokens", afinidade de prefixo não é a alavanca do seu caso — a carga é.
+
+## O número que decide, e por que ele não transplanta
+
+Afinidade sem válvula de escape é pior que round-robin. Se o endpoint quente nunca libera, ele acumula trabalho até ficar mais lento que um endpoint frio ocioso.
+
+Por isso o filtro tem um **override de saturação**, e ele é um único número: **τ**, a diferença de tokens não cacheados em voo a partir da qual o roteador ignora a afinidade e escolhe pela carga.
+
+A derivação, publicada no blog do projeto, é fechada e cabe em duas linhas:
+
+- `R_peak = B / T(B)`, onde **B** é o `max-num-batched-tokens` e **T(B)** é o tempo medido para prefilar um bloco cheio.
+- `τ_sat = R_peak × T_max`, com **T_max** sendo a degradação de TTFT que você aceita.
+
+No caminho de referência (Qwen3-32B, TP=2 em 2× H100, `max-num-batched-tokens=8192`), mediu-se `T(B) = 0,40 s`, o que dá **20.480 tokens/s por endpoint**. Com T_max de 14 s, **τ = 286.720**.
+
+O número tem uma leitura melhor que a absoluta: **35 × 8192**, ou **35 blocos de prefill pendente**. Essa forma anda entre hardwares, porque um caminho que processa blocos mais rápido também acumula mais tokens na mesma janela.
+
+![Gráfico de calibração do tempo até o primeiro token contra o tamanho do prompt para Qwen3-32B em H100, usado para derivar o limiar de saturação](https://llm-d.ai/img/blogs/bottleneck-aware-scheduling/fig_7_3_1_calibration.png)
+
+Duas medições independentes fecham no mesmo lugar, e isso é o sinal de que a fórmula está certa: a receita de calibração distribuída com o roteador mede **15.928 tokens/s** (mediana de requisições repetidas pelo caminho completo) e, com T_max de 18 s, chega a **≈286,7 mil**; o ajuste de requisição única mede **20.480** e, com 14 s, chega ao mesmo **≈286,7 mil**. Métodos diferentes, mesmo limiar.
+
+Agora a parte que derruba a ideia de copiar configuração de blog. Estes valores são todos medidos, no mesmo caminho de serving:
+
+- **gpt-oss-120B / H100, vLLM, TP=1:** 39.065 tokens/s → τ ≈ 547 mil
+- **Qwen3-32B / TPU v7x, vLLM, TP=8:** 27.336 tokens/s → τ ≈ 383 mil
+- **GLM-5.2-NVFP4 / 8× B200, SGLang, TP=8:** 24.027 tokens/s → τ ≈ 336 mil
+- **Qwen3-32B / H100 (referência), vLLM, TP=2:** 20.480 tokens/s → τ = 286.720
+- **Qwen3-Coder-480B-FP8 / TPU v7x, vLLM, TP=8:** 16.444 tokens/s → τ ≈ 230 mil
+- **Qwen3-VL-32B / H200, vLLM, TP=2:** 15.751 tokens/s → τ ≈ 221 mil
+- **Qwen3-32B / H100, SGLang, TP=2:** 15.360 tokens/s → τ ≈ 215 mil
+
+Leia as duas primeiras linhas juntas. O **gpt-oss-120B tem o maior valor da tabela em TP=1**, apesar de ser o maior modelo listado, porque é um MoE esparso de ~5B parâmetros ativos em MXFP4 e um passo de prefill toca poucos pesos — mais de **2,5×** o caminho denso do Qwen3-32B no mesmo H100. Já expliquei por que esparsidade muda a conta no artigo sobre [Mixture of Experts](/blog/mixture-of-experts-o-que-sao-modelos-esparsos-e-por-que-78b-cabem-em-1-gpu).
+
+A consequência prática é grosseira: usar 286.720 no caminho do gpt-oss deixa o limiar **~1,9× baixo demais** — a válvula abre com folga sobrando e você entrega afinidade de graça. Usar o mesmo número no caminho Qwen3-VL-32B/H200 deixa **~1,3× alto demais**, e a fila passa do seu SLO. Na mesma família de acelerador acontece o inverso: TPU v7x suporta **383 mil** com Qwen3-32B e apenas **230 mil** com Qwen3-Coder-480B.
+
+O motivo é curto: **R_peak é propriedade do caminho inteiro, não do acelerador**. Modelo, engine, esparsidade, quantização e tamanho de bloco entram todos no número. Se você mexeu em quantização, o valor mudou — o guia de [4-bit, 8-bit, GPTQ e AWQ](/blog/quantizacao-de-llm-como-escolher-4-bit-8-bit-gptq-e-awq) é o lugar para entender essa parte.
+
+E vale dizer o que está em jogo: nos benchmarks do projeto, as configurações casadas com o gargalo sustentam **2–3× o throughput** do round-robin de um Service do Kubernetes em carga prefill-bound, segurando o TTFT ao longo de toda a faixa de operação. É esse número que justifica tirar o Service da frente e colocar um roteador.
+
+E um detalhe que parece bobo e não é: **`maxTTFTPenaltyMs` precisa ser diferente de zero**. É ele que libera a afinidade. Zero significa nunca abrir a válvula. O default publicado é 18 s.
+
+## Como provar que o roteamento está funcionando
+
+Requisição respondendo HTTP 200 prova que o stack subiu. Não prova que o mecanismo está ativo — e é aí que a maioria dos deploys passa meses sem saber o que tem.
+
+A receita do guia é elegante porque é falsificável. Mande **10 requisições que compartilham um prefixo de ~2 mil tokens**, variando só a última frase, e leia os contadores de cada pod:
+
+- No vLLM: `vllm:prefix_cache_hits_total` contra `vllm:prefix_cache_queries_total`, mais `vllm:request_success_total`.
+- No SGLang: `sglang:num_requests_total` e `sglang:cached_tokens_total{cache_source="device"}`.
+
+O esperado é **um pod com quase todas as requisições** e uma fração alta de acerto de prefixo; os outros, quase nada. Se as requisições se espalharem uniformemente e a taxa de acerto ficar perto de zero, a afinidade **não está em vigor**.
+
+Em produção, olhe os sinais em par, nunca isolados:
+
+- **Carga por pod:** `llm_d_epp_request_total` e `vllm:num_requests_running`. Um pod quente ao lado de pods ociosos significa que o balanceamento não está agindo.
+- **Acerto de prefixo:** a razão entre hits e queries. Caindo, as requisições deixaram de cair nos endpoints quentes.
+- **Saturação:** `vllm:kv_cache_usage_perc` e `vllm:num_requests_waiting`. É o que dispara o override.
+- **Latência de decisão do roteador:** `llm_d_epp_plugin_duration_seconds`. Subindo com servidores saudáveis, o gargalo está no roteador.
+- **O que o usuário sente:** `vllm:time_to_first_token_seconds` e `vllm:inter_token_latency_seconds`.
+
+Os três modos de falha vêm de graça dessa leitura:
+
+1. **Carga desigual** com pods frios: `peakPrefillThroughput` está mal calibrado e o override nunca entra.
+2. **Acerto baixo** com pods frios: o seu mix de prompt não é "prefixo-pegajoso", não é o override.
+3. **TTFT piorando** com carga equilibrada e cache saudável: olhe a latência de decisão e a fila do servidor antes de mexer no roteamento — o gargalo está no modelo, não no agendador.
+
+Em produção, os adotantes reportam esse mesmo padrão com escala grande: a IBM Research serve até **3.000 agentes de código simultâneos em 544 H100**, com **~98% de acerto de prefixo** e **~US$ 0,11 por milhão de tokens**, cerca de 11,5× abaixo de um stack proprietário. A Tesla com a Red Hat mediu **3× mais tokens de saída e metade do TTFT** em MI300X, e no TPU 7x o ganho foi de **mais de 85% no TTFT mediano** com 2,4× de throughput contra um Service do Kubernetes puro.
+
+São números **auto-reportados** por quem opera. Servem como ordem de grandeza, não como promessa para o seu caso.
+
+## Quando são vários times no mesmo pool
+
+Afinidade resolve latência. Não resolve briga por capacidade.
+
+O llm-d 1.0 atacou isso com **flow control** no roteador: cada requisição é classificada por uma chave que combina um **ID de fairness** (o time ou o workload) com uma **faixa de prioridade**, há uma fila por fluxo, e o despacho é prioridade primeiro, rodízio justo entre tenants dentro da faixa.
+
+O detalhe que faz diferença é o **no-regret scheduling**: sob saturação, o roteador **segura** a requisição em vez de empurrá-la para uma fila de backend já sobrecarregada. É a diferença entre um pico de um tenant virar latência para todos e virar espera para ele mesmo. Tem também um controlador de admissão probabilístico que descarta carga de forma suave em vez de falhar duro.
+
+Um aviso operacional: **os defaults ainda imitam first-come-first-served**. Nada muda até você optar pela política — o que é bom para atualizar e péssimo se você achou que só pela versão nova já tinha QoS.
+
+E existe o trade-off que ninguém coloca na apresentação: **fairness gasta localidade**. Rodízio entre tenants espalha requisições, e espalhar derruba acerto de cache. Se você ligar faixas de prioridade, meça a taxa de acerto antes e depois. Isso conversa direto com o que já escrevi sobre [dividir capacidade de GPU entre times sem leilão de prioridade](/blog/cluster-de-gpu-como-dividir-a-capacidade-entre-times-sem-leilao-de-prioridade) — lá o problema era a fila de treino, aqui é a de inferência.
+
+## Atualizar sem derrubar requisição em andamento
+
+Em serving de LLM, rollout tem um problema que deploy de API não tem: **requisição no meio da geração não migra**. Matar o pod é resposta truncada na cara do usuário.
+
+O guia de rollout do projeto lista os três agravantes: requisição longa que não pode ser movida, pod novo que precisa carregar peso, compilar grafo CUDA e **encher o KV cache** antes de servir bem, e rollback que custa um cold start inteiro.
+
+O que dá para copiar hoje são os parâmetros de drenagem do caminho de referência: `--shutdown-timeout=45`, **15 s** de `preStop` e **75 s** de `terminationGracePeriod`. Não são universais — são o suficiente para o modelo daquele guia. O seu tem que cobrir a sua geração mais longa.
+
+Em prefill/decode desagregado, a regra é mais rígida: **prefill e decode precisam rodar a mesma versão**, e o prefill tem que ficar de pé até o decode puxar o KV cache. É por isso que existe um controlador próprio para o conjunto, com checagem de prontidão por revisão em vez de por pod.
+
+## Minha opinião
+
+A parte incômoda desse assunto é que quase ninguém erra por falta de ferramenta. Erra por escolher estratégia de roteamento sem medir as duas coisas que decidem: **quanto do seu prompt é prefixo compartilhado** e **qual é o R_peak do seu caminho**.
+
+Um blend ponderado de quatro sinais — afinidade de prefixo peso 3, fila 2, utilização de KV 2, LRU 2 — parece sofisticado e é o oposto de controlável. Você não consegue dizer por que ele escolheu aquela réplica, e quando o p95 sobe não tem onde apertar. O time do llm-d abandonou esse default por isso, e a frase deles é boa: o comportamento emergente era difícil de prever e mais difícil ainda de ajustar.
+
+Também acho que o mercado brasileiro tem um viés específico aqui. A maioria dos projetos que vejo com mais de uma réplica de LLM usa prompt curto e único — atendimento, classificação, extração. Nesse formato, afinidade de prefixo é o no-op de 0,25 que descrevi acima, e trocar round-robin por um roteador esperto não muda quase nada. O ganho está em outro lugar: cachear o que dá, cortar contexto, escolher o modelo certo para a tarefa.
+
+Onde afinidade vira dinheiro de verdade é em **agente com ferramenta e chat multi-turno**, porque ali o prefixo cresce a cada passo e você paga prefill repetido a cada volta. Se o seu produto é um agente, esse é o gargalo número um — antes de comprar GPU.
+
+E, por fim: desconfie de valores de Helm copiados. A tabela de τ deste artigo existe justamente para mostrar que o mesmo número, no hardware ao lado, erra por um fator de quase 2. Uma rodada de calibração custa uma job e resolve o que três meses de tentativa e erro não resolvem.
+
+## Checklist antes de mexer no roteamento
+
+- **Classifique o gargalo.** Prompt longo com saída curta é prefill; saída longa com prompt curto é decode. O sinal de carga muda com a resposta.
+- **Meça o prefixo compartilhado.** Se for menos de 80% do prompt típico, afinidade não vai filtrar nada.
+- **Calibre `T(B)` no seu caminho.** Modelo, engine, tensor parallel, quantização e `max-num-batched-tokens` definem o número.
+- **Escolha T_max pelo SLO.** Limiar menor protege latência e sacrifica cache; maior faz o contrário.
+- **Nunca deixe a válvula em zero.** Sem release, afinidade vira hotspot.
+- **Valide com o teste de prefixo compartilhado**, não com um curl de "funcionou".
+- **Ajuste a drenagem ao seu tempo de geração**, não ao do guia.
+
+## Perguntas frequentes
+
+**Round-robin com least-connections já não resolve?**
+Melhora, porque pelo menos considera carga. Mas segue sem saber onde o prefixo está: você distribui bem o trabalho novo e continua reprocessando contexto que já estava em cache em outra réplica.
+
+**Preciso de Kubernetes para aplicar isso?**
+O mecanismo não. Afinidade de prefixo, sinal de carga e válvula de saturação são decisões de roteamento, e qualquer proxy com acesso às métricas do servidor de modelo pode implementá-las. O llm-d é a implementação nativa de Kubernetes, com o Endpoint Picker falando com o proxy pelo protocolo de processamento externo do Envoy.
+
+**Com uma réplica só isso importa?**
+Não há o que rotear, então não. A partir de duas réplicas, sim — e o efeito é maior quanto mais multi-turno for o seu tráfego.
+
+**Dá para usar o mesmo τ em todas as réplicas?**
+Sim, desde que sejam o mesmo modelo, o mesmo engine, o mesmo tensor parallel e o mesmo tamanho de bloco. Mudou um, mudou o número.
+
+**Por que o acerto de cache cai quando entra mais carga?**
+Porque a capacidade de KV por endpoint é finita. Com muitas conversas distintas ativas, o cache é evictionado. O benchmark mostra isso claramente: em alta concorrência o acerto despenca em todas as configurações, mas a vantagem de throughput do roteamento por token **persiste** — o filtro continua útil mesmo com a métrica de acerto baixa.
+
+**Isso é a mesma coisa que desagregar prefill e decode?**
+Não, mas conversam. Desagregar separa as duas fases em pools distintos porque elas têm perfis opostos de recurso; o roteamento decide para qual endpoint cada requisição vai. Um sem o outro funciona, mas os dois juntos é que sustentam a topologia grande.
+
+## O que revisar depois
+
+- **Estável:** a existência dos dois gargalos e a razão prompt/saída que os separa; o conflito estrutural entre afinidade de cache e balanceamento de carga; a forma da fórmula `τ = (B × T_max) / T(B)` e a leitura em blocos; a regra de calibrar por modelo, acelerador, engine e tamanho de bloco; a verificação por contador por pod em vez de smoke test.
+- **Atualizável:** os nomes de parâmetro (`peakPrefillThroughput`, `maxTTFTPenaltyMs`, `affinityThreshold`), os defaults publicados (18 s), os valores medidos da tabela e os números de produção dos adotantes.
+- **Gatilhos de revisão:** (1) o llm-d mudar a superfície de calibração ou o nome dos plugins; (2) uma versão nova de engine ou de quantização mudar o `T(B)` do seu caminho; (3) o seu mix de prompt mudar, por exemplo com um system prompt maior; (4) um benchmark independente contestar os ganhos reportados pelos fornecedores.
+- **Ressalva de método:** os resultados do benchmark são **execuções únicas**, com valores alcançados e sem intervalos de confiança. O workload b2b-saas é um teste de estresse sintético com dois estados estacionários possíveis — ele demonstra mecanismo, não estima o seu número. E os números de produção (Vertex AI, IBM, Tesla/Red Hat, AWS, TPU 7x) são **auto-reportados** por fornecedores e adotantes.
+
+## Schema recomendado
+
+Para esta página: `Article` com headline, autor, `datePublished` e `dateModified`, mais `FAQPage` com as seis perguntas acima — são as que têm chance de resposta direta em busca generativa. O grafo de entidades é estável e vale um `DefinedTermSet`: prefill, decode, KV cache, cache de prefixo, TTFT, TPOT, afinidade de cache, saturação, roteamento de inferência. E o de sempre: um único `H1`, um `H2` por seção, links internos relativos e imagens com alt descritivo.
+
+## Fontes
+
+- [llm-d — v1.0: State-of-the-art inference, ready for Day 2 (anúncio da versão, 20/10/2026, flow control, rollouts e números de produção)](https://llm-d.ai/blog/llm-d-v1.0-state-of-the-art-inference-ready-for-day-2)
+- [llm-d — Sticky Until Saturated: Token-Aware Routing in llm-d (derivação de τ, dois regimes, benchmark e tabela de portabilidade)](https://llm-d.ai/blog/sticky-until-saturated-token-aware-routing)
+- [llm-d — Deploy an Optimized Baseline (guia de referência: filtro de afinidade, override de saturação, métricas e modos de falha)](https://llm-d.ai/docs/well-lit-paths/foundations/optimized-baseline)
+- [llm-d — Endpoint Picker (EPP): roteamento por estado do pod e fairness, integração via ext-proc](https://llm-d.ai/docs/architecture/router/epp)
+- [llm-d — Architecture (as sete áreas funcionais: router, model servers, desagregação, KV cache, orquestração, autoscaling, batch)](https://llm-d.ai/docs/architecture)
+- [llm-d — Roll Out Updates Safely (por que rollout de inferência é diferente e o que o DisaggregatedSet exige)](https://llm-d.ai/docs/operations/rollouts)
+- [vLLM — Automatic Prefix Caching (o que é cacheado, granularidade de bloco e `--prefix-match-unit`)](https://docs.vllm.ai/en/latest/features/automatic_prefix_caching.html)
+- [Kubernetes Gateway API Inference Extension (InferencePool, Endpoint Picker e o fluxo de requisição)](https://gateway-api-inference-extension.sigs.k8s.io/)
+- [GitHub — llm-d/llm-d (código, Helm charts, licença Apache 2.0 e guias)](https://github.com/llm-d/llm-d)
+- [MarkTechPost — Google Cloud Ships llm-d 1.0 (item de origem do sinal, 20/10/2026)](https://www.marktechpost.com/2026/10/20/llm-d-1-0-open-source-distributed-inference-stack/)
