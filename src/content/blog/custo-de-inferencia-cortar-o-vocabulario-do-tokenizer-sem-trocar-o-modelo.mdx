@@ -1,0 +1,185 @@
+---
+title: "Custo de inferência: cortar o vocabulário do tokenizer sem trocar o modelo"
+date: "2026-10-22"
+description: "Um laboratório brasileiro cortou 77% do custo de inferência trocando só o tokenizer: 350 para 101 tokens por resposta, mesmo modelo, mesmo dado, mesma seed. O mecanismo, a armadilha de qualidade e quando isso se aplica ao seu caso."
+author: "Hernando Candido"
+tags: [Tokenizer, Vocabulário, Custos de Inferência, Modelos Especializados, SLM, Qwen3, vLLM, Quantização, Destilação, Engenharia de IA]
+sponsored: false
+premium: false
+---
+
+# Por que cortar o vocabulário do tokenizer reduz o custo de inferência
+
+**Resposta curta:** você paga por **token gerado**, e o tokenizer decide quantos tokens a mesma resposta ocupa. Num corretor de redações em português rodando sobre Qwen3-4B, a Dharma-AI trocou apenas o vocabulário e a resposta média caiu de **350 para 101 tokens**, o custo medido caiu **77,0%** e a nota de qualidade subiu de **0,703 para 0,810** — com o mesmo modelo base, o mesmo dado, a mesma receita e a mesma seed.
+
+O tokenizer é tratado como propriedade fixa do modelo: você herda o do checkpoint e nunca mais olha.
+
+Só que ele é definido **antes do primeiro passo de treino** e continua valendo para toda requisição que você serve. Para um modelo de domínio único, essa é uma das maiores alavancas de custo que existem — e quase ninguém abre.
+
+![Mesma frase escrita com 14 tokens no tokenizer original e 4 tokens no vocabulário especializado](https://cdn-uploads.huggingface.co/production/uploads/6a725daa5ca641a21ab61956/TYOhAFobnI4ss3UnNqMHc.png)
+
+## O que foi medido, e com que ressalva
+
+O sistema em produção é um corretor automático de redações em português. Ele recebe a redação, a proposta e os textos de apoio, e devolve um JSON com nota e comentário por competência.
+
+Para medir, o time treinou **sete versões** do corretor com o mesmo modelo base, o mesmo dado, a mesma receita e a mesma seed. A única variável diferente entre elas era o tokenizer.
+
+As sete rodaram as **mesmas 500 requisições** na mesma máquina, com uma **RTX 5090** e o vLLM como servidor, e o custo foi calculado a partir do tempo medido — não de uma tabela de preços.
+
+**A ressalva importa:** os números vêm da versão atual do paper da VocabX, que está **em revisão** e pode mudar antes da publicação. O paper ainda não saiu, então não existe identificador arXiv para ele. Tudo que está aqui vem do post técnico da Dharma-AI no blog do Hugging Face, de 21/10/2026.
+
+## Ler é barato, escrever é caro
+
+A reação natural é contar tokens e tentar reduzir a contagem. Mas a contagem não é a conta.
+
+Inferência tem duas fases. No **prefill** o modelo processa o prompt inteiro numa passada só: cada peso lido da memória da GPU é reusado por todos os tokens de entrada, e o limite é compute. No **decode** ele gera um token por vez, cada token exige uma passada completa, e a GPU passa a maior parte do tempo esperando dado chegar da memória — o limite virou **banda de memória**.
+
+No caso medido, **um token gerado custou 7,4 vezes um token lido**. A razão varia com hardware, problema, tamanho de batch e comprimento de contexto, e pode ser maior que isso. A direção, porém, se mantém: gerar custa mais do que ler.
+
+![No caso medido, escrever um token custou 7,4 vezes mais que ler um token](https://cdn-uploads.huggingface.co/production/uploads/6a725daa5ca641a21ab61956/q-GjdgYd6GgXnv3-wJQsY.png)
+
+Pensa numa transportadora que cobra por caixa, mas cobra sete vezes mais na caixa de saída do que na de entrada. Reduzir o total de caixas ajuda. Reduzir as de saída ajuda sete vezes mais. Um método que comprime entrada e saída por igual perde a maior parte da economia.
+
+## O desperdício tem dois nomes: fragmentação e excesso
+
+**Fragmentação** é o tokenizer quebrando em pedaços justamente o que o domínio mais repete. No corretor, toda resposta começa com o mesmo envelope JSON, os mesmos nomes de competência e as mesmas frases de avaliação — **12 tokens onde 1 bastaria**. Em contrato, é a cláusula boilerplate. Em código, são os identificadores.
+
+**Excesso** é o vocabulário carregando dezenas de milhares de entradas que o domínio nunca usa. O modelo pontua todas elas, a cada token que gera. Um corretor de redações em português computa a probabilidade de cada token em chinês, em todo passo.
+
+A conta é física. A última camada, o **LM head**, guarda uma linha de parâmetros por entrada do vocabulário. Num modelo do tamanho do Qwen3-4B, essa matriz responde por **quase 10% dos parâmetros**.
+
+E ela não é lida uma vez: a camada de entrada faz lookup só da linha do token lido, mas o LM head **lê e multiplica a matriz inteira a cada token gerado**. Como o decode já é limitado por memória, cada linha extra é mais dado para mover em todo passo. Uma entrada que o domínio nunca usa custa exatamente igual a uma frequente.
+
+![Vocabulário do tokenizer original com 151.669 entradas e o vocabulário especializado com 64.767](https://cdn-uploads.huggingface.co/production/uploads/6a725daa5ca641a21ab61956/Inl5L1IDqWUBbD0Xlq-JB.png)
+
+No corretor, o vocabulário foi de **151.669 para 64.767 entradas**. Pela minha conta de guardanapo, se a matriz é ~10% dos 4 bilhões de parâmetros, cada linha tem cerca de **2,6 mil valores**; tirar ~87 mil linhas equivale a **uns 229 milhões de parâmetros** a menos em leitura por token. A Dharma-AI publica o número de linhas, não essa derivação — a conta é minha.
+
+## Por que FVT, MWT e in-place BPE não bastavam
+
+A ideia de adaptar vocabulário não é nova: **fast vocabulary transfer** ([arXiv:2402.09977](https://arxiv.org/abs/2402.09977)), **multi-word tokenization** ([arXiv:2402.09949](https://arxiv.org/abs/2402.09949)) e a expansão de tokenizer in-place da Liquid AI ([arXiv:2607.15232](https://arxiv.org/abs/2607.15232)) já reduzem fragmentação. Testados no corretor, apareceram duas limitações.
+
+Primeira: eles escolhem token por **frequência**, não por custo. Uma expressão que aparece muito na entrada vale mais para eles do que uma que aparece menos na resposta — mesmo quando a segunda é a cara de servir.
+
+Segunda: trabalham numa camada só. Ou mudam como a palavra é cortada em pedaços, ou fundem frases inteiras num token. Nenhum faz as duas coisas sob o mesmo critério — e o maior desperdício do corretor estava exatamente em spans longos e repetidos, como o envelope JSON, que um método de sub-palavra só alcança juntando peça por peça.
+
+## Como a seleção por custo funciona
+
+A VocabX muda a pergunta. Em vez de "quantos tokens esse candidato economiza", pergunta "quanto custo e quanto tempo ele economiza".
+
+Cada token eliminado é multiplicado pelo preço do campo onde aparece: system prompt, mensagem do usuário ou resposta do modelo. No caso medido, um token economizado na resposta vale **7,4 vezes** um economizado na entrada — e o vocabulário é construído nessa proporção.
+
+Depois, atua em duas camadas ao mesmo tempo, sob o mesmo critério e com orçamento separado para cada uma. Na camada de **sub-palavra**, reconstrói como as palavras do domínio são cortadas. Na camada de **múltiplas palavras**, procura spans inteiros que se repetem — de expressões curtas a linhas completas e envelopes JSON — e transforma cada um num **macro token**.
+
+Para achar esses spans, são cinco mineradores: palavras longas, linhas inteiras, expressões, frases completas e estruturas com pontuação como JSON e tags. Na média de oito corpora, o de pontuação foi o que mais contribuiu; em código, sozinho, rendeu **17,5 pontos**. Sem os cinco, a redução de tokens no corretor cairia **55,6 pontos**.
+
+## A amostra mente para o candidato raro
+
+Escolher por custo exige saber quanto cada candidato ainda economiza **depois** dos já escolhidos. Medir isso exatamente significaria reprocessar o corpus inteiro a cada escolha, dezenas de milhares de vezes. A saída comum é medir numa amostra — e aí um candidato ausente da amostra ganha zero.
+
+Só que uma expressão que aparece 37 vezes em 50.000 documentos aparece numa amostra de 400 documentos em apenas **~26%** das vezes. Num corpus de contratos, só **16,6%** dos candidatos aparecem numa amostra de 400.
+
+A solução foi dividir o ganho em duas partes: a que pode ser contada exatamente no corpus inteiro e a que ainda não foi coberta pelos tokens já escolhidos. Só a segunda precisa de estimativa — e para os candidatos que a amostra não vê, o método usa uma estimativa estatística em vez de zero.
+
+Efeito com a mesma amostra e o mesmo orçamento: a redução de tokens no corpus de contratos foi de **44,7% para 52,8%**.
+
+## O erro que custou qualidade — e a lição que vale fora do corretor
+
+A primeira versão do vocabulário fundiu a nota de cada competência com o JSON em volta num macro token único. Era a opção mais compacta. E derrubou a qualidade: a nota de bench ficou em **0,689**, abaixo dos **0,703** do corretor em produção, com redução de custo de 73,3%.
+
+O motivo é fino. Com a nota dentro do macro, cada combinação de nota e estrutura virava uma variante diferente do mesmo token, e o modelo passava a escolher as duas coisas num passo só.
+
+Dar à nota o seu próprio token custou **2 tokens extras por resposta** — e foi mais barato no fim: a nota subiu para **0,810** e a redução chegou a **77,0%**, contra 73,3% da versão fundida.
+
+A lição vale além do corretor: **compressão tem custo quando o span comprimido carrega a decisão que o modelo existe para tomar**. O objetivo não é o vocabulário mais barato possível, é o mais barato que preserva os tokens que importam.
+
+## Fora do corretor: quinze combinações
+
+Para testar se o ganho era específico daquele caso, o time comparou a VocabX com os três métodos de referência em cinco domínios públicos — contratos, papers médicos, papers científicos, notícias e código Python — e três famílias de modelo: Qwen3, Llama-3.1 e Gemma-3.
+
+Com a mesma mineração, os mesmos documentos de teste e o mesmo teto de vocabulário, a VocabX comprimiu mais que o melhor método de referência nas **15 combinações**, por 1,2 a 9,3 pontos. A versão podada também liderou o custo estimado nas 15, com margens médias de **10,2 pontos** em Qwen3, **7,5** em Llama-3.1 e **13,6** em Gemma-3.
+
+Em contratos, a versão podada chegou a **62,6% de redução de tokens com 113.426 entradas**, contra 61,8% da melhor configuração de in-place BPE, que usa **207.803**. O mesmo resultado com pouco mais da metade do vocabulário.
+
+## Se você fosse aplicar hoje, o trabalho começa depois do tokenizer
+
+Trocar o tokenizer não é só apontar o modelo para o arquivo novo. Os IDs mudam de significado, então o mapa de ID para token é trabalho seu — reduzir o tamanho da matriz remove vetores **do fim**, e só isso não realinha nada.
+
+A ponte na biblioteca é `resize_token_embeddings`, que aceita `new_num_tokens`, `pad_to_multiple_of` e `mean_resizing`. O `pad_to_multiple_of` serve para casar o tamanho com Tensor Cores em hardware de compute capability 7.5 ou superior e com TPUs, que se beneficiam de tamanhos múltiplos de 128.
+
+O `mean_resizing` vem ligado por padrão e inicializa as linhas novas a partir da média e da covariância das antigas — o que reduz a divergência de KL nas probabilidades do próximo token. Ajuda quando você aumenta o vocabulário; não substitui treinar.
+
+E treinar é a parte real: embedding de entrada e LM head precisam voltar ao ajuste fino, porque o vocabulário novo muda a tokenização de tudo que o modelo já aprendeu.
+
+O próprio post avisa que a VocabX **não inclui o termo do LM head no critério de seleção** — ela controla o tamanho em duas etapas, com orçamento fixo.
+
+## Vocabulário, quantização e destilação: onde cada um entra
+
+- **Quantização** reduz bits por peso. Deixa o mesmo número de tokens mais barato e não muda quanto texto a resposta ocupa — é ortogonal, e os dois se somam.
+- **Destilação** troca o aluno por um menor. Muda capacidade e preço por token de uma vez, com o risco de perder o que o professor sabia.
+- **Vocabulário** muda quantos tokens cada resposta ocupa **e** quantas linhas o LM head lê por token. Atua antes de qualquer treino e não depende do hardware onde você serve.
+- **Roteamento e filtro** atacam o outro lado: quanto do contexto nunca chega ao modelo. Se o seu custo está na entrada longa e não na saída, o caminho é [decidir o que nunca chega ao LLM](/blog/reduzir-os-custos-de-inferncia-do-rag-em-6x-comea-com-decidir-o-que-nunca-chega-), não o vocabulário.
+
+## Minha opinião
+
+O número que me convenceu não foi o 77%. Foi o **0,689**.
+
+Uma equipe que só olhasse custo teria ficado com a versão fundida: mais compacta, 73,3% de economia, e uma queda de qualidade que ninguém veria no dashboard. O vocabulário não quebrou o modelo — ele engoliu justamente o token que carrega a decisão, e a decisão virou parte do formato.
+
+Isso descreve metade das otimizações de custo que eu vejo em produção: alguém corta o campo que explicava o resultado, o gráfico de gasto melhora e a taxa de acerto cai devagar, sem alarme.
+
+O tokenizer é o único componente que ninguém discute em code review. Ele vem do checkpoint, então parece natureza. Só que ele foi escolhido por outra pessoa, para outro problema, e você paga por essa escolha em cada token gerado.
+
+Também não vou vender 77% como número geral. O caso é o melhor cenário possível: uma língua só, saída em JSON muito repetitiva, modelo pequeno servido com batch moderado. Num chat aberto, com resposta livre e longa, espere bem menos — talvez ganho de fragmentação e quase nada de macro. A economia escala com o quanto da sua saída é boilerplate.
+
+E tem a parte incômoda: o paper está em revisão, os números podem mudar e ninguém replicou. Vale acompanhar antes de tratar 77% como fato estabelecido.
+
+## Checklist antes de mexer no vocabulário
+
+- **Razão saída/entrada.** Se a resposta é curta e o prompt é enorme, o ganho está em outro lugar.
+- **Peso do LM head.** Quanto menor o modelo, mais a matriz do vocabulário pesa — em 4B, perto de 10%.
+- **Boilerplate na saída.** Conte os spans que se repetem: envelope, nomes de campo, frases fixas. É aí que está o macro token.
+- **Você controla o tokenizer?** Open weights, sim. API fechada, não.
+- **Tem corpus do domínio para minerar?** A seleção por custo precisa de dado seu, não de dado genérico.
+- **Tem avaliação que pegue a queda de 0,689?** Sem uma métrica de qualidade amarrada, não mexa.
+- **Reserve o token que carrega a decisão.** Nota, classe, rótulo, veredito: o que o modelo existe para produzir ganha token próprio.
+
+## Perguntas frequentes
+
+**Trocar o tokenizer deixa o modelo mais inteligente?**
+Não. O próprio post afirma que a VocabX não deixa o modelo mais inteligente — ela muda como o texto vira unidade de cobrança e quantas linhas a última camada lê por token. A nota de qualidade subiu no experimento; o mecanismo por trás disso não é explicado.
+
+**Funciona com GPT, Claude ou Gemini via API?**
+Não. Você não tem acesso ao tokenizer desses modelos. O mecanismo vale para modelos open weights que você serve com vLLM, SGLang ou equivalente.
+
+**Preciso retreinar o modelo inteiro?**
+No mínimo, embedding de entrada e LM head. Na prática, sim: o vocabulário novo muda a tokenização de todo o corpus, então o ajuste fino volta para reconstruir o que o modelo sabia com o vocabulário antigo.
+
+**77% se repete no meu caso?**
+Dificilmente. O caso tem uma língua, formato estruturado e saída curta e repetitiva. A economia cresce com a fração da sua saída que é boilerplate e com o peso do LM head no modelo.
+
+**O que é um macro token?**
+Um span inteiro — uma linha, um envelope JSON, uma expressão — que passa a valer 1 token em vez de 12. Ele corta fragmentação em spans longos, que é onde o método de sub-palavra chega tarde.
+
+**Serve para português?**
+O caso de produção medido é português. Vocabulário base construído para muitas línguas fragmenta mais justamente nas línguas que não estavam no treino do tokenizer.
+
+## O que revisar depois
+
+- **Estável:** a assimetria entre leitura e escrita (prefill limitado por compute, decode por banda de memória); o LM head sendo lido inteiro a cada token gerado; a distinção entre fragmentação e excesso; a regra de não comprimir o token que carrega a decisão; o fato de o tokenizer ser definido antes do primeiro passo de treino.
+- **Atualizável:** os percentuais medidos (77,0%, 73,3%, 62,6%, margens por família); o tamanho do vocabulário (151.669 e 64.767); a razão 7,4×; a assinatura de `resize_token_embeddings` e seus defaults; os nomes das referências (FVT, MWT, in-place BPE).
+- **Gatilhos de revisão:** (1) publicação do paper da VocabX, que pode mudar os números; (2) replicação independente ou contestação do ganho; (3) mudança no custo de decode por quantização ou batching, que altera a razão entre gerar e ler; (4) nova versão do Transformers mudar a API de resize; (5) um modelo novo chegar com tokenizer já multilíngue melhor balanceado.
+- **Ressalva de método:** são 500 requisições, numa máquina, com uma GPU e um engine. A razão 7,4× depende do hardware, do batch e do contexto. O paper está em revisão e não foi publicado; os números de qualidade vêm de uma métrica interna da Dharma-AI que combina acurácia de correção e acurácia de triagem.
+
+## Schema recomendado
+
+`Article` com headline, autor, `datePublished` e `dateModified`; `FAQPage` com as seis perguntas acima; `DefinedTermSet` para tokenizer, vocabulário, macro token, fragmentação, prefill, decode e LM head; e `BreadcrumbList`. O grafo de entidades é estável e vale a marcação.
+
+## Fontes
+
+- [Hugging Face Blog — How Specializing the Vocabulary of SLMs Can Cut Inference Cost by 77% in Real Applications (post técnico da Dharma-AI, 21/10/2026: medição, mineradores, erro da versão fundida e limites declarados)](https://huggingface.co/blog/Dharma-AI/vocabx-vocabulary-specialization)
+- [Hugging Face — Dharma-AI (perfil da organização: laboratório brasileiro de modelos pequenos especializados, autoria do post)](https://huggingface.co/Dharma-AI)
+- [arXiv:2402.09977 — Fast Vocabulary Transfer for Language Model Compression](https://arxiv.org/abs/2402.09977)
+- [arXiv:2402.09949 — Multi-word Tokenization for Sequence Compression](https://arxiv.org/abs/2402.09949)
+- [arXiv:2607.15232 — In-Place Tokenizer Expansion for Pre-trained LLMs](https://arxiv.org/abs/2607.15232)
+- [Transformers — PreTrainedModel (redimensionar as embeddings de entrada quando tokens são adicionados ao vocabulário)](https://huggingface.co/docs/transformers/main/en/main_classes/model)
+- [Transformers — modeling_utils.py (fonte de `resize_token_embeddings`: `mean_resizing`, `pad_to_multiple_of` e a remoção de vetores do fim)](https://github.com/huggingface/transformers/blob/main/src/transformers/modeling_utils.py)
