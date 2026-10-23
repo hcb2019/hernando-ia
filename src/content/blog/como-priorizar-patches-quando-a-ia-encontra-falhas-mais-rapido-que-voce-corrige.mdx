@@ -1,0 +1,170 @@
+---
+title: "Como priorizar patches quando a IA encontra falhas mais rápido que você corrige"
+date: "2026-10-23"
+description: "O mesmo aviso de segurança traz 9,8 e 8,1 para falhas corrigidas pelo mesmo pacote. Como priorizar patch por exposição, KEV e impacto quando a descoberta virou automática."
+author: "Hernando Candido"
+tags: [Gestão de Patches, Vulnerabilidades, PHP, CVSS, CISA KEV, EPSS, Divulgação Coordenada, Segurança de IA, Engenharia de IA]
+sponsored: false
+premium: false
+---
+
+# Priorizar patch na era da IA: o gargalo saiu da descoberta
+
+Se você roda PHP, a resposta curta: atualize para **8.2.35, 8.3.36, 8.4.27 ou 8.5.12**, conforme a sua branch. É a única correção completa para as duas falhas divulgadas em 21 de outubro de 2026.
+
+O resto deste texto não é sobre esse CVE. É sobre o que ele mede.
+
+Duas equipes chegaram, de forma independente, a falhas de execução remota de código que estavam no núcleo do PHP havia mais de uma década. O trabalho de achar levou cerca de **uma semana**. O patch saiu **58 dias** depois do primeiro relato.
+
+Quando a IA automatiza achar, o gargalo muda de lugar — e o processo de priorizar patch, desenhado para um mundo em que achar era caro, passa a apontar para o lado errado.
+
+## O que aconteceu, com datas
+
+A Wiz Research relata a descoberta da primeira falha em **19 de agosto de 2026**, com Wiz Atlas, Gemini 4 Argon e GPT-5.6 Sol. Em 20 de agosto confirmou execução remota no Drupal; em 21, no WordPress. O relato ao time de segurança do PHP saiu em **24 de agosto**.
+
+A OpenAI conta o mesmo episódio por outro ângulo: a Calif identificou uma falha crítica com o **GPT-5.6 Sol**, dentro do programa Patch the Planet, e a Wiz descobriu e relatou as duas de forma independente. O patch foi liderado pelos mantenedores do PHP.
+
+Em **21 de outubro** saíram as versões corrigidas e a divulgação pública, no mesmo dia.
+
+São dois CVEs, ambos críticos na avaliação dos mantenedores: **CVE-2026-109618**, execução remota por corrupção no estouro de memória, e **CVE-2026-109619**, execução remota por estado global obsoleto entre requisições. A Wiz estima que PHP roda em **70% dos sites do mundo** e que quase toda versão da última década é afetada, voltando à 5.4.
+
+## 58 dias entre o relato e o patch
+
+Vale abrir a conta, porque ela é o argumento inteiro:
+
+- **19/08** descoberta; **24/08** relato ao PHP: 5 dias.
+- **24/08** relato; **21/09** o PHP reconhece e começa a correção coordenada: **28 dias**.
+- **21/09**; **21/10** patch pronto e divulgação pública: 30 dias.
+
+A parte cara nunca foi encontrar. A Wiz diz que um único pesquisador fez em uma semana o que antes exigiria um time de ponta por meses. A parte cara foi **entender o impacto, adaptar a correção para quatro branches, testar contra variantes e combinar quem precisava saber antes** — um processo humano, não um modelo.
+
+## O bug não está no seu código: está na fronteira da requisição
+
+As duas falhas vivem no ciclo de vida da requisição, não na aplicação.
+
+Na primeira, um erro de memória esgotada usa `longjmp()` para abortar o contexto; em alguns caminhos a memória da requisição fica num estado inválido, e o encerramento da requisição lê ou decide com base nela. Na segunda, estado global do worker continua apontando para memória de uma requisição já liberada, e a requisição seguinte consome esse ponteiro antes da inicialização normal.
+
+Nenhuma das duas depende de uma linha do seu código. O aviso é explícito: mesmo um "Hello World" em versão afetada está exposto, e a Wiz usou WordPress, Drupal e Joomla apenas como amostra.
+
+O que muda de servidor para servidor é o **SAPI**, a camada que liga o PHP ao servidor web:
+
+- **mod_php (Apache):** chama o encerramento da requisição mesmo quando a inicialização falhou — ataque independente de aplicação, validado sobre HTTP com limites padrão. É o caso mais grave.
+- **PHP-FPM:** encerra o filho quando a inicialização falha e bloqueia esse caminho. A análise de código ainda aponta suscetibilidade, mas nenhum exploit completo foi demonstrado.
+- **FrankenPHP:** encerra incondicionalmente, como o mod_php — provavelmente suscetível.
+- **LSAPI:** se comporta como o FPM; exploits específicos de aplicação são prováveis, mas não validados.
+
+Para quem administra servidor compartilhado com mod_php, essa lista é a diferença entre "meu app não usa upload" e "meu servidor está exposto".
+
+## A mesma correção, notas diferentes
+
+Aqui está a parte que deveria incomodar quem prioriza por nota.
+
+Para o CVE-2026-109618, o NVD publica **CVSS 3.1 igual a 9,8** — crítico. O PHP, como CNA, publica **CVSS 4.0 igual a 9,2** — também crítico. Para o CVE-2026-109619, o NVD publica **8,1**, que é *alto*, não crítico. O PHP publica **9,2**.
+
+Mesmo aviso, mesma data, mesmo pacote de correção — e uma das falhas entra na sua planilha como alto enquanto a outra entra como crítica.
+
+Leia os vetores e a diferença aparece: no 3.1 do 109619 a complexidade de ataque é `AC:H`; no 4.0 o vetor marca `AC:H` **e** `AT:P`, requisitos de ataque presentes. São réguas diferentes medindo o mesmo defeito.
+
+Nenhuma das duas está errada. O erro é ordenar trabalho por um número sem saber de qual régua ele veio.
+
+## Quatro variáveis no lugar de uma nota
+
+A CISA trocou essa régua em 2026. A BOD 26-04, que revoga a BOD 22-01 e a BOD 19-02, define o prazo de remediação por quatro variáveis, não pela nota:
+
+- **Está no catálogo KEV?** A vulnerabilidade é conhecida como explorada.
+- **A exploração é automatizável pelo adversário?**
+- **Qual o impacto técnico?** Controle parcial ou total do ativo.
+- **O ativo está exposto publicamente?**
+
+A diretiva é explícita sobre o motivo: o uso de IA pelos atacantes "pode estreitar ainda mais o tempo que os defensores têm para reagir entre a publicação do patch e a possível exploração". O nível mais urgente exige remediação ou mitigação em **três dias**, mais triagem forense para saber se o sistema já foi comprometido.
+
+O EPSS entra como terceiro sinal: estima a probabilidade de um CVE publicado ser explorado nos próximos **30 dias**, com valor de 0 a 1 e percentil, atualizado diariamente. Na prática: a nota diz o tamanho do estrago possível, o KEV diz se já aconteceu, o EPSS diz a chance de acontecer e a exposição diz se é com você.
+
+Como os dois CVEs saíram em 21 de outubro, **confira o status no KEV antes de assumir qualquer coisa** — é uma página que muda todo dia.
+
+## Se você não pode atualizar hoje
+
+Atualizar é a única mitigação completa. Mas existe uma escada para quem não consegue subir de versão na mesma hora, e ela tem uma armadilha.
+
+- **`memory_limit=-1` aplicado administrativamente** é a mitigação primária de configuração: remove o limite previsível por requisição que torna o exploit controlável. Não é completa, porque uma falha de `mmap()` ainda cai no caminho vulnerável. Depois de aplicar, reinicie todos os workers e confirme que nenhum pool, diretório ou configuração de aplicação volta a impor limite finito.
+- **Não use `RLIMIT_AS` nem `RLIMIT_DATA`.** Os dois fazem o `mmap()` falhar ao atingir o limite — ou seja, empurram o processo exatamente para o caminho vulnerável.
+- **`post_max_size` conservador**, com o tamanho decodificado imposto no frontend, não só no PHP.
+- **Reduza `max_input_nesting_level`** e limite variáveis de entrada, partes multipart, headers por parte e uploads.
+- **Bloqueie multipart no frontend** se a aplicação não usa formulário multipart.
+- **Limite de cgroup (`memory.max`)** pode substituir o `memory_limit`, com ressalva: matar o cgroup pode matar o master e todos os workers.
+
+A lista de versões corrigidas começa no 8.2. Se você está em 8.1 ou anterior, **não existe patch para instalar** — existe caminho de upgrade, porque a falha alcança versões muito mais antigas.
+
+## O que procurar no log
+
+Como as falhas rodam abaixo da camada da aplicação, o log da aplicação pode não ter nada. Os sinais que a Wiz publica são de infraestrutura:
+
+- requisições multipart incomuns seguidas de erro de limite de memória, ou HTTP 500 repetidos;
+- cookies `PHPSESSID` anormalmente grandes ou malformados;
+- churn inexplicado de workers PHP.
+
+O cookie importa porque uma das variantes coloca memória de outras requisições dentro dele, e o ataque funciona **mesmo quando a aplicação nunca chama `session_start()`**. Essa memória pode conter senha, token, chave de API e certificado. Cookie estranho é possível vazamento, não bug de sessão.
+
+## O que isso muda no processo
+
+Três coisas, e nenhuma é sobre PHP.
+
+**Inventário de runtime.** Você não corrige o que não sabe que tem. A versão exata do PHP por serviço — incluindo o container base que ninguém atualizou — vale mais do que qualquer scanner de dependência.
+
+**O pacote, não o CVE.** Aqui os dois CVEs são corrigidos pela mesma atualização. Quem trabalha por ticket por CVE abre dois trabalhos para uma correção só.
+
+**Quem assina o patch.** A OpenAI escreve que um dos objetivos é justamente **não** produzir mais achados para validação humana: é pegar a falha antes de subir e encurtar o caminho até uma correção segura. Se o seu processo transforma cada achado num ticket que espera revisão, a IA só aumentou a fila.
+
+Quando o patch não existe, sobra isolar — o mesmo raciocínio de [sandbox para agente de IA](/blog/sandbox-para-agente-de-ia-o-que-o-microvm-isola-e-onde-a-rede-vaza) e de [isolamento de rede na avaliação](/blog/eval-com-internet-e-producao-como-isolar-a-rede-do-seu-agente-de-ia).
+
+## Minha opinião
+
+Eu acho que a discussão sobre "IA vai achar todas as falhas" erra o alvo. Achar virou commodity. O que não virou commodity é **revisar, adaptar para quatro branches e convencer quem opera a reiniciar o serviço**.
+
+Na moral: se o seu time ainda mede maturidade de segurança pelo número de achados do scanner, a IA transformou isso numa métrica de ruído. O número que importa agora é o tempo entre patch disponível e patch aplicado — e esse, na maioria dos lugares que eu conheço, ninguém mede.
+
+E o patch existir não significa que ele chega. Hosting compartilhado no Brasil, painel de terceiro, container que builda de uma imagem congelada há dois anos. A falha estava no núcleo por uma década; a chance de estar no seu servidor amanhã depende de quem controla a atualização, não de quem descobriu.
+
+## Takeaways
+
+- **Atualize para 8.2.35, 8.3.36, 8.4.27 ou 8.5.12.** É a única correção completa; 8.1 e anteriores não recebem patch.
+- **A nota sozinha não decide:** o mesmo aviso traz 9,8 (CVSS 3.1, NVD) e 9,2 (CVSS 4.0, PHP) para uma falha, e 8,1 contra 9,2 para a outra. Diga sempre qual versão e quem emitiu.
+- **Priorize por exposição, KEV, automação do exploit e impacto técnico** — o modelo da BOD 26-04, com EPSS como sinal complementar.
+- **Se não puder atualizar hoje:** `memory_limit=-1` administrativo, sem `RLIMIT_AS` nem `RLIMIT_DATA`, e multipart bloqueado no frontend.
+
+## Perguntas frequentes
+
+**Meu app não usa upload. Estou seguro?**
+Não necessariamente. O mod_php é suscetível a ataques independentes de aplicação, e uma das variantes funciona sem a aplicação chamar `session_start()`. A superfície não é o seu formulário, é o runtime.
+
+**Posso esperar o próximo patch do framework?**
+Não. A falha está no núcleo do PHP: WordPress, Drupal e Joomla não têm como corrigir por conta própria.
+
+**O 8,1 significa que essa falha é menos grave?**
+Significa que o NVD, no CVSS 3.1, avaliou a complexidade de ataque como alta. O PHP, no CVSS 4.0, avaliou as duas falhas em 9,2. As duas leituras são oficiais e a correção é a mesma.
+
+**Preciso reescrever código?**
+Não. A mitigação é atualizar o runtime e, em servidores expostos, revisar limites de memória, de corpo de requisição e de aninhamento de entrada.
+
+## O que revisar depois
+
+**Estável (deve seguir válido em 12 meses):** a fronteira da requisição como classe de falha; a diferença entre CVSS 3.1 e 4.0 e a obrigação de citar versão e emissor; as quatro variáveis de priorização da BOD 26-04; a escada de mitigação e a proibição de `RLIMIT_AS` e `RLIMIT_DATA`.
+
+**Atualizável (confira antes de citar de novo):** as versões corrigidas e as datas do episódio PHP2Shell; o status dos dois CVEs no catálogo KEV; o intervalo entre relato e patch; a lista de SAPIs suscetíveis, que pode ganhar confirmação para FPM, FrankenPHP e LSAPI; se o processo de cinco etapas do Patch the Planet virou padrão de divulgação coordenada.
+
+## Schema recomendado
+
+`Article` com `headline`, `datePublished` em 2026-10-23, `dateModified` e `author` como `Person`. Vale um `FAQPage` para as quatro perguntas acima e um `BreadcrumbList` na rota do blog. Não use `Product`: são dois CVEs e um patch, não um item de catálogo.
+
+## Fontes
+
+- [Fonte: Wiz Research — PHP2Shell e a linha do tempo da divulgação](https://www.wiz.io/blog/php2shell-php-rce)
+- [Fonte: Aviso GHSA-w8hw-w9fx-j79w — RCE via corrupção no estouro de memória](https://github.com/php/php-src/security/advisories/GHSA-w8hw-w9fx-j79w)
+- [Fonte: Aviso GHSA-6wmf-4rv5-p3rp — RCE via estado global obsoleto](https://github.com/php/php-src/security/advisories/GHSA-6wmf-4rv5-p3rp)
+- [Fonte: NVD — CVE-2026-109618](https://nvd.nist.gov/vuln/detail/CVE-2026-109618)
+- [Fonte: NVD — CVE-2026-109619](https://nvd.nist.gov/vuln/detail/CVE-2026-109619)
+- [Fonte: OpenAI — Patch the Planet e divulgação coordenada](https://openai.com/index/coordinated-disclosure-of-critical-vulnerabilities)
+- [Fonte: OpenAI — The Defender's Window](https://openai.com/index/the-defenders-window/)
+- [Fonte: CISA — BOD 26-04, priorização de atualizações por risco](https://www.cisa.gov/news-events/directives/bod-26-04-prioritizing-security-updates-based-risk)
+- [Fonte: FIRST — Exploit Prediction Scoring System (EPSS)](https://www.first.org/epss/)
+- [Fonte: OpenAI — verificador de versão do PHP (php2shell-checker)](https://github.com/openai/php2shell-checker)
