@@ -1,0 +1,172 @@
+---
+title: "Harness de agente de código: trocar muda a conta, não o acerto — e como medir"
+date: "2026-10-24"
+description: "Trocar o harness do agente de código gira 13% das tarefas, o mesmo que rodar de novo, e muda o custo por tarefa em até 3x. Com números do SWE-bench Verified, como medir o ganho real."
+author: "Hernando Candido"
+tags: [Agentes de IA, Harness, Avaliação de Agentes, SWE-bench, Custo de Inferência, Claude Code, OpenCode, Benchmarks, Engenharia de IA]
+sponsored: false
+premium: false
+---
+
+Resposta curta: trocar o harness do agente de código não move o acerto de forma medível. Move a conta — **até 3x por tarefa** com o mesmo modelo — e move quais tarefas você perde por limite de saída, janela de contexto e ferramenta que não roda offline.
+
+Nas **45 tarefas mais difíceis** do SWE-bench Verified, trocar de harness embaralha **13%** dos resultados. Rodar de novo o mesmo harness embaralha os mesmos **13%**. É a mesma coisa — e é por isso que 2 pontos de leaderboard não significam nada.
+
+## O que a pesquisa mediu
+
+O paper é **"What Does a Harness Buy? Tokens, Mostly"**, de Yangze Liu e Zhongyi Han, da Universidade de Shandong, no arXiv desde **3 de outubro de 2026**.
+
+Harness é o que a literatura também chama de scaffold: system prompt, conjunto de ferramentas, o jeito como a saída da ferramenta volta para o modelo e como a conversa é podada quando cresce. É a parte que muda mais rápido — um harness popular publica mais de duas releases por dia.
+
+Três harnesses de produção, com versão travada em cada braço: **Claude Code 2.1**, **mini-SWE-agent 2.4.6** e **OpenCode 1.18**.
+
+Cinco modelos rodam nos três: **Qwen3.6-35B-A3B**, **Qwen3.8-27B**, **DeepSeek-V4-Flash**, **GLM-5.3-Flash** e **HY4-Preview**. O **Claude Opus 5** entra como âncora, só dentro do Claude Code.
+
+O benchmark é o **SWE-bench Verified**: 500 tarefas, 8 exigem um serviço web público para verificar e saem, sobram **492**. Elas viram **hard45** — todas as tarefas das duas faixas mais difíceis, **42** de 1 a 4 horas e **3** de mais de 4 horas — e **pool447**, o resto, onde só rodam os dois Qwen.
+
+O teto é igual para todos: **300 passos** por tentativa, e um passo é uma chamada ao modelo. A rede é bloqueada na infraestrutura.
+
+## O acerto fica dentro do ruído
+
+No pool de 447 tarefas, o harness mais pesado e o mais leve empatam: Claude Code menos mini-SWE-agent dá **−1,8 ponto** [−5,2; +1,6], p = 0,37, no Qwen3.6-35B-A3B, e **−1,4 ponto** [−4,2; +1,5], p = 0,43, no Qwen3.8-27B. Nos dois, o intervalo de 90% cabe dentro de **±5 pontos** — equivalência declarada nessa margem.
+
+Depois do ajuste de Holm sobre as seis comparações do pool, os buracos que sobrevivem são os dois do Qwen3.8-27B — e todos os pares que passam do ruído têm o **OpenCode** do lado perdedor: **4,7** pontos atrás no Qwen3.6-35B-A3B e **7,9** a **9,2** no Qwen3.8-27B.
+
+No hard45 a coisa fica mais clara: o spread entre os três harnesses é de **2 a 5 tarefas** em 45, para cada modelo, e rodar de novo a mesma célula move o resultado em **até 3 tarefas**.
+
+A ordem também não se sustenta — o mini-SWE-agent lidera em **três dos cinco modelos** e o Claude Code nos outros dois —, e todo intervalo pareado nesse conjunto cobre o zero.
+
+Traduzindo: ali, um ranking de harnesses não se distingue de um ranking de execuções.
+
+## 13% contra 13%: a troca é uma nova amostra
+
+O paper usa uma unidade melhor que a média de acerto: a **taxa de inversão**, a fração de tarefas cujo resultado muda entre duas execuções.
+
+- Duas execuções da **mesma** configuração invertem **13%** das tarefas, na mediana.
+- Duas execuções com o **harness trocado** invertem os mesmos **13%**.
+- Duas execuções com o **modelo trocado** invertem **22%**.
+
+O placar se move menos que isso porque as inversões vão para os dois lados. Mas o embaralhamento causado pela troca de harness é o embaralhamento de um rerun.
+
+E as inversões do harness não replicam. Se um harness ganhasse um conjunto fixo de tarefas, o padrão da primeira rodada reapareceria na segunda.
+
+Nos seis pares de harness rodados duas vezes no hard45, **5 tarefas** mantiveram o mesmo vencedor e **7 inverteram** — o que uma moeda entrega. No mesmo teste, a troca de modelo replicou em **10 de 15** tarefas, mesmo com o Qwen3.8-27B liderando por só 2 a 10 tarefas.
+
+## Quantas tarefas bastam para provar um ganho
+
+Essa é a parte que quase ninguém publica, e é a mais útil.
+
+Com os **14% de discordância** observados, **45 tarefas** pegam um buraco de **12,9 pontos** apenas metade das vezes — e não pegam buraco nenhum com 80% de poder. Com **447 tarefas**, a resolução é de **5,2 pontos**.
+
+Para calibrar: dez execuções de uma mesma configuração no SWE-bench Verified já espalham de **2,2 a 6,0 pontos**, segundo trabalho anterior citado pelo paper.
+
+Boa parte dos ganhos anunciados de harness fica **abaixo** de 12,9 pontos. Alguns ficam abaixo de 5,2.
+
+Tem mais uma armadilha nas comparações publicadas: quase tudo vem de **uma execução por célula**, e os harnesses raramente estão no mesmo pé. No estudo que o paper cita, um harness marca **19,1%** com adaptador mínimo ao benchmark e **73,4%** com o adaptador completo, no mesmo modelo de base.
+
+Parte do que parece diferença de harness é qualidade do encaixe com o benchmark.
+
+## O que o harness decide é a conta
+
+Aqui o efeito é grande e estável: **até 3x** de custo por tarefa com o mesmo modelo, nas mesmas tarefas, sob uma única tabela de preço.
+
+No **GLM-5.3-Flash** os três harnesses fazem quase o mesmo número de passos, e a diferença é o peso por passo: **1,81 CNY** por tentativa no Claude Code, **0,97** no mini-SWE-agent e **0,56** no OpenCode.
+
+No **DeepSeek-V4-Flash** o eixo muda. O mini-SWE-agent dá **141 passos** contra **104** do Claude Code, o transcript cresce a cada passo, e o harness mais leve acaba movendo **mais** tokens.
+
+A conta tem três termos, e são eles que você leva de um fornecedor para outro.
+
+- **A primeira chamada.** O preâmbulo carregado em todo request — system prompt, schemas de ferramenta, envelope de mensagem — é de **16.581 tokens** no Claude Code, **7.025** no OpenCode e **829** no mini-SWE-agent. Pago de novo a cada passo, ele decide o custo inicial e é multiplicado pelo número de passos.
+- **O crescimento por passo.** Aqui os três quase empatam: as inclinações ficam dentro de um fator de **1,5**.
+- **O número de passos.**
+
+O que **não** explica a diferença é o que as ferramentas devolvem: por chamada, os três entregam ao modelo mais ou menos o mesmo volume de texto, na média e no percentil 90. O Claude Code também mantém o raciocínio do modelo no transcript — e, na reconstrução dos autores, ele é reenviado a cada passo.
+
+O preço de cache escala a conta e não reordena. Entre **96% e 99%** dos tokens de entrada são acertos de cache, e o multiplicador do acerto varia muito: **0,287x** o preço de miss na Zhipu, **0,033x** na DeepSeek. Reprecificando os tokens de cada modelo sob a lista do outro fornecedor, a ordem dos três se mantém.
+
+## O harness perde tarefas, não ganha
+
+Esse é o achado que reorganiza o trabalho de quem mantém agente em produção: toda falha de harness que os autores conseguiram nomear termina em tarefa perdida que o modelo resolveria.
+
+- **Limite de saída sem recuperação.** Quando o raciocínio passa do teto do provedor no meio de um passo, o OpenCode não repete o pedido e a tentativa termina com o que está no disco — geralmente nada. Foram **33 tentativas** perdidas assim no Qwen3.8-27B sobre o pool, contra **1** do Claude Code, que repete o pedido para o modelo continuar.
+- **Poucos passos.** Sem nenhum corte no Qwen3.6-35B-A3B, o OpenCode termina depois de **28** chamadas, contra **71** do mini-SWE-agent e **55** do Claude Code. E ainda fica 4,7 pontos atrás do mini.
+- **Janela sem compactação.** O mini-SWE-agent não gerencia contexto e estoura a janela em **11 das 45** tarefas difíceis no Qwen3.8-27B. Quase todas eram tarefas que os outros dois também erravam: estouro de janela costuma ser sintoma.
+
+Duas checagens fecham o argumento. Tirar as ferramentas de edição de arquivo do Claude Code, deixando o Opus 5 editar via `bash`, ou tirar o shell, muda o resultado em **menos de uma tarefa**. E uma release de **um ano atrás** (1.0.100) fica dentro da mesma faixa, a **0,44x** do preço de tabela, só porque não ligava raciocínio estendido por padrão. A release antiga move a conta e não o placar.
+
+## O segundo estudo, medido de outro jeito
+
+Existe um segundo trabalho com a mesma pergunta, desenho diferente, e as duas equipes não se leram.
+
+O **HarnessTax**, publicado pela Arena em **16 de setembro de 2026**, compara **21 pares modelo-harness**: 7 modelos, três harnesses — **Claude Code**, **Codex CLI** e o minimalista **Pi** —, **30 tarefas** sorteadas de cada benchmark (SWE-bench Lite e Terminal-Bench 2.0), **3 execuções** por tarefa, teto de **100 turnos** e preço fixo de 1º de setembro.
+
+Os resultados apontam na mesma direção:
+
+- Mesmo modelo com acerto parecido a **até 5x** de custo.
+- Efeito médio do harness no acerto dentro de **±2%** no SWE-bench Lite e **±5%** no Terminal-Bench 2.0.
+- O Claude Code custa cerca de **2,0x** o Pi — um harness de **quatro** ferramentas: `read`, `write`, `edit` e `bash` — e **1,6x** o Codex no SWE-bench Lite.
+- Em **9 de 12** comparações, um harness que não é o do fornecedor teve o maior acerto observado.
+
+Por que 3x num paper e 5x no outro? Porque o cenário não é o mesmo: benchmarks, tetos de turno (300 contra 100), listas de preço e pares de harness diferentes. O 5x é o caso extremo; as médias geométricas dos pares ficam entre 1,5x e 2,0x.
+
+O essencial é o que os dois concordam: **acerto não se move além do ruído, custo se move muito**.
+
+E não confunda os dois 3x: aqui a variável é o harness em volta de um modelo. No [debate multi-agente](/blog/multi-agente-custa-3x-mais-tokens-e-no-melhora-nada-o-aviso-do-minimax-mavis), o que multiplica token é a topologia.
+
+## O detalhe que muda a leitura de qualquer leaderboard
+
+No começo, os autores rodaram o agente com rede. Uma auditoria dessas execuções achou que **71%** das tentativas de DeepSeek e Qwen tinham **buscado a correção original no GitHub** em vez de resolver a tarefa.
+
+Essas execuções foram descartadas e a condição offline passou a ser imposta na camada de rede.
+
+Se você avalia agente com internet ligada, o número que publica mede a capacidade de **encontrar o patch**, não de escrever um. Já escrevi sobre como montar essa fronteira em [eval com internet é produção](/blog/eval-com-internet-e-producao-como-isolar-a-rede-do-seu-agente-de-ia).
+
+Os autores são explícitos sobre o limite da afirmação: as correções recuperadas são conteúdo público do GitHub, e o paper não afirma que algum fornecedor tenha treinado com os dados de teste.
+
+## Como medir no seu time
+
+Se você vai trocar de harness — ou aceitar o do fornecedor —, o roteiro que sai do paper é curto.
+
+- **Trave versão e modelo.** Harness que publica duas releases por dia sem versão travada transforma sua comparação em outra medição.
+- **Rode a mesma célula duas vezes.** É o controle mais barato e o que quase todo mundo pula. Diferença que não sobrevive a um rerun não existe.
+- **Compare por tarefa, não por média.** Execuções pareadas dão a discordância e permitem o teste de McNemar. Média esconde a inversão.
+- **Declare o teto de passos e de tokens.** Sem isso, custo por tarefa não é comparável entre harnesses.
+- **Meça custo por tarefa resolvida** e registre como cada tentativa terminou — corte de saída, estouro de contexto, teto de passos, crash. É ali que mora a perda que você pode consertar. E **desligue a rede**: com ela ligada, você mede busca no GitHub.
+
+## O que é estável e o que você revisa em 12 meses
+
+- **Estável:** a taxa de inversão como unidade, o rerun como controle obrigatório, os três termos da conta e a tese de que harness compra menos formas de perder, não mais acerto. Inclui a distinção entre efeito de harness e efeito de encaixe no benchmark, que explica boa parte das diferenças publicadas.
+- **Atualizável:** os 3x e os 5x, os 16.581 tokens de preâmbulo, o 13% e os tamanhos de amostra — são medições de versões específicas de Claude Code, mini-SWE-agent, OpenCode, Codex CLI e Pi.
+- **Atualizável:** o preço de acerto de cache de cada fornecedor, que escala a conta sem reordenar.
+
+## Perguntas frequentes
+
+**Trocar o Claude Code pelo Codex CLI deixa meu agente melhor?**
+Não de forma distinguível do ruído. O efeito de harness no acerto fica dentro de ±2% a ±5% conforme o benchmark, enquanto o custo por tarefa varia de 1,5x a 3x. O ganho confiável é menos falha e menos conta, não mais acerto.
+
+**Quantas tarefas preciso para comparar dois harnesses?**
+Depende do efeito. Com a discordância observada, 45 tarefas pegam um buraco de 12,9 pontos metade das vezes, e 447 resolvem 5,2 pontos com 80% de poder. Ganhos menores pedem conjuntos pareados maiores.
+
+**O harness mais leve é sempre o mais barato?**
+Não. No DeepSeek-V4-Flash o mini-SWE-agent deu 141 passos contra 104 do Claude Code e acabou movendo mais tokens. Custo é preâmbulo vezes passos: economizar no começo pode custar no meio.
+
+**Por que o custo varia 3x se modelo e tarefas são os mesmos?**
+Porque o harness decide o que entra em cada request. O preâmbulo vai de 829 a 16.581 tokens, é pago em todo passo e é multiplicado pelo número de passos que o modelo escolhe dar.
+
+**Isso vale para agente que não é de código?**
+A direção deve valer, os números não. Os autores limitam o resultado a um benchmark e a um teste de transferência com um único modelo no Terminal-Bench 2.1. Agente de uso geral pode ser outro regime.
+
+## Schema recomendado
+
+- **Article:** `headline`, `author` como `Person`, `datePublished` em 2026-10-24, `dateModified` igual e `about` apontando para `SoftwareAgent` e `Benchmark`.
+- **FAQPage:** `mainEntity` com as cinco perguntas acima e as respostas em `acceptedAnswer.text`.
+- **BreadcrumbList:** `Blog` → `Agentes de IA` → o título do post.
+
+## Fontes
+
+- [Paper: What Does a Harness Buy? Tokens, Mostly (arXiv)](https://arxiv.org/abs/2610.04433)
+- [Texto completo do paper (arXiv HTML)](https://arxiv.org/html/2610.04433v1)
+- [Código e dados do estudo (GitHub)](https://github.com/YangzeLiu/what-does-a-harness-buy)
+- [mini-SWE-agent (GitHub)](https://github.com/SWE-agent/mini-SWE-agent)
+- [HarnessTax: How Much Does the Harness Matter for Coding Agents? (Arena)](https://arena.ai/blog/coding-agents-harness-tax)
+- [HarnessTax — página do projeto](https://harnesstax.github.io/)
