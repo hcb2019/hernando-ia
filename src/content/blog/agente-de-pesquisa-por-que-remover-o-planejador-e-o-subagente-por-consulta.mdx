@@ -1,0 +1,124 @@
+---
+title: "Agente de pesquisa: por que remover o planejador e o subagente por consulta"
+date: "2026-10-25"
+description: "O time do TinyFish tirou o planejador, o subagente por consulta e a meta de cobertura do próprio agente de pesquisa. O que entrou no lugar e onde o benchmark do fornecedor mostra o limite."
+author: "Hernando Candido"
+tags: [Agentes de IA, Deep Research, Arquitetura de Agentes, Contexto, RAG, Benchmarks, Engenharia de IA, TinyFish]
+sponsored: false
+premium: false
+---
+
+Um agente de pesquisa não falha por falta de inteligência do modelo. Falha porque a informação muda de mãos no meio do caminho.
+
+O time do TinyFish desmontou o próprio sistema e publicou o que sobrou. Saiu o planejador separado, saíram os subagentes criados por consulta, saiu a meta de cobertura de fontes. No lugar ficaram duas coisas menos glamourosas: um **contrato de evidência** escrito antes da busca e uma **classificação de falha** que decide o retry.
+
+O material é do fornecedor — o texto que divulgou o caso é peça patrocinada e o benchmark é operado por quem está sendo medido. Cada número vai com dono, e a parte mais útil é onde a conta não fecha a favor deles.
+
+## O planejador separado perde a conversa
+
+A primeira versão tinha um planejador dedicado: recebia a pergunta, gerava sub-perguntas e estratégia, e o orquestrador executava. Parecia limpo — planejar e executar são tarefas diferentes. O problema apareceu quando a pesquisa virou iterativa.
+
+O orquestrador acumulava histórico, relatórios parciais e a intenção que o usuário refinava. O planejador era **uma chamada nova de LLM a cada invocação**, e só o estado estruturado atravessava a fronteira.
+
+O caso que expôs isso: depois de um relatório sobre a posição de mercado de uma empresa, o usuário pede para focar só em **risco de preço no Sudeste Asiático**. O orquestrador entendeu o "só". O planejador, com um retrato comprimido daquele entendimento, voltou a pesquisar o mercado inteiro.
+
+"É só passar tudo o que o orquestrador sabe", você pensa. Não é: o entendimento é o resultado de um raciocínio que já aconteceu, e reconstruí-lo numa chamada nova não é continuar na mesma.
+
+**Toda fronteira de raciocínio cobra contexto.** E decompor perde entidade: o ChainRAG, na ACL de 2025, documentou o **lost-in-retrieval** — entidades-chave somem na decomposição em sub-perguntas e a cadeia quebra depois.
+
+## Um subagente por consulta paga em latência o que não ganha
+
+Removido o planejador, cada consulta ganhou um subagente que buscava, classificava e devolvia o pacote. O orquestrador passava o tempo despachando, esperando e fundindo saídas, e o overhead compunha a cada iteração.
+
+O diagnóstico é o mais reaproveitável do artigo: **nenhum desses passos era julgamento**. Ranquear resultado, classificar fonte e extrair afirmação são fluxos determinísticos.
+
+Os subagentes saíram. Entraram **chamadas de ferramenta** que devolvem algo já destilado — fontes ranqueadas, afirmações extraídas. O contexto encolheu, latência e custo caíram, e sobrou para o modelo só o que exige julgamento: planejar e decidir o que olhar depois.
+
+**Passo determinístico é ferramenta, não agente.** O trabalho de arquitetura é achar a fronteira entre execução determinística e flexibilidade do modelo.
+
+## A terceira remoção é uma métrica
+
+Essa quase ninguém tira, porque parece funcionar. O sistema estava otimizado para **cobertura**: mais fontes, relatório mais completo. Ao mostrar os relatórios para pesquisadores, o time descobriu que media a coisa errada — quem usa avalia **força de suporte**.
+
+Para sentimento sobre um produto, milhares de posts em rede social podem valer mais que um relatório de governo; para estimar desemprego, o contrário. **Qualidade de fonte depende do objetivo.**
+
+O ranqueamento passou a considerar o objetivo, o sintetizador a força da evidência, e o pesquisador ganhou controle sobre domínios. A validação virou um **harness com LLM como juiz** — escala, não veredito, como o post sobre [avaliar agente por estado final](/blog/como-avaliar-um-agente-de-ia-que-mexe-no-banco-estado-final-nao-resumo) já argumentou.
+
+## O que fica no lugar: contrato de evidência
+
+Sem planejador, o objetivo precisa estar escrito onde o avaliador consiga testar. É o **contrato de evidência** — termo de trabalho do fornecedor, não padrão da indústria: campos a coletar, fontes aceitas e recência, proveniência, formato da saída e as condições de conclusão, conclusão parcial, falha e revisão humana.
+
+"Ache o último anúncio de produto da empresa" vira **seis requisitos**: o anúncio, a data, o produto, a fonte primária, a confirmação independente e a janela de recência. A checklist é gravada antes da primeira busca.
+
+A decomposição é um **grafo de dependências**, não uma lista: não dá para buscar o empregador anterior de um executivo ainda não identificado. E o roteamento segue a lacuna, não uma escada fixa — buscar quando a fonte é desconhecida, abrir a página quando a URL é conhecida, navegador quando a aplicação controla a sessão.
+
+Escalar não conserta pedido mal formulado: resultado fraco pede consulta melhor; fonte conflitante, evidência mais forte.
+
+## Cinco estados e retry por tipo de falha
+
+O avaliador classifica a evidência em **cinco estados**: suficiente, incompleto, conflitante, inacessível ou orçamento esgotado. Cada um tem ação própria — continuar ou parar não fica a cargo de um julgamento não registrado.
+
+O retry segue a lógica: repetir a mesma chamada só faz sentido para erro transitório; conteúdo vazio ou bloqueado pede outra fonte. Em fluxo com efeito colateral, repetir às cegas reenvia o formulário.
+
+Esgotado o orçamento, o sistema devolve **estado terminal explícito**: concluído, incompleto, falhou, cancelado ou precisa de revisão humana. O que ele não faz é transformar falha em resposta fluente.
+
+## A conta é uma soma, e o gargalo é a recuperação
+
+As duas fórmulas que valem decorar antes de otimizar qualquer coisa:
+
+- **Latência total** = planejamento + rodadas de busca + recuperação de página + avaliação + retries + execução interativa + fila.
+- **Custo total** = tokens + chamadas de ferramenta + uso de página ou navegador + retries + infraestrutura.
+
+Elas não são intercambiáveis. Mais paralelismo pode reduzir o tempo de relógio e aumentar chamadas e tokens; e uma recuperação mais lenta e melhor pode **reduzir** a latência total, se evitar raciocínio e retries.
+
+Declarar o orçamento de tarefa antes da execução e trocar retry por tentativa por retry por diagnóstico é a mesma disciplina que o post sobre [custo do agente de código](/blog/harness-de-agente-de-codigo-trocar-muda-a-conta-nao-o-acerto-e-como-medir) aplica do lado do harness.
+
+Não é intuição de fornecedor. O SearchAgent-X, aceito na ICLR 2026, mediu o mesmo efeito do outro lado: busca exata cobra overhead, busca grosseira empurra raciocínio extra para o modelo, e atraso de recuperação vira latência em cascata. Com agendamento por prioridade e recuperação sem parada, relatam **até 3,4x mais throughput e 5x menos latência** contra vLLM e HNSW — no sistema experimental deles, não como multiplicador universal.
+
+## O que o benchmark do próprio fornecedor mostra
+
+O OpenBenchmarks mede APIs de busca para agentes de código: **100 tickets** de documentação empresarial, modelo fixo em gpt-5.6-sol, 5 buscas e 32 turnos de orçamento, três rodadas, atualização de **15/09/2026**. As prateleiras — com fetch e busca sozinha — são ranqueadas separadas.
+
+Com fetch, a **Exa deep lidera com 83,0% ± 1,0**. O **TinyFish aparece com 79,0% ± 2,0**, em 24s, com o menor custo mediano por ticket do campo: **US$ 0,050**.
+
+O detalhe que nenhum resumo repete: no mesmo board a lista de preço do TinyFish é **US$ 0 por busca e US$ 0 por fetch** — os US$ 0,050 são inteiramente token, enquanto as listas por busca dos concorrentes vão de US$ 0,0011 a US$ 0,016. "Mais barato do campo" é verdade na coluna medida, não uma comparação como-for-como.
+
+Sem fetch, a **Perplexity lidera com 77,3% ± 2,1**, seguida por Firecrawl (70,3%) e Exa fast (66,3%). O **TinyFish fica em 59,3% ± 1,5**.
+
+São **19,7 pontos** entre 79,0 e 59,3 — o número mais informativo do board, e a favor do argumento deles: a vantagem daquela arquitetura mora no **fetch**, em ler a página. Tirada a leitura, o desempenho cai.
+
+Minha leitura: publicar a própria derrota numa das prateleiras compra credibilidade. Só não trate como ranking neutro — quem opera a régua é quem está sendo medido.
+
+## O que é estável e o que revisar em 12 meses
+
+- **Estável:** o custo de atravessar fronteira de raciocínio, passo determinístico como ferramenta, contrato de evidência, retry por tipo de falha e a soma de custo e latência. Nada disso depende de fornecedor.
+- **Atualizável:** os 79,0%, 59,3%, 83,0%, 77,3%, o US$ 0,050 e as listas de preço — retrato de 15/09/2026, com 100 tickets e um modelo fixo.
+- **Atualizável:** "7 fases e 11 ações" é descrição do fornecedor, não padrão. Mapa útil, não especificação.
+
+## Perguntas frequentes
+
+**Por que um planejador separado piora o agente de pesquisa?**
+Porque é uma chamada nova a cada invocação e recebe só um recorte do estado. Em pergunta de acompanhamento o recorte perde a intenção acumulada e a pesquisa volta ao escopo amplo.
+
+**Vale a pena usar um subagente por consulta?**
+Só quando o passo exige julgamento. Ranquear, classificar e extrair são determinísticos: como chamada de ferramenta, devolvem menos contexto e reduzem latência e custo.
+
+**O que é um contrato de evidência?**
+A lista, escrita antes da busca, de campos obrigatórios, fontes aceitas, recência e condições de conclusão — o que o avaliador testa em vez de aceitar uma resposta plausível.
+
+**Como saber se o custo por tarefa está baixo?**
+Somando tokens, chamadas, uso de navegador, retries e infraestrutura — e comparando só listas equivalentes: no board, a própria API do fornecedor entra a US$ 0 por busca.
+
+## Schema recomendado
+
+- **Article:** `headline` igual ao título, `author` como `Person`, `datePublished` em 2026-10-25, `dateModified` igual, `about` apontando para `SoftwareAgent` e `InformationRetrieval`.
+- **FAQPage:** `mainEntity` com as quatro perguntas acima e as respostas em `acceptedAnswer.text`.
+- **BreadcrumbList:** `Blog` → `Agentes de IA` → o título do post.
+
+## Fontes
+
+- [TinyFish — Lessons from Building a Deep Research System](https://www.tinyfish.ai/blog/lessons-from-building-a-deep-research-system)
+- [TinyFish — Agentic Search Architecture: How Production-Ready Search Agents Work](https://www.tinyfish.ai/blog/production-agentic-search-architecture)
+- [OpenBenchmarks — Web Search for Coding Agents (atualizado em 15/09/2026)](https://openbenchmarks.com/web-search-for-coding-agents)
+- [ChainRAG — Mitigating Lost-in-Retrieval Problems in Retrieval Augmented Multi-Hop QA (ACL 2025)](https://aclanthology.org/2025.acl-long.1089/)
+- [SearchAgent-X — Demystifying and Enhancing the Efficiency of LLM Based Search Agents (ICLR 2026)](https://proceedings.iclr.cc/paper_files/paper/2026/hash/44bed3ea6eb269aa71ef1f9630c0139b-Abstract-Conference.html)
