@@ -1,0 +1,96 @@
+---
+title: "Cache engineering: o que apagar do KV cache do agente e o que nunca cortar"
+date: "2026-10-26"
+description: "Editar o histórico invalida o cache de prefixo e reencoda o resto a preço de cache-miss. O que o AKV apaga no KV cache, o que ele reusa e onde ele perde."
+author: "Hernando Candido"
+tags: [Agentes de IA, KV Cache, Engenharia de Contexto, Custo de Inferência, SGLang, Prompt Caching, Engenharia de IA, Benchmarks]
+sponsored: false
+premium: false
+---
+
+A conta de um agente longo não está no prompt. Está no que o servidor relê a cada rodada.
+
+O AKV, da Tsinghua com a CUHK, ataca por outro caminho: em vez de resumir o histórico, o agente marca entradas de KV cache para não serem mais atendidas e compacta as posições que sobram. **O texto nunca é reescrito.** No paper (arXiv 2610.28577), a média de três modelos em quatro benchmarks caiu **27,7%** de custo e subiu **1,7 ponto** de acurácia contra o resumo por limiar.
+
+## O custo não está no prompt, está na releitura
+
+Numa chamada de agente, o modelo não "vê" a conversa: ele atende a um conjunto de estados de chave e valor. Se o prefixo é idêntico ao de uma requisição anterior, o servidor reaproveita o cache em vez de reprocessar os tokens — o mesmo mecanismo que faz o [balanceamento entre réplicas](/blog/balanceamento-de-carga-para-llm-entre-replicas-por-que-round-robin-quebra) valer mais quando o roteador conhece o cache.
+
+Cache de prefixo é comparação de hash, e o hash é cumulativo. No vLLM, cada bloco entra no hash junto com o hash do bloco pai: mudou um, todos os descendentes mudam, e só blocos completos são cacheados. No cache de prompt da Anthropic, o hash cobre tudo até o ponto marcado, então qualquer bloco naquele trecho ou antes dele muda o hash da requisição seguinte.
+
+O preço é assimétrico: escrita de cache custa **1,25x** o token de entrada no TTL de 5 minutos, e leitura custa **0,1x** — com exceções por modelo, como 5% no Opus 5.5.
+
+Na contabilidade do paper, **leitura de KV cache é 82,4% do custo total** de uma execução de agente.
+
+## Por que resumir e aparar saem caro
+
+Resumir o histórico no meio é editar o prefixo, e editar o prefixo invalida todo estado posterior. O trecho que você manteve é reprocessado do zero, a preço de cache-miss. Na prática, o harness adia o corte até o limite (96K tokens para GPT-OSS-120B e MiniMax-M2.7, 192K para o MiroThinker) e resume de uma vez, justo quando já perdeu mais detalhe.
+
+Duas medições do paper, com GPT-OSS-120B nas primeiras 100 tarefas do BrowseComp-Plus:
+
+- **Aparar** para as 12 últimas rodadas de ferramenta custou **1,85x** o baseline de contexto completo.
+- **Resumir** no limiar de 48K cortou cerca de 7% de custo e derrubou **5 pontos** de acurácia.
+
+Cortar texto paga duas vezes: no retrabalho de prefill e na informação que sai.
+
+## Três operações que não tocam no texto
+
+O AKV separa o que muda em três operações:
+
+- **append**: o caminho normal, tokens novos entram no cache.
+- **drop**: entradas escolhidas deixam de ser atendidas, sem mexer na posição das que ficam.
+- **repos**: as chaves retidas são reescritas nas posições 0 até r-1 por rotação RoPE. Os valores não mudam, então nenhum estado oculto é recalculado.
+
+A ordem é: processa a mensagem nova, aplica drop, compacta posições, gera. E o ponto central: **o histórico enviado continua completo** — o cliente manda a conversa inteira mais dois campos opcionais, `drop_message` e `reposition`, e o servidor decide o que o modelo enxerga.
+
+E o estado retido carrega informação do que já foi lido: dropa a mensagem e o efeito dela no raciocínio não desaparece, porque as chaves e valores que sobraram foram computados com ela.
+
+## O problema que só aparece no servidor
+
+Tokens idênticos podem produzir estados de cache diferentes, dependendo da sequência de operações que a requisição sofreu. Duas conversas com o mesmo texto, mas que dropam em pontos diferentes, não podem compartilhar o mesmo estado. Casamento de prefixo ingênuo reusaria o cache errado.
+
+O AKV estende a árvore radix do SGLang com nós de drop: uma entrada só é liberada quando nenhuma requisição ativa precisa dela, e o cache dropado sai antes do de requisições concluídas. Estado ausente volta com atenção segmentada em um único passe de prefill.
+
+O preço dessa engenharia aparece nos limites: `--page-size` só aceita 1, e a API rejeita requisições com paralelismo de pipeline ou de contexto, decodificação especulativa, LoRA, HiCache, cache de sessão externo ou beam search. O suporte é para texto em Qwen, Qwen2, Qwen3 (com variantes MoE), GPT-OSS e família MiniMax-M2.
+
+## Os números, incluindo onde perde
+
+Na média dos três modelos e quatro benchmarks, contra o resumo por limiar: **27,7% menos custo** e **1,7 ponto mais** de acurácia. Contra o baseline que resume em 48K, a queda de custo é de **21,9%**.
+
+O melhor caso é GPT-OSS-120B no SWE-bench Verified: de **20,0 para 9,7 centavos** por tarefa e de **40,0 para 43,2** pontos. No MiroThinker-1.7-Mini, no BrowseComp-Plus, de 60,0 para 63,5 pontos e de 25,2 para 15,3 centavos.
+
+Onde perde: MiniMax-M2.7 no BrowseComp-Plus fica em **58,9**, empatado com o baseline de limiar e **3,4 pontos abaixo** do resumo agressivo em 48K. O xbench cai de 38,5 para 37,5 no GPT-OSS. Não é ganho universal por modelo.
+
+Em serving, com GPT-OSS-120B e concorrência 16, a latência P95 vai de **229,90s para 30,63s**, e o throughput no pico de cada método é 1,53x na entrada e 1,18x na saída.
+
+Os custos são estimativas: preços publicados (Groq para o GPT-OSS, MiniMax oficial, Qwen3-30B-A3B como proxy do MiroThinker) e reposicionamento cobrado a preço de cache-hit, escolha conservadora dos autores.
+
+## O que dá para fazer hoje sem trocar de servidor
+
+- **Ordem do prompt**: conteúdo estável primeiro, volátil no fim, e a marcação de cache no fim do trecho estável, nunca no bloco que muda. Timestamp no topo é cache-miss em toda chamada.
+- **Corte por papel, não por idade.** A atenção medida no paper é menor em resposta de ferramenta do que em mensagem do assistente. E, na ablação com 100 tarefas do BrowseComp-Plus, drop de resposta de ferramenta com repos chega a **62,0%**; sem repos, **55,0%**; drop de raciocínio, **56,5%**.
+- **Meça `cached_tokens`.** Se a leitura de cache está perto de zero num agente de várias rodadas, você paga prefill inteiro em cada volta.
+
+Cache é uma das duas alavancas de custo. A outra é o [tamanho do vocabulário do tokenizer](/blog/custo-de-inferencia-cortar-o-vocabulario-do-tokenizer-sem-trocar-o-modelo), que muda quantos tokens o mesmo texto ocupa.
+
+## O que é estável e o que vai envelhecer
+
+**Estável**: o hash cumulativo do prefixo, a assimetria entre escrever e ler cache, e a diferença entre editar o texto e editar o cache.
+
+**Atualizável**: arquiteturas suportadas, restrições de serving e os 27,7%. Número de paper envelhece na próxima versão do SGLang.
+
+## Perguntas rápidas
+
+**Cache engineering substitui resumir o histórico?** Não. Resumir continua necessário para caber na janela e descartar o que não serve. A diferença é que deixa de ser o único controle de custo, e deixa de ser aplicado no meio do prefixo.
+
+**Preciso rodar o AKV para economizar?** Não. O que rende sem trocar nada é a ordem do prompt e a marcação de cache no fim do trecho estável. O ganho do paper vem do servidor que reusa cache depois do drop, que é infraestrutura.
+
+**Por que cortar o histórico pode custar mais caro?** Porque o cache de prefixo é cumulativo: ao remover o miolo da conversa, todo token depois dele perde o cache e volta a ser cobrado a preço de entrada nova. Em agente longo, esse retrabalho pesa mais que a economia de tokens.
+
+## Fontes
+
+- [Fonte: arXiv 2610.28577 — Cache Engineering for Agents](https://arxiv.org/abs/2610.28577)
+- [Fonte: repositório AKV, thu-nics (Apache-2.0)](https://github.com/thu-nics/AKV)
+- [Fonte: documentação de prompt caching da Anthropic](https://docs.claude.com/en/docs/build-with-claude/prompt-caching)
+- [Fonte: documentação de Automatic Prefix Caching do vLLM](https://docs.vllm.ai/en/latest/design/prefix_caching.html)
+- [Fonte: MarkTechPost — cobertura do lançamento do AKV](https://www.marktechpost.com/2026/10/26/tsinghua-akv-kv-cache-engineering-llm-agents/)
