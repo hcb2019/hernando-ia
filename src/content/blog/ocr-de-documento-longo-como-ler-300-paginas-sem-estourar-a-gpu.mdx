@@ -1,0 +1,111 @@
+---
+title: "OCR de documento longo: como ler 300 páginas sem estourar a GPU"
+date: "2026-10-27"
+description: "Um OCR de 3B lê centenas de páginas num request porque limita os tokens visuais de cada passo. O SR-SWA, os 47 GB que viram 1,77 GB e onde ele perde."
+author: "Hernando Candido"
+tags: [OCR, Document Parsing, Atenção Esparsa, RAG, SGLang, KV Cache, Engenharia de IA, Benchmarks]
+sponsored: false
+premium: false
+---
+
+**Resposta curta:** documento longo não quebra OCR por falta de qualidade de leitura. Quebra porque o custo de cada passo de decodificação cresce com o número de páginas já abertas. O **Unlimited OCR 2**, do time ERNIE da Baidu, corta isso deixando cada passo enxergar só uma fatia fixa de tokens visuais — e com **3B parâmetros totais e 500M ativos** por token mantém latência quase constante de 1 até 300 páginas.
+
+O release está datado em 27/10/2026 no repositório, com licença MIT no card. O que vale aprender não é o benchmark: é o desenho que faz a conta parar de crescer.
+
+## O gargalo nunca foi a letra
+
+A geração anterior da própria Baidu, o **Unlimited OCR** (arXiv:2606.23050), já tinha dado um passo: a **R-SWA** mantinha o KV cache de **texto** em janela fixa, o que segurava dezenas de páginas. Mas a atenção continuava passando por **todos os tokens visuais de todas as páginas**.
+
+Em 100 páginas isso é o problema inteiro: cada token novo paga atenção sobre um contexto visual que cresce a cada página lida. Na curva de latência do relatório, o baseline de atenção completa não chega a 223 páginas.
+
+A virada do v2: se o humano copia um livro olhando só a página que está transcrevendo, o modelo também pode.
+
+## Page Gate: olhar a página certa
+
+O **SR-SWA** (Sparse Reference Sliding Window Attention) troca a atenção densa por duas peneiras. A primeira é o **Page Gate**, que restringe o escopo visual de cada query aos blocos que encostam na página corrente. Como bloco de atenção e página não têm a mesma fronteira, ele considera o bloco que **intersecta** a página — não o que cabe inteiro nela.
+
+Um detalhe decide se isso funciona na página 250: a posição de cada token é fatorada em uma **coordenada de página** (num padrão alternado 0–1) e uma **coordenada intra-página** monotônica. Sem isso, o id de posição cresce sem limite com o número de páginas e a extrapolação de comprimento degringola.
+
+## Token Sieve: top-k que recebe gradiente
+
+A segunda peneira é o **Token Sieve**. Cada bloco candidato vira uma chave compacta, essa chave é pontuada contra a query, e uma distribuição esparsa (α-entmax) escolhe os **top-k** blocos remotos que sobrevivem.
+
+O truque é onde o viés de roteamento entra: somado **dentro dos logits de atenção**, não aplicado depois. Assim o gradiente do objetivo de transcrição chega ao roteador, que aprende sozinho o que reter — sem loss auxiliar de destilação, o caminho dos roteadores de top-k discretos.
+
+No fim, cada query atende uma janela local fixa mais **k blocos remotos**: um conjunto de referência que o repositório exemplifica com **512 tokens**. Esse número não cresce com o documento — é aí que a conta para de explodir.
+
+## Latência: 7,0× e 5,6×
+
+Na escala de centena de páginas, o relatório mede **7,0× de ganho por passo contra atenção completa** e **5,6× contra a R-SWA**, com precisão estável até **300 páginas**.
+
+A medição é do próprio time, em modo Gundam, batch 3, geração fixa de 1.024 tokens por página — benchmark de fornecedor, não medição independente.
+
+O que sustenta o número é a forma da curva: a latência por passo fica quase plana de contexto curto até 100+ páginas, enquanto a atenção completa sobe junto.
+
+## Memória: 47,00 GB viram 1,77 GB
+
+Atenção limitada resolve o custo por passo, não o pico de memória: alguém ainda precisa guardar o KV visual de todas as páginas do prefill.
+
+A resposta é o **Unlimited-Horizon Decoding**: o documento vira blocos de páginas com **1 página de sobreposição**, processados em sequência. O KV da página de fronteira é **reusado**; o KV fora do bloco ativo é **liberado**.
+
+A Tabela 4 mede o efeito: pico de KV cache de **47,00 GB para 1,77 GB** com sequência única (B=1), e throughput de **360 para 1.315 TPS** com B=16.
+
+Quatro botões, todos no repositório:
+
+- **Janela de páginas** (`SGLANG_UOCR_DOC_GUNDAM_PAGE_WINDOW=10`): quantas páginas por bloco.
+- **Teto por página** (`SGLANG_UOCR_MAX_PAGE_TOKENS=20000`): guarda de saída, precisa ser maior que zero.
+- **Chunk do viés de atenção** (`SGLANG_OPT_UOCR_SAM_REL_POS_BIAS_MB=64`): o default 512 permite uma alocação de ~462 MiB que pode dar OOM.
+- **`--mem-fraction-static 0.7`**: o README avisa que 0,75 não deixa folga com 32+ requests.
+
+E um detalhe que só quem leu o README pega: a variável do modo de bloco está escrita `SGLANG_UOCR_EANABLE_DOC_LIMIT`. Com o typo, do jeito que está no repositório.
+
+## O mesmo trade-off aparece duas vezes
+
+Essa é a parte que release note não conta, e é a que decide seu caso de uso.
+
+O relatório admite, nas limitações, que a atenção esparsa **não preserva informação global do documento**, o que limita o entendimento de estruturas de nível documento, como **hierarquia de títulos**. O trabalho futuro sugerido é atenção linear, para recuperar esse sinal.
+
+O parâmetro de serving repete o acordo: janela menor baixa o pico de memória e **piora a fusão entre páginas**, porque bloco que continua na página seguinte perde o contexto na fronteira do chunk.
+
+Ganho de custo e perda de estrutura global são o mesmo mecanismo visto de dois ângulos. Não é bug para abrir issue — é o contrato, e é o que você testa antes de confiar.
+
+## Onde ganha e onde não
+
+- **MPDocBench (dezenas de páginas):** 84,59 de score geral contra 78,30 do Qwen3.8-Max e 76,25 do Gemini-3.8-Flash. A geração anterior marcava 61,89.
+- **MarathonDocBench (100 a 300 páginas, 100 documentos, 205 mil elementos anotados):** **77,06** contra 33,74 do Kimi-K3, o melhor não-Baidu da tabela. A figura do relatório arredonda para 77,1.
+- **OmniDocBench v1.6 (página única):** **94,02**. Não é líder: TeleOCR marca 96,91 e OvisOCR2, 96,47.
+
+Essa última linha é a mais útil. O Unlimited OCR 2 é **especialista em documento longo**, não o melhor OCR de página única. Se o seu caso é nota fiscal solta, a vantagem desaparece.
+
+E a limitação de dados é declarada: o corpus de treino ainda é limitado em diversidade.
+
+## O mesmo padrão do outro lado
+
+O mesmo desperdício é atacado do lado do **prefill** pelo **TokenGate** (Stanford e Berkeley, arXiv:2610.26754, 19/10/2026): ele aprende quais tokens entram na atenção e reporta **1,4× a 11,3× menos tempo até o primeiro token** e **até 3,4× menos pico de memória**, sem perda de acurácia. A diferença operacional é que ele **exige treinar o gate** — aqui a atenção esparsa já vem treinada no modelo. A pergunta é a mesma: por que cada consulta deveria enxergar tudo?
+
+## Como testar no seu pipeline
+
+- Rasterize a **300 dpi** (o exemplo usa PyMuPDF com a matriz `dpi/72`) e mande todas as páginas em ordem, num único request.
+- O prompt é `&lt;PAGE&gt;&lt;image&gt;` repetido por página, fechando com `"Multi page parsing."` — é o marcador que separa uma página da outra.
+- Multi-página vai em **modo base** (uma vista global por página); página única vai em **modo Gundam** (tiling dinâmico).
+- `max_tokens` é o orçamento global: no exemplo, **8.000 por página** vezes o número de páginas, com guarda de 20.000 por página.
+- Para servir, o SGLang é um **wheel customizado** da 0.5.20.dev10, não o pacote de pip.
+
+Três verificações antes de assinar embaixo: tabela que atravessa duas páginas (onde o merge quebra), hierarquia de títulos (onde a atenção esparsa perde estrutura) e página de duas colunas.
+
+## Estável ou atualizável
+
+**Estável:** a premissa de que a dependência visual é esparsa por página e concentrada dentro dela; o reuso de KV na fronteira; o contrato de prompt e dpi.
+
+**Atualizável:** benchmarks, versão do wheel e leaderboard. O modelo tem um dia de vida — os 77,06 do MarathonDocBench ainda vão ser contestados.
+
+Leia também: [cache engineering — o que apagar do KV cache do agente](/blog/cache-engineering-o-que-apagar-do-kv-cache-do-agente-e-o-que-nunca-cortar) e o [panorama de OCR e infraestrutura](/blog/mistral-ocr-4-krea-2-cerebras-netris-e-o-gargalo-dos-robs-a-semana-em-que-a-infr).
+
+## Fontes
+
+- [Fonte: GitHub — baidu/Unlimited-OCR](https://github.com/baidu/Unlimited-OCR)
+- [Fonte: Hugging Face — Unlimited-OCR-2 (card do modelo, licença MIT)](https://huggingface.co/baidu/Unlimited-OCR-2)
+- [Fonte: Relatório técnico Unlimited OCR Works 2 (PDF)](https://huggingface.co/baidu/Unlimited-OCR-2/blob/main/Unlimited-OCR-2.pdf)
+- [Fonte: arXiv 2606.23050 — Unlimited OCR Works (geração anterior, R-SWA)](https://arxiv.org/abs/2606.23050)
+- [Fonte: arXiv 2610.26754 — TokenGate: Fast and Memory-Efficient Prefill with Learned Token Pruning](https://arxiv.org/abs/2610.26754)
+- [Fonte: GitHub — token-gate-models/TokenGate](https://github.com/tokengate-models/TokenGate)
