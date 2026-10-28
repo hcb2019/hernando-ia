@@ -1,0 +1,91 @@
+---
+title: "Utilização de GPU a 50% não é GPU ociosa: como medir o trabalho útil"
+date: "2026-10-28"
+description: "A taxa de utilização de GPU mede tempo, não eficiência. Entenda o que as métricas do DCGM medem, os quatro diagnósticos por trás do mesmo 50% e como decidir se falta placa ou falta trabalho."
+author: "Hernando Candido"
+tags: [GPU, Infraestrutura de IA, Inferência de LLM, DCGM, Nvidia, Observabilidade, Custos]
+sponsored: false
+premium: false
+---
+
+**Resposta curta:** a taxa de utilização de GPU mede **tempo**, não eficiência. Ela diz por quanto tempo alguma parte do motor esteve ligada, não quanto do trabalho possível você extraiu dele. A documentação do próprio DCGM, agente de telemetria da NVIDIA, é explícita sobre a métrica de atividade dos multiprocessadores: valor de **0,8 ou maior é necessário, mas não suficiente** para uso efetivo, e abaixo de **0,5** a leitura "provavelmente indica uso ineficaz".
+
+Isso muda a pergunta. Em vez de "minha GPU está em 50%, preciso de outra?", a pergunta útil é "o que impede a placa atual de fazer o trabalho que já existe na fila?".
+
+## O que a porcentagem mede de fato
+
+Quem olha o `nvidia-smi` vê um número só. Ele é primo da métrica `DCGM_FI_PROF_GR_ENGINE_ACTIVE`, definida no DCGM como **a fração de tempo em que qualquer porção dos motores gráfico ou de computação esteve ativa** — ciclo de trabalho, não aproveitamento do pipeline.
+
+As métricas que respondem o aproveitamento são outras três:
+
+- **SM Active**, medido por `DCGM_FI_PROF_SM_ACTIVE`: fração de tempo em que pelo menos um warp esteve ativo, em média entre os multiprocessadores. O detalhe que quase todo mundo ignora vem na mesma frase da doc: "ativo" **não significa que o warp está computando** — warps esperando resposta de memória contam como ativos.
+- **Tensor Active**, medido por `DCGM_FI_PROF_PIPE_TENSOR_ACTIVE`: fração de ciclos em que o pipe de tensor (HMMA/IMMA) esteve ativo. A escala é dura: atividade de 1 (100%) equivale a **emitir uma instrução de tensor a cada dois ciclos** durante todo o intervalo.
+- **Memory BW**, medido por `DCGM_FI_PROF_DRAM_ACTIVE`: fração de ciclos com tráfego de memória do dispositivo. A doc avisa que, na prática, **cerca de 0,8 (80%) é o teto alcançável** — 100% é teórico.
+
+Junte as quatro e o mesmo "50%" vira quatro doenças diferentes. Comprar hardware antes de olhar as quatro é aposta, não engenharia.
+
+## O que mudou em 27 de outubro
+
+A NVIDIA e a Oracle colocaram em disponibilidade geral, no OCI, os sistemas **Vera Rubin NVL72** e as **CPUs Vera** vendidas separadamente. A configuração menor, **HGX Rubin NVL8** com processadores Intel Xeon, está no roteiro — **planejada, não disponível**.
+
+O argumento comercial é o desta matéria: escalar CPU e GPU de forma independente para **reduzir capacidade ociosa**. A Oracle diz que **150 mil CPUs Vera** serão disponibilizadas inicialmente entre suas regiões, em bare metal e máquinas virtuais Flex.
+
+O número que dá urgência à conversa veio da pesquisa, não do anúncio: os levantamentos mensais da VentureBeat Intelligence de julho, agosto e setembro encontraram **79% de 218 respondentes com utilização de GPU em 50% ou menos**, e 70% desse grupo ainda assim planejando mudanças de plataforma. É **autodeclaração, não auditoria de hardware**.
+
+Duas ressalvas que a Oracle registra e que valem para qualquer avaliação de fornecedor:
+
+- O ganho de "até **80% mais desempenho** em cargas agênticas de CPU contra os principais processadores x86" vem de **benchmarks da plataforma NVIDIA, não de teste nas instâncias OCI**.
+- A promessa de que a CPU "ajuda a melhorar a utilização da GPU" é **afirmação do fornecedor**, não resultado medido no seu fluxo.
+
+Nada disso invalida o argumento técnico. Define o que ele é: hipótese a testar no seu ambiente.
+
+## Os quatro diagnósticos atrás do mesmo número
+
+Antes de qualquer compra, classifique o que está acontecendo:
+
+- **Demanda baixa.** Não há trabalho esperando: fila vazia, lote pequeno, tráfego intermitente. Mais silício não cria pedidos.
+- **Espera de CPU.** O agente executa código, chama ferramenta, consulta banco ou faz recuperação entre duas chamadas de modelo, e a GPU fica parada esperando o resultado. É o cenário que o anúncio de 27/10 endereça, e o único em que trocar CPU resolve.
+- **Decode preso em memória.** Na geração token a token, cada passo relê pesos e cache KV, e o pipe de tensor fica ocioso enquanto a memória trabalha. **Tensor baixo com DRAM alto é o comportamento esperado**, não desperdício — o remédio é batching, quantização e política de cache, não placa nova. Vale revisar [quantização de LLM](/blog/quantizacao-de-llm-como-escolher-4-bit-8-bit-gptq-e-awq) e [o que apagar do KV cache](/blog/cache-engineering-o-que-apagar-do-kv-cache-do-agente-e-o-que-nunca-cortar).
+- **Desequilíbrio.** A média esconde a cauda: prefill e decode no mesmo pool, réplicas com carga desigual, um worker travado. O sintoma é "utilização baixa" e a causa é distribuição — tema de [balanceamento entre réplicas](/blog/balanceamento-de-carga-para-llm-entre-replicas-por-que-round-robin-quebra) e de [cluster de GPU sem leilão de prioridade](/blog/cluster-de-gpu-como-dividir-a-capacidade-entre-times-sem-leilao-de-prioridade).
+
+## Como medir sem se enganar
+
+O DCGM amostra **1 vez por segundo por padrão**, com intervalo mínimo de **100 ms**. Isso importa: prefill é rajada, decode é regime, e a média de 1 Hz dilui os dois — esconde justamente o buraco onde a GPU espera.
+
+Duas regras práticas:
+
+- **Publique mínimo e percentis, não só a média.** Um p95 de 90% com mínimo de 5% no mesmo minuto é um sistema diferente de um estável em 60%.
+- **Os contadores de profiling exigem privilégio de administrador** a partir dos drivers Linux 418.43. É por isso que muita equipe só tem o número do painel: o contador que diagnostica fica atrás de uma permissão que ninguém liberou.
+
+E a métrica que decide não é a de utilização. É **tokens por segundo por GPU**, profundidade de fila, tempo até o primeiro token e **goodput** — a fração de requisições que cumprem o SLO.
+
+## O teste antes de assinar
+
+A pergunta certa não é "a placa nova é mais rápida", e sim **se a configuração proposta reduz o custo total de completar uma tarefa aceitável**, na latência e na confiabilidade que o negócio exige.
+
+O teste defensável roda o **mesmo fluxo de agente** nas duas configurações e mede quatro coisas: taxa de conclusão com sucesso, atraso de ponta a ponta, consumo de CPU e de GPU, e custo total — incluindo as chamadas de API de modelo, que costumam ficar fora da conta e distorcem a comparação.
+
+Se as GPUs esperam trabalho de CPU, o argumento da CPU dedicada é concreto. Se não há trabalho na fila, a tarefa é outra: identificar carga útil e rever compromissos de capacidade.
+
+## O que é estável e o que vai envelhecer
+
+**Estável:** as definições dos contadores do DCGM, a regra de que utilização não é eficiência e a árvore de diagnóstico acima.
+
+**Atualizável (revisar em 6 meses):** as condições de disponibilidade do anúncio de 27/10 — regiões cobertas no trimestre, cronograma do HGX Rubin NVL8, as 150 mil CPUs — e o percentual da pesquisa da VentureBeat Intelligence, que é de um trimestre específico. A reivindicação de 80% deve ser relida como benchmark de plataforma, não como ganho de instância.
+
+## Perguntas que aparecem sempre
+
+**GPU a 100% quer dizer que estou usando bem?** Não. O teto indica atividade em todos os ciclos amostrados, não eficiência. E no pipe de tensor, 100% significa uma instrução a cada dois ciclos: a escala não é a de saturação.
+
+**Por que a GPU fica em 20% ou 30% durante a inferência?** Provavelmente porque o decode é limitado por memória, não por cálculo. Confirme na atividade de DRAM: alta enquanto o tensor está baixo significa tráfego de pesos e cache, e o caminho é batching, quantização e política de KV.
+
+**Preciso de mais GPU ou de mais CPU?** Depende de onde a fila trava. GPU parada com fila cheia e CPU saturada pede CPU. GPU parada com fila vazia pede carga de trabalho, não hardware. GPU ativa com latência ruim pede revisar batching e cache antes de comprar.
+
+## Fontes
+
+- [NVIDIA — DCGM User Guide: Feature Overview (definições de SM Activity, Tensor Activity, Memory BW e privilégios de profiling)](https://docs.nvidia.com/datacenter/dcgm/latest/user-guide/feature-overview.html)
+- [NVIDIA Newsroom — NVIDIA and Oracle Expand NVIDIA Vera Rubin to Multi-Gigawatt Scale and Bring NVIDIA Vera CPU to Oracle Cloud Infrastructure](https://nvidianews.nvidia.com/news/nvidia-and-oracle-expand-nvidia-vera-rubin-to-multi-gigawatt-scale-and-bring-nvidia-vera-cpu-to-oracle-cloud-infrastructure)
+- [Oracle Cloud Infrastructure Blog — OCI Compute with NVIDIA Vera CPUs](https://blogs.oracle.com/cloud-infrastructure/nvidia-vera-cpus-oci)
+- [VentureBeat — Nvidia and Oracle expand Vera Rubin cloud infrastructure, pitching better utilization as enterprises report idle GPUs](https://venturebeat.com/infrastructure/nvidia-and-oracle-expand-vera-rubin-cloud-infrastructure-pitching-better-utilization-as-enterprises-report-idle-gpus)
+
+**Schema recomendado:** `Article` com `author`, `datePublished` e `dateModified`; `FAQPage` com as três perguntas acima; `BreadcrumbList` para a trilha blog.
