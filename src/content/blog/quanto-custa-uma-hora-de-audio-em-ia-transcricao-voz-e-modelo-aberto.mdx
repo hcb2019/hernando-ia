@@ -1,0 +1,100 @@
+---
+title: "Quanto custa uma hora de áudio em IA: transcrição, voz e modelo aberto"
+date: "2026-10-29"
+description: "Transcrever uma hora de áudio custa de US$ 0,15 a US$ 0,62 na tabela do fornecedor, e cada add-on entra por cima. Veja como a conta é cobrada, a conversão para voz sintetizada e quando o Nemotron 3.5 Transcribe aberto compensa."
+author: "Hernando Candido"
+tags: [Transcrição de Áudio, Speech-to-Text, Text-to-Speech, Modelos Abertos, Nemotron, Custos de IA, Agentes de Voz]
+sponsored: false
+premium: false
+---
+
+**Resposta curta:** não existe preço de "uma hora de áudio". Na tabela pública da AssemblyAI, transcrever a mesma hora custa **US$ 0,15** no modelo assíncrono mais barato e **US$ 0,62** na API de ditado — quatro vezes pelo mesmo arquivo — e cada add-on entra por cima. Do outro lado, a NVIDIA abriu em **28 de outubro** os pesos do **Nemotron 3.5 Transcribe**: **34 bilhões de parâmetros totais e cerca de 4,3 bilhões ativos**, 40 idiomas, com português do Brasil na faixa que a própria ficha chama de *Leading*.
+
+## O preço por hora, na tabela do fornecedor
+
+A página da AssemblyAI cobra a mesma hora de áudio em quatro preços diferentes — a diferença não é qualidade, é latência. E cobra a volta, texto virando voz, em outra unidade:
+
+- **Assíncrono:** Universal-2 a **US$ 0,15/hora** (99 idiomas); Universal-3.5 Pro a **US$ 0,21/hora** (18 idiomas, com troca de idioma dentro da fala).
+- **Síncrono:** **US$ 0,30/hora**, até 2 minutos por requisição, resposta em cerca de **134 ms** (p50).
+- **Tempo real:** Universal-Streaming a **US$ 0,15/hora** (inglês ou multilíngue, com português); Universal-3.6 Pro Realtime a **US$ 0,45/hora**.
+- **Ditado:** **US$ 0,62/hora**, 32 idiomas, clipes de até 120 segundos.
+- **Voz sintetizada:** AssemblyAI-TTS-1 a **US$ 15 por 1 milhão de caracteres**, cerca de **90 ms** até o primeiro áudio, seis idiomas — português incluído.
+
+De US$ 0,15 para US$ 0,45 são **três vezes** pelo mesmo minuto. O que você compra não é acurácia: é o resultado chegando enquanto a pessoa fala. Para arquivo que já existe, pagar tempo real é dinheiro no lixo.
+
+## As três contas que ninguém faz antes de assinar
+
+**1. Estéreo é cobrado duas vezes.** Áudio multicanal é cobrado **por canal**: um estéreo de 1 hora conta como **2 horas**. E gravar cada participante num canal é justamente o truque que melhora a separação de falantes — a escolha é explícita: **o dobro do preço por diarização melhor**, ou um canal e o add-on de diarização por US$ 0,02/hora.
+
+**2. Add-on empilha, e o mesmo add-on custa seis vezes mais no tempo real.** No assíncrono com Universal-3.5 Pro, diarização sai **US$ 0,02/hora**, keyterms e prompting **US$ 0,05/hora** cada. No tempo real, a **diarização custa US$ 0,12/hora** — separar falantes em fluxo contínuo, sem ver a conversa inteira, é outro problema. Empilhando os dois completos:
+
+- **Assíncrono:** 0,21 + 0,02 + 0,05 = **US$ 0,28/hora**.
+- **Tempo real:** 0,45 + 0,12 + 0,05 = **US$ 0,62/hora**.
+
+São **2,2 vezes** — e nenhum dos dois números aparece na primeira dobra da página de preços.
+
+**3. Voz sintetizada é cobrada por caractere, não por segundo.** Transcrição se paga em **hora de áudio**, síntese em **caractere de texto enviado**: duas unidades no mesmo produto. A conversão, com a conta sendo minha e a premissa explícita: fala de ritmo normal tem cerca de **150 palavras por minuto**, ou 9 mil por hora; a 5–6 caracteres por palavra com espaço, são **45 mil a 54 mil caracteres**. A US$ 15 por 1 milhão, uma hora de fala sintetizada sai entre **US$ 0,68 e US$ 0,81**.
+
+Conte os caracteres do seu script em vez de confiar na média — se o agente lê endereços por extenso, a taxa sobe. A regra que fica: **áudio de entrada é cobrado por tempo, áudio de saída por texto**.
+
+## O que o modelo aberto é, de fato
+
+O Nemotron 3.5 Transcribe é aberto e **offline**, com gravações de até uma hora e contexto de **65.536 tokens**. É um MoE híbrido Mamba-2–Transformer em BF16, com variantes FP8 e NVFP4, sob licença **OpenMDW-1.1**. Junto veio o **Granary-v2**, com **463.062 horas** rotuladas em 48 idiomas — mas o repositório entrega só os rótulos: o áudio continua com os distribuidores originais, sob os termos deles.
+
+Para quem escreve em português, o que importa: a matriz lista **Portuguese (Portugal, Brazil)** com transcrição, tradução, multi-falante e troca de idioma dentro da fala, na faixa **Leading** — o mesmo nível de inglês, francês, alemão, italiano e espanhol.
+
+Os números, capturados pela NVIDIA em **12 de outubro** contra o "melhor publicado" que ela mesma lista:
+
+- **Multilíngue (7 idiomas):** WER médio **4,62** contra **6,49** do Qwen3-ASR-1.7B.
+- **Inglês (9 conjuntos públicos):** **4,71** contra **4,94** do mesmo Qwen3-ASR.
+- **Áudio longo:** **10,98** contra **13,37** do Parakeet-TDT-0.6B-v3.
+- **Multi-falante:** cpWER médio **15,80** contra **16,83** do DiCoW v3.3 + DiariZen.
+- **Controle de estilo:** **7,56** no padrão e **6,16** instruído, contra 8,16 e 8,36 do Canary-Qwen.
+
+São números do fornecedor, contra concorrentes escolhidos por ele: dizem "está na frente da geração anterior de pesos abertos", não que vão se repetir no seu áudio — o 4,62 é média de sete idiomas, e o seu áudio tem sotaque, ruído e jargão próprios.
+
+## Onde o número grande engana
+
+O número que vai circular: **2.238 segundos de áudio por segundo de computação**, numa RTX PRO 6000 Blackwell Server Edition em NVFP4 com decodificação especulativa DFlash2, devolvendo a transcrição de 30 segundos em **0,13 segundo**.
+
+![Throughput versus median request latency do Nemotron Transcribe NIM em uma RTX PRO 6000 Blackwell Server Edition, em BF16, FP8 e NVFP4, com e sem decodificação especulativa](https://huggingface.co/nvidia/NVIDIA-Nemotron-3.5-Transcribe-30B-A4B/resolve/main/serving_performance.png)
+
+A ficha diz, logo abaixo, o que quase nenhum resumo repete: **essas otimizações de serving ainda não estão na versão de código aberto**, e a integração com vLLM que saiu no lançamento "deve ser cerca de **duas vezes mais lenta**". Quem baixa o repositório e compara com aquele número compara dois softwares diferentes.
+
+O segundo engano é o bloco de 30 segundos. O codificador usa blocos de 30 segundos **depois** da extração de features — escolha interna de processamento, **não limite de 30 segundos por gravação nem promessa de latência de streaming**. A ficha tem uma frase só para isso: "this is an offline model".
+
+Terceiro, o teto. Se um segundo de GPU transcreve 2.238 segundos de áudio, uma GPU-hora transcreve **2.238 horas de áudio** — a coincidência é essa mesma. No caminho aberto, umas **1.119 horas**: entre **US$ 168 e US$ 336 de API por GPU-hora**, a US$ 0,15. A conta é minha e prova menos do que parece — é teto com lote cheio, não média. Mas mostra onde o argumento do "modelo aberto não escala" morre.
+
+## Quando o modelo aberto compensa
+
+A decisão cabe numa divisão: **horas de áudio por mês acima das quais o modelo aberto ganha = custo mensal da GPU dividido pelo preço por hora da API**.
+
+Três condições vêm antes, e nenhuma é negociável:
+
+- **Latência não é parte do produto.** O modelo é offline; para agente de voz, está fora.
+- **O áudio não pode sair.** Residência de dado tira o custo do centro da decisão.
+- **Você mantém o lote cheio.** GPU parada é a forma mais cara de transcrever que existe — o mesmo raciocínio de [utilização de GPU: 50% não é placa ociosa](/blog/utilizacao-de-gpu-a-50-nao-e-gpu-ociosa-como-medir-o-trabalho-util), aplicado a fala.
+
+Com poucas centenas de horas por mês, a API é mais barata que o engenheiro que vai operar o modelo aberto. E se a distinção entre parâmetros totais e ativos embaralha, [o texto sobre modelos esparsos](/blog/mixture-of-experts-o-que-sao-modelos-esparsos-e-por-que-78b-cabem-em-1-gpu) é pré-requisito.
+
+## Perguntas que aparecem sempre
+
+**Quanto custa transcrever uma hora de áudio?** De **US$ 0,15** a **US$ 0,62** na tabela da AssemblyAI, conforme o modo. Add-ons entram por cima, e estéreo conta como duas horas.
+
+**Modelo aberto sempre sai mais barato?** Não. Ganha em volume alto, com lote cheio, e quando o áudio não pode sair do ambiente. Abaixo disso, a API vence porque inclui operação.
+
+**Dá para usar o Nemotron 3.5 Transcribe num agente de voz em tempo real?** Não. A ficha classifica o modelo como offline e diz que o bloco de 30 segundos não é streaming.
+
+**Como avaliar a qualidade no meu caso?** WER no seu domínio, não o do leaderboard; cpWER se há mais de uma pessoa falando (o número a bater é 15,80); e teste a troca de idioma no meio da frase — "faz o deploy e manda o feedback" é o caso real.
+
+## O que é estável e o que vai envelhecer
+
+**Estável:** os eixos de cobrança (hora de áudio, canal, caractere de entrada), o empilhamento de add-ons, a razão de três vezes entre assíncrono e tempo real, a separação entre licença de rótulo e de áudio, e o método do teto por GPU-hora.
+
+**Atualizável:** todo preço, as linhas de benchmark e quem é o "próximo melhor", e a diferença entre o NIM otimizado e o caminho aberto.
+
+## Fontes
+
+- [Fonte: Hugging Face — NVIDIA-Nemotron-3.5-Transcribe-30B-A4B (ficha do modelo)](https://huggingface.co/nvidia/NVIDIA-Nemotron-3.5-Transcribe-30B-A4B)
+- [Fonte: Hugging Face — Granary-v2 (ficha do dataset)](https://huggingface.co/datasets/nvidia/Granary-v2)
+- [Fonte: AssemblyAI — Pricing](https://www.assemblyai.com/pricing)
