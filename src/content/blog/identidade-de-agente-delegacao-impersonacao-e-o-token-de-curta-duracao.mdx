@@ -1,0 +1,97 @@
+---
+title: "Identidade de agente: delegação, impersonação e o token de curta duração"
+date: "2026-10-30"
+description: "Um agente não deve entrar no sistema com a chave do time nem com a senha de quem pediu. Ele precisa de identidade própria, cadeia de delegação no token (RFC 8693) e credencial curta por tarefa (RFC 9396). Veja o que o IBM Agent Identity e o HashiCorp Vault 2.2 entregam, onde fica a armadilha do claim act e o teste que mostra se a sua auditoria fecha."
+author: "Hernando Candido"
+tags: [Identidade de Agentes, Segurança em IA, OAuth, Token Exchange, HashiCorp Vault, IBM Verify, Governança de Agentes, Engenharia de IA]
+sponsored: false
+premium: false
+---
+
+**Resposta curta:** um agente não deve provar quem é com a chave de serviço do time nem com a senha de quem pediu a tarefa. Ele precisa de **identidade própria com dono registrado**, **delegação explícita no token** e **credencial curta, limitada à tarefa**. A IBM colocou essa arquitetura em disponibilidade geral em **26 de outubro de 2026** com o **IBM Agent Identity**, e o padrão por baixo é aberto: a **RFC 8693**, onde o claim `act` separa *quem delegou* de *quem executou*.
+
+**O teste de cinco minutos:** pegue uma ação que um agente executou semana passada e responda — qual pessoa pediu, qual agente executou, qual credencial foi emitida, qual política autorizou, qual o efeito no destino. Resposta faltando é problema de identidade, não de modelo.
+
+## O que a IBM colocou em disponibilidade geral
+
+Em **27 de outubro**, no TechXchange, em Atlanta, a IBM confirmou o que publicara no dia anterior: **Agent Identity** em GA, junto com o **HashiCorp Vault 2.2**. São quatro entregas:
+
+- **Inventário com dono.** Proprietário, metadados, classe de risco, conexões de ferramenta aprovadas e estado do ciclo de vida por agente.
+- **Delegação preservada na troca de token.** O "on-behalf-of" atravessa provedores de identidade e token exchanges, e a ação fica rastreável até a pessoa de origem, o estado de aprovação ou o sistema de cima.
+- **Token curto e por tarefa.** OAuth de curta duração, com consentimento levado em conta nas ações sensíveis.
+- **Controle e trilha durante a execução.** Autorização contextual, política e risco em runtime — não só no handshake. A trilha liga identidade humana, identidade delegada, credencial emitida, decisão de política e ação a jusante.
+
+O **Verify** centraliza identidade, autorização, governança, token exchange e auditoria. O **Vault** cobre o destino que **não consome token delegado**: emite credencial just-in-time, específica do alvo, presa ao contexto de delegação aprovado, com expiração rápida e registro. Na **2.2**, o Vault dá conta própria por agente, renova automaticamente e inclui criptografia pós-quântica — renovação é o que permite a credencial ser curta.
+
+Segundo o **Gartner**, citado pela IBM, até **2028** a empresa média da Fortune 500 vai operar mais de **150 mil agentes**, e só **13%** das organizações acham ter a governança certa.
+
+## Por que a credencial persistente é o problema
+
+Uma chave estática alcança tudo que pode tocar, multiplicado por todo o tempo em que existe. O vazamento não dura uma hora: dura até alguém descobrir a chave, rotacionar e caçar o uso.
+
+A IBM nomeia três obstáculos — **credencial persistente**, **dono difuso**, **controles desconectados** — que dão no mesmo sintoma: não se sabe quais agentes operam, quem é dono, que autoridade têm e quais ações tomaram, sob ordem de quem.
+
+## Delegação não é impersonação
+
+A **RFC 8693** (janeiro de 2020) separa dois modelos que o mercado trata como sinônimos:
+
+- **Impersonação:** A recebe os direitos de B e fica indistinguível de B naquele token. Nas palavras da RFC, A é B dentro do contexto dos direitos autorizados pelo token.
+- **Delegação:** A mantém identidade própria, e as ações ficam registradas como tomadas por A representando B.
+
+No token, a diferença mora em dois campos: o `sub` é **quem delegou**, o `act` é **quem executa**. É o token composto: o `subject_token` diz em nome de quem se pede; o `actor_token`, quem recebe os direitos.
+
+O `act` pode ser **aninhado**: o mais externo é o ator atual, o mais antigo fica mais profundo. E a RFC é explícita — para aplicar política, o consumidor **deve considerar apenas os claims de topo e o ator atual**; atores anteriores são informativos. A cadeia serve para auditoria, não para autorização.
+
+## `may_act`: a permissão de delegar fica no emissor
+
+Falta a peça que impede a delegação de virar auto-atendimento. O claim `may_act` afirma que uma parte está autorizada a se tornar o ator e agir em nome de outra; o servidor de autorização usa isso para decidir se a troca de token é legítima.
+
+Daí a frase que derruba a desculpa: **"o modelo pediu" não é autorização**. Consentimento é propriedade do token e do emissor, não do prompt. Sem `may_act` ou política equivalente, o agente não tem delegação — tem intenção.
+
+## Escopo por tarefa: `authorization_details`
+
+A **RFC 9396** (maio de 2023) define `authorization_details`: um array de objetos JSON, cada um descrevendo um requisito, com o campo `type` obrigatório. Aceita várias entradas do mesmo tipo e pode substituir o `scope`; a própria RFC recomenda que uma API use só uma das duas formas.
+
+`scope=payments` diz que o agente pode iniciar pagamento, mas não diz valor, destinatário nem conta. `authorization_details` diz. Com `aud` no recurso certo e `exp` curto, fecham-se as três dimensões: **o quê, onde e por quanto tempo**.
+
+## O checklist para quem não vai comprar a suíte
+
+Nada acima é exclusivo da IBM; o vocabulário é de RFC:
+
+- **Uma identidade por agente**, não uma chave do time: dois agentes com a mesma credencial são indistinguíveis no log.
+- **`sub` = usuário, `act` = agente.** Sem `act`, o token diz que a pessoa agiu sozinha — é impersonação.
+- **`aud` do recurso específico** e `exp` em minutos. Token sem audiência viaja para qualquer serviço que o aceite.
+- **Escopo por tarefa** quando a ação tem valor, destinatário ou limite.
+- **Credencial just-in-time** para o alvo legado que não fala OAuth: emita, use, expire, registre.
+- **Autorização checada no recurso, durante a execução.** Revogar no meio da sessão só funciona se alguém checar no meio da sessão.
+- **Inventário com dono e classe de risco**, sandbox e kill switch — os dois últimos em tech preview no watsonx Orchestrate.
+
+O problema maior costuma estar antes: em [permissões de agente no sistema operacional](/blog/permissoes-de-agentes-de-ia-o-que-o-full-disk-access-libera-e-como-limitar) e nos [ataques que atravessam o protocolo MCP](/blog/seguranca-em-mcp-ssrf-permissoes-e-o-ataque-que-atravessa-protocolos).
+
+## Como saber se a auditoria fecha
+
+1. **A ação rastreável.** Monte a cadeia de uma chamada real: pessoa, agente, credencial emitida, decisão de política, efeito. O elo que faltar é onde o incidente vai parar.
+2. **A revogação.** Revogue e repita. Se funcionar, há credencial de pé em outro lugar — cache, arquivo, variável.
+3. **O token.** Decodifique `sub`, `act`, `aud` e `exp`. Sem `act`, é impersonação, mesmo que o fornecedor chame de delegação.
+
+## Estável e Atualizável
+
+**Estável:** a semântica da RFC 8693 (`act`, `may_act`, delegação versus impersonação) e da RFC 9396 (`authorization_details` com `type` obrigatório). Não muda com release de produto.
+
+**Atualizável:** status de cada item da IBM (GA versus tech preview), recursos do Vault 2.2, a projeção do Gartner e o nome comercial das capacidades. Reveja no próximo TechXchange ou quando o Vault mudar de versão maior.
+
+## Perguntas frequentes
+
+**Preciso do IBM Verify para fazer isso?** Não. O Verify empacota identidade, token exchange, política e auditoria. A mecânica vem de RFC e funciona com qualquer servidor de autorização que suporte token exchange e os claims de delegação.
+
+**Token de curta duração resolve sozinho?** Não. Sem `aud`, sem escopo por tarefa e sem a cadeia registrada, a credencial curta só encurta uma ação sem dono.
+
+**E quando um agente chama outro agente?** Entra o `act` aninhado. A cadeia registra o caminho inteiro, mas a decisão de acesso usa só o ator atual e os claims de topo — o resto é histórico.
+
+## Fontes
+
+- [Fonte: IBM — IBM Agent Identity is now generally available (26 out 2026)](https://www.ibm.com/new/announcements/ibm-agent-identity-is-now-generally-available-building-trust-for-the-agentic-era)
+- [Fonte: IBM Newsroom — IBM Introduces Identity and Control for AI Agents (27 out 2026)](https://newsroom.ibm.com/2026-10-27-ibm-introduces-identity-and-control-for-ai-agents,-securing-frontier-intelligence-for-the-enterprise)
+- [Fonte: IBM — Agentic AI Identity Management](https://www.ibm.com/solutions/agentic-ai-identity-management)
+- [Fonte: IETF — RFC 8693, OAuth 2.0 Token Exchange (jan 2020)](https://www.rfc-editor.org/rfc/rfc8693.html)
+- [Fonte: IETF — RFC 9396, OAuth 2.0 Rich Authorization Requests (mai 2023)](https://www.rfc-editor.org/rfc/rfc9396.html)
