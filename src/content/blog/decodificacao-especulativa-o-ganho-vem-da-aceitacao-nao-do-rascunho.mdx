@@ -1,0 +1,101 @@
+---
+title: "Decodificação especulativa: o ganho vem da aceitação, não do rascunho"
+date: "2026-10-31"
+description: "O rascunho pequeno não é o que acelera a inferência: o que acelera é quantos tokens dele o modelo grande aceita. No paper do FlashMap, a aceitação média é 7,69 tokens no GSM8K e 3,14 no Alpaca, o que explica por que o mesmo método dá 6,14x num benchmark e quase nada numa conversa aberta. Veja o teto de K+1, o envelope de QPS em que isso paga e como medir aceitação no vLLM."
+author: "Hernando Candido"
+tags: [Decodificação Especulativa, Inferência de LLM, vLLM, FlashMap, Latência, Engenharia de IA]
+sponsored: false
+premium: false
+---
+
+**Resposta curta:** decodificação especulativa troca vários passos caros do modelo grande por um rascunho barato que propõe um bloco de tokens e uma verificação paralela. O ganho não vem de o rascunho ser pequeno. Vem de **quantos tokens propostos o modelo grande aceita**. O paper do FlashMap, no arXiv desde **17 de outubro de 2026**, mede aceitação média de **7,69 tokens** no GSM8K e **3,14 no Alpaca**: mesmo hardware, quase **2,5x** de diferença. O **6,14x** que vai circular é o pico dessa curva, não a média.
+
+## O que uma rodada faz, e o teto que ela já tem
+
+Geração normal é um forward do modelo grande para produzir um token. Na especulativa, um modelo menor lê as ativações do grande e propõe **K tokens de uma vez**. O grande verifica os K numa passada paralela e mantém o **maior prefixo que coincide**. O resto é descartado e a rodada recomeça. A saída fica idêntica à do modelo sozinho — por isso a literatura chama de ganho **lossless**.
+
+O teto é aritmético. Você aceita no máximo os K propostos mais um token que o próprio modelo grande emite. A documentação do vLLM confirma no campo de configuração: `synthetic_acceptance_length` aceita valores entre **1 e `num_speculative_tokens + 1`**. Com bloco de 16, o máximo teórico é **17 tokens por rodada**.
+
+## As duas contas que decidem o ganho
+
+São dois fatores: **quantos tokens saem por rodada** (a aceitação média, γ) e **quanto custa montar a rodada**. Com rascunho barato, o speedup fica perto de **γ dividido por 1 mais o custo do rascunho**.
+
+Faça a conta com os números do paper: γ = **7,69** no GSM8K, rascunho de **~0,5B** contra alvo de 8B, uma passada cada. Se o rascunho custa algo como 15% de um passo do alvo, o ganho fica em **7,69 / 1,15 ≈ 6,7x**, perto dos 6,14x medidos. **Essa conta é minha, não do paper** — ela só mostra por que o número não é 16x nem 17x.
+
+A consequência é contraintuitiva: **melhorar aceitação vale mais que encolher rascunho**. Encolher sem ganhar aceitação só troca um gargalo por outro.
+
+## Onde a aceitação se perde
+
+Drafters de difusão em bloco predizem cada posição de forma independente. O paper usa um exemplo que fecha a conta na cabeça: a continuação pode ser "new york" ou "san diego". Um rascunho que escolhe cada slot isolado produz "new diego" ou "san york" em metade das vezes, e o modelo grande rejeita no segundo slot.
+
+O FlashMap ataca isso trocando a difusão discreta por um **flow map contínuo**, que mapeia ruído para o bloco inteiro numa passada só e preserva as dependências entre posições. Resultado medido: aceitação maior que o DFlash em **15 de 18 configurações**, com **metade dos parâmetros** (~0,5B contra ~1B).
+
+A versão de um passo tem um limite que o paper não esconde: a aceitação **decai dentro do bloco**, e os slots do fim são bem menos aceitos. Com dois passos, a aceitação bate o DFlash em **18 de 18** configurações, **10% maior em média**.
+
+![Aceitação condicional por posição no bloco de 16 tokens, Qwen3-8B a temperatura 1, agregada sobre matemática, código e conversa](https://arxiv.org/html/2610.24365v1/figures/decay_8b_t1.png)
+
+## O número do benchmark não é o número da sua tarefa
+
+Aceitação média no Qwen3-8B a temperatura 0, com um passo de rascunho (Tabela 1 do paper):
+
+- **GSM8K: 7,69** e **MATH: 7,24**.
+- **LiveCodeBench: 6,65** e **HumanEval: 5,82**. Código também.
+- **MT-Bench: 3,34** e **Alpaca: 3,14**. Conversa aberta rende menos da metade.
+
+O paper diz o mesmo em prosa: os ganhos são maiores em matemática e código porque o texto é estruturado, e menores em chat, onde a mesma frase pode ter muitas continuações. Quem promete "6x" para um assistente conversacional está prometendo o pico de outra tarefa.
+
+Dois números para calibrar:
+
+- **6,14x** é o pico, no GSM8K a temperatura 0. O resumo do paper arredonda para "até 6,1x"; o corpo traz 6,14x.
+- **O EAGLE-3 a temperatura 1 tem 9% mais aceitação que o FlashMap de um passo e ainda assim roda 35% mais lento.** Aceitação sozinha não ganha: rascunho autorregressivo paga latência a cada token que propõe.
+
+## O envelope em que isso paga
+
+A primeira frase da doc do vLLM é o melhor aviso: a técnica reduz **latência entre tokens sob QPS médio a baixo, em cargas memory-bound**. É ferramenta de latência, não de throughput.
+
+O motivo é físico. O rascunho roda no mesmo hardware do alvo. Com a réplica saturada, esse trabalho extra **compete com o batch do alvo** — e você troca latência por throughput sem ganhar nenhum dos dois.
+
+A tabela de seleção de método do próprio vLLM separa os dois regimes:
+
+- **EAGLE e MTP:** ganho alto em QPS baixo, médio a alto em QPS alto.
+- **n-gram e suffix:** ganho baixo a médio em QPS baixo, mas **médio em QPS alto** — são leves e não exigem rascunho treinado.
+- **Dynamic Speculative Decoding:** a resposta para "meu QPS oscila", porque ajusta a profundidade da especulação a cada passo.
+
+Se você já mediu GPU a 50% e concluiu que estava ociosa, vale reler [como se mede trabalho útil](/blog/utilizacao-de-gpu-a-50-nao-e-gpu-ociosa-como-medir-o-trabalho-util): a pergunta certa é qual recurso satura primeiro.
+
+## Como verificar na sua instância, e o que o paper não testou
+
+Os parâmetros no vLLM, pela documentação oficial:
+
+- `method` escolhe o tipo: `eagle3`, `mtp`, `draft_model`, `ngram`, `suffix` ou `dflash`.
+- `num_speculative_tokens` é o K. Passar do K do treino não ajuda: o paper mede esse descompasso em **~0,15 token** de aceitação.
+- `draft_sample_method` vem como `greedy`. Acima de temperatura 0 é preciso `probabilistic`.
+- `synthetic_acceptance_length` e `synthetic_acceptance_rates` simulam cenários antes de você treinar ou baixar um rascunho.
+
+Agora a parte que nenhum resumo repete. **O paper mede os ganhos em concurrency 1, num único H200 NVL, com SGLang 0.5.20, 2048 tokens novos e modo de raciocínio desligado.** A seção de limitações diz, com todas as letras, que os speedups são medidos em concurrency 1 e que **serving com batch não foi avaliado**. Só Qwen3-4B e Qwen3-8B, 500K amostras de treino, benchmarks em inglês e rascunhos possivelmente subtreinados por limite de compute.
+
+Medir γ por tipo de tarefa é o mínimo: se você serve chat e código no mesmo pool, a média única esconde o que decide a conta — como o cache de prefixo já mostrou em [o que apagar do KV cache do agente](/blog/cache-engineering-o-que-apagar-do-kv-cache-do-agente-e-o-que-nunca-cortar).
+
+## O que fica
+
+- **Aceitação é a métrica.** Meça γ na sua tarefa: 7,69 em matemática e 3,14 em conversa não são o mesmo produto.
+- **Latência, não throughput.** Fila cheia transforma rascunho em conta extra.
+
+## Perguntas frequentes
+
+### Decodificação especulativa muda a resposta do modelo?
+Não. O modelo grande verifica cada token proposto e só aceita o que a própria distribuição aprovaria, então a saída é a mesma da geração normal.
+
+### Preciso treinar um rascunho para usar?
+Não necessariamente: no vLLM, `ngram` e `suffix` não exigem modelo rascunho. Já EAGLE, MTP e o FlashMap exigem treino e ocupam GPU.
+
+### Por que o ganho no meu chat é metade do benchmark?
+Porque aceitação depende de quão previsível é o texto: conversa aberta aceita menos tokens por rodada do que matemática e código. Meça γ no seu tráfego.
+
+## Fontes
+
+- [Paper: FlashMap — Flow Map Speculative Decoding (arXiv, 17/10/2026)](https://arxiv.org/abs/2610.24365)
+- [Versão HTML do paper: Tabela 1, Figuras 2 a 4 e seção de limitações](https://arxiv.org/html/2610.24365v1)
+- [Documentação do vLLM: Speculative Decoding](https://docs.vllm.ai/en/latest/features/speculative_decoding.html)
+- [Código e plugins de vLLM/SGLang do FlashMap](https://github.com/al-jshen/flashmap)
+- [Pesos do drafter FlashMap para Qwen3-8B, Apache-2.0](https://huggingface.co/j-shen/FlashMap-Qwen3-8B)
