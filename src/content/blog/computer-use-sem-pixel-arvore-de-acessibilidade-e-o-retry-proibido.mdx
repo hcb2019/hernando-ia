@@ -1,0 +1,99 @@
+---
+title: "Computer use sem pixel: árvore de acessibilidade e o retry proibido"
+date: "2026-11-01"
+description: "Por que um agente erra o alvo ao controlar a tela: árvore de acessibilidade, ref que expira e a regra que separa entregue de sucesso antes de repetir."
+excerpt: "Por que um agente erra o alvo ao controlar a tela: árvore de acessibilidade, ref que expira e a regra que separa entregue de sucesso antes de repetir."
+author: "Hernando Candido"
+tags: [Computer Use, Agentes de IA, Acessibilidade, Automação de Desktop, Rust, Engenharia de IA]
+sponsored: false
+premium: false
+---
+
+**Resposta curta:** um agente de computer use não precisa ver a tela como imagem. Ele pode ler a **árvore de acessibilidade** que o sistema já publica e agir sobre um identificador preso a uma observação, não sobre uma coordenada. Em **30 de outubro de 2026** a Vercel Labs publicou a **v1.0.2** do `agent-desktop`, CLI em Rust sob Apache 2.0. O ganho não é economizar pixel: é que o erro de alvo passa a ter código, e a decisão de repetir deixa de ser adivinhação.
+
+## O que a árvore expõe
+
+O glossário do projeto define: uma representação estruturada da interface, publicada pelas APIs de acessibilidade do sistema — `AX` no macOS, **UIA** no Windows, **AT-SPI** no Linux — usada como **fonte de verdade** para observar e para agir. Cada nó chega com papel, nome, estado e ações disponíveis; só elemento endereçável ganha ref.
+
+**Papel fixo no seu código quebra na troca de sistema.** As taxonomias não são paralelas: o mesmo botão é `button` com estado `pressed` no macOS e `switch` com `checked` no Windows.
+
+## O laço: snapshot, ref, ação, releitura
+
+Observar, agir num ref, observar de novo. O snapshot devolve JSON com um ref por elemento acionável, no formato `@s8f3k2p9:e8` — o id antes dos dois-pontos é o snapshot que criou aquele ref. Ref cru é recusado com `INVALID_ARGS`.
+
+E o projeto insiste num ponto que muda a arquitetura: **é ferramenta, não agente**. O laço roda no seu código, e por isso a política de repetir também é sua.
+
+## Por que o ref morre na tela seguinte
+
+Ref vale para **um** snapshot. Depois de qualquer mudança de UI, mergulhe de novo na região ou tire outro. Os três erros nomeados: `STALE_REF`, `AMBIGUOUS_TARGET` e `SNAPSHOT_NOT_FOUND`. Com várias janelas, o erro lista os candidatos em `error.details` e você passa `--window-id`.
+
+O motivo é mais chato do que parece: **handle de janela é reciclado**. Por isso a identidade é o handle corroborado por um token de geração do processo — horário de criação no Windows, início do processo no macOS, client id do X11 no Linux. Handle reciclado falha fechado em vez de resolver para o ocupante novo.
+
+## O retry proibido
+
+É a parte que separa um agente que funciona de um que cobra duas vezes.
+
+O eixo não é sucesso contra falha, é **entregue contra não entregue**: ação que nunca chegou pode repetir à vontade; a que pode ter chegado não pode repetir sem risco de duplicar.
+
+No CLI isso vira `disposition.retry`. Só `not_delivered` vem como retry seguro. Qualquer outro valor significa que a ação pode ter pousado — repetir pode clicar, digitar ou enviar duas vezes, e o `toggle` desfaz a si mesmo.
+
+No Windows a contagem de eventos do `SendInput` não serve como prova de entrega: a API responde sucesso tanto no braço entregue quanto no bloqueado por UIPI. Passo físico sai como `delivered_unverified`, julgado por releitura independente.
+
+Resultado inseguro não autoriza retry: autoriza ler o estado vivo. `details.retryable: false` quer dizer que esperar não muda o desfecho.
+
+## Antes do clique: alvo acionável, sem mexer no mouse
+
+O núcleo roda uma bateria antes de despachar: visível, estável, habilitado, ação suportada, política, editável e recebendo eventos. O `auto-wait` segura a ação até o alvo ficar acionável, com teto de **5000 ms**; `type` soma **30 ms por caractere**; `--timeout-ms 0` dispara na hora.
+
+Dois testes de alcance não são o mesmo teste. O `receives_events` varre **cinco pontos** (centro mais quatro quadrantes) e passa se qualquer um alcançar, então controle parcialmente coberto ainda passa; o pipeline de ponteiro pergunta num ponto só e pode falhar ali.
+
+Ação em ref é **headless por padrão**: não toma foco, não move o cursor, não sintetiza tecla, não usa a área de transferência. Sem caminho semântico, falha fechado — e nunca se troca para `--headed` para recuperar de falha headless.
+
+## App denso: mapa raso e mergulho num galho
+
+`snapshot --skeleton` devolve visão rasa, com contagem de filhos nos galhos cortados, e `--root @ref` abre uma região só.
+
+Não é economia de token por estética: pilhas web (Chromium, Electron, WebView) embrulham conteúdo em contêineres anônimos, e sem pular esses embrulhos o mesmo app subestima o conteúdo alcançável **por uma ordem de magnitude**.
+
+Só o snapshot completo pode ser parcial, marcado com `complete: false`. Mergulho exige observação completa. E depois de passo assíncrono, `wait`: sleep fixo é corrida.
+
+## Instalação: 21 ms contra 146 ms, e a permissão que falta
+
+O `postinstall` do pacote npm troca o launcher em Node por um link para o binário nativo: cerca de **21 ms por chamada**. Se o gerenciador bloqueia scripts — o npm 12 bloqueia por padrão — o launcher em Node roda e cada chamada custa cerca de **146 ms**.
+
+- **macOS:** permissão de Acessibilidade; screenshot pede também Gravação de Tela. É o mesmo modelo por aplicativo tratado em [o que o Full Disk Access libera](/blog/permissoes-de-agentes-de-ia-o-que-o-full-disk-access-libera-e-como-limitar).
+- **Windows:** nenhuma concessão no mesmo nível de integridade do terminal; app elevado só recebe input de agente elevado.
+- **Linux:** sessão gráfica com `at-spi2-core`. No Wayland, input de ponteiro é recusado e controle de janela não é suportado.
+
+## Privacidade: a snapshot é a sua tela
+
+Snapshot, título de janela, clipboard, screenshot e saída de comando carregam o conteúdo que você mandou inspecionar, e o trace de sessão pode reter artefato mesmo com campo redigido.
+
+A frase da doc que vale guardar: **redigir não torna um screenshot seguro de publicar**.
+
+## Quando isso não serve
+
+Canvas, app que não publica árvore, Wayland para ponteiro. Aí a ferramenta **falha fechado** — e isso é a característica, não o bug: agente que chuta coordenada quando não há caminho semântico clica em qualquer coisa. Isolamento de execução é outra camada: o que a microVM isola está em [sandbox para agente de IA](/blog/sandbox-para-agente-de-ia-o-que-o-microvm-isola-e-onde-a-rede-vaza).
+
+## O que é estável e o que revisar
+
+- **Estável:** árvore como fonte de verdade, ref preso a um snapshot, a ordem entrega-antes-de-retry, headless como padrão e o modelo de permissão por sistema.
+- **Atualizável:** contagem de comandos (**60** nomes, **56** operacionais), teto de 5000 ms, 30 ms por caractere, os 21 e 146 ms e a versão **v1.0.2** (30/10/2026). Releia a cada release: os números mudam sem mudar a lição.
+
+### Um agente precisa de screenshot para clicar num botão?
+Não. O fluxo principal lê a árvore e age sobre um ref; screenshot é comando separado, para quando você precisa olhar. O ref entrega endereço, não palpite de coordenada — e o erro de alvo vem nomeado.
+
+### O que fazer quando a ação falha e não sei se chegou?
+Cheque `error.disposition`. Só repita com entrega `not_delivered`, o único caso marcado como retry seguro. Em qualquer outro, leia o estado vivo antes de decidir.
+
+### Funciona em qualquer aplicativo?
+Só onde existe caminho semântico. Se a interface não publica os controles na árvore — canvas, desenho próprio, biblioteca sem acessibilidade — a ação falha em vez de chutar coordenada. Aí o caminho é atalho de teclado, API do app ou uma superfície que exponha os controles.
+
+## Fontes
+
+- [Vercel Labs — agent-desktop, repositório Apache 2.0](https://github.com/vercel-labs/agent-desktop)
+- [agent-desktop — CONCEPTS.md, o vocabulário do projeto (snapshot, ref, entrega)](https://github.com/vercel-labs/agent-desktop/blob/main/CONCEPTS.md)
+- [agent-desktop — skills/agent-desktop/SKILL.md, o laço e as regras de retry](https://github.com/vercel-labs/agent-desktop/blob/main/skills/agent-desktop/SKILL.md)
+- [agent-desktop — docs/install.md, permissões e notas por plataforma](https://github.com/vercel-labs/agent-desktop/blob/main/docs/install.md)
+- [agent-desktop — docs/faq.md](https://github.com/vercel-labs/agent-desktop/blob/main/docs/faq.md)
+- [npm — pacote agent-desktop](https://www.npmjs.com/package/agent-desktop)
