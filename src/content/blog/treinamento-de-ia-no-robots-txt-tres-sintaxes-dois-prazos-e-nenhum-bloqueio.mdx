@@ -1,0 +1,113 @@
+---
+title: "Treinamento de IA no robots.txt: três sintaxes, dois prazos e nenhum bloqueio"
+date: "2026-11-02"
+description: "A OpenAI disse em 30/10 que vai honrar um token no robots.txt para treino de IA; o Google fala em 2027. As três sintaxes e por que nenhuma bloqueia."
+excerpt: "A OpenAI prometeu honrar o token __usage_ai-training no robots.txt e o Google fala em 2027. O que cada uma das três sintaxes vale hoje."
+author: "Hernando Candido"
+tags: [Robots.txt, Treinamento de IA, Crawlers de IA, GPTBot, Google-Extended, AIPREF, IETF, OpenAI, Google, Cloudflare, SEO Técnico]
+readingTime: 6
+sponsored: false
+premium: false
+---
+
+**Resposta curta:** em 30 de outubro de 2026 a OpenAI disse que vai honrar um sinal comum no `robots.txt` para preferências de treinamento de IA. O sinal é o token `__usage_ai-training`, e o Google registrou na documentação de crawlers que pretende lê-lo **no início de 2027**.
+
+Existem **três sintaxes** para dizer a mesma coisa, com pesos diferentes. Nenhuma é bloqueio: todas são declaração de preferência que o fornecedor escolhe acatar.
+
+## O que a OpenAI prometeu — e o que ainda não aconteceu
+
+O anúncio é curto: a empresa vai honrar o sinal e **pretende implementá-lo nos próximos meses**, com novo comunicado quando acontecer. Ou seja, **hoje o token ainda não é lido**. O que vale agora, pela própria nota, são os controles por bot que ela já mantém — e que continuam valendo depois.
+
+O sinal não está na nota: está no documento linkado. É o `draft-kelley-aipref-training-preference-signal-00`, submetido ao IETF em **30 de outubro de 2026**. É um **draft individual**, e a capa diz que não tem endosso do IETF.
+
+O autor é Kevin Kelley, da Anthropic. A assimetria útil: a página de ajuda da Anthropic, atualizada em **7 de abril de 2026**, ainda documenta só `ClaudeBot`, `Claude-User` e `Claude-SearchBot`. O engenheiro da casa escreveu o padrão antes da documentação da casa falar dele.
+
+## As três sintaxes
+
+### 1. O token: `__usage_ai-training`
+
+Reaproveita o `robots.txt` sem gramática nova: um grupo comum, com token de propósito na linha do user-agent.
+
+`User-Agent: __usage_ai-training`
+`Disallow: /`
+`Allow: /press-kit/`
+
+`Disallow` aqui é **preferência contra** o treino naquele caminho; `Allow` é **preferência a favor**. É o inverso da intuição de quem só usou o arquivo para bloquear.
+
+- **Curinga não conta.** `User-Agent: &#42;` não é lido como o token. Sem a linha explícita, **nenhuma preferência foi expressa**.
+- **Não é diretiva de crawling.** O consumidor pode usar a preferência para decidir o que buscar.
+- **Contrato vence arquivo.** Acordos privados podem sobrepor o que está escrito.
+
+A compatibilidade é o ponto elegante: é só um token de produto no formato que já existe, então qualquer parser antigo ignora o grupo como ignora user-agent desconhecido.
+
+### 2. A diretiva: `Content-Usage`
+
+É a via do grupo de trabalho, no `draft-ietf-aipref-attach-05`, de **19 de agosto de 2026**, de Gary Illyes (Google) e Martin Thomson (Mozilla). Atualiza o RFC 9309, se aprovado.
+
+`User-Agent: &#42;`
+`Content-Usage: train-ai=n`
+`Content-Usage: /ai-ok/ train-ai=y`
+
+Os rótulos vêm do vocabulário: `train-ai`, `ai-use` e `search`, com valor `y` ou `n`. Três comportamentos que quase ninguém lê no documento:
+
+- **Só vale para o que pode ser rastreado.** Recurso barrado por `Disallow` não recebe preferência. Bloquear e recusar são coisas separadas.
+- **Conflito não vai para o mais permissivo.** Em `Allow`/`Disallow`, empate libera. Em `Content-Usage`, o empate vai para a reconciliação do vocabulário.
+- **Chave repetida: a última vence** — e chave com maiúscula não dá erro, dá preferência **desconhecida**.
+
+### 3. O comentário: Content Signals
+
+Em **24 de setembro de 2025**, a Cloudflare publicou três sinais (`search`, `ai-input`, `ai-train`) como **comentário** no arquivo, em texto legível e sintaxe de máquina.
+
+`# search=yes, ai-train=no`
+
+A licença é CC0, e a empresa disse que incluiria o bloco nas mais de **3,8 milhões de zonas** de clientes que já usavam o `robots.txt` gerenciado por ela. Mas é comentário: não faz parte da gramática do RFC 9309 e nenhum parser padrão é obrigado a olhar. É o formato mais fácil de adotar e o mais fácil de ignorar.
+
+## Por que nenhuma das três bloqueia
+
+O RFC 9309 é direto: as regras **não são forma de autorização de acesso** e **não substituem medida de segurança de conteúdo**. O documento avisa ainda que listar caminhos no arquivo os torna públicos.
+
+O charter do grupo de trabalho repete por outro caminho: **aplicação técnica das preferências está fora de escopo**, como registro e auditoria.
+
+Os fornecedores confirmam nas próprias páginas. A OpenAI registra que o `ChatGPT-User` age por pedido do usuário e que, por isso, as regras **podem não se aplicar**. A Anthropic avisa que bloquear IP "pode não funcionar", porque impede o crawler de ler o arquivo.
+
+## O que escrever hoje
+
+1. **Mantenha os grupos por bot** — é o que funciona agora: `GPTBot` (treino), `OAI-SearchBot` (busca), `ChatGPT-User` (ação do usuário), `Google-Extended` (treino e grounding, sem user-agent próprio), `ClaudeBot` (treino), `Claude-SearchBot` (busca), `Claude-User` (ação do usuário).
+2. **Some o grupo com o token**, com exceção por caminho para o que você quer liberar.
+3. **Se quiser a via do grupo de trabalho**, acrescente `Content-Usage: train-ai=n` ao mesmo grupo.
+4. **Bloqueio de verdade é outra camada** — borda, WAF, contrato. Vale o mesmo para agentes, como mostrei ao [isolar a rede de um agente](/blog/eval-com-internet-e-producao-como-isolar-a-rede-do-seu-agente-de-ia).
+
+## Os erros que custam tráfego
+
+- **`Disallow` no `OAI-SearchBot`.** A OpenAI é explícita: fora do bot de busca, o site não aparece nas respostas do ChatGPT, ainda que possa aparecer como link de navegação.
+- **Confiar no curinga.** `User-Agent: &#42;` com `Disallow: /` não expressa preferência de treino — e derruba o Googlebot junto.
+- **Esquecer subdomínio e cache.** A Anthropic pede o bloqueio em cada subdomínio, e o arquivo pode levar até 24h para ser relido.
+- **Declarar sem monitorar.** Com implementação "nos próximos meses", a prova de que o fornecedor passou a ler o token é o log. A Cloudflare já mostrou a outra camada, a de execução, no [ultimato aos crawlers de setembro](/blog/cloudflare-d-ultimato-nos-crawlers-de-ia-setembro-o-limite).
+
+## O que é estável e o que muda
+
+**Estável:** o mecanismo. Token de produto, `Allow`/`Disallow`, casamento por prefixo mais longo, tudo herdado do RFC 9309. Aprender a ler o arquivo por essa régua continua valendo daqui a dois anos.
+
+**Atualizável:** os prazos e o suporte real por fornecedor; os rótulos do vocabulário — a versão 08 declara que **não reflete consenso** do grupo — e a convivência entre as duas propostas, que ainda pode convergir.
+
+### Barrar o GPTBot já resolve o treinamento?
+Para a OpenAI, sim: a documentação diz que barrar o GPTBot indica que o conteúdo não deve ser usado no treinamento. Vale para aquele fornecedor, naquele bot. Outro crawler não herda a decisão.
+
+### O token __usage_ai-training já funciona?
+Não. A OpenAI prometeu implementar nos próximos meses; o Google registrou a intenção para o início de 2027. Até lá, o que manda é o grupo por bot.
+
+### Preciso escolher entre as três sintaxes?
+Não. O token é o que os fornecedores anunciaram, o Content-Usage é a via do grupo e o comentário é o mais fácil de adotar. Os três convivem no mesmo arquivo.
+
+## Fontes
+
+- [Fonte: OpenAI — Making it easier for websites to express AI training preferences](https://openai.com/index/helping-websites-express-ai-training-preferences)
+- [Fonte: IETF — Machine-Readable Training Preference Signal (draft-kelley-aipref-training-preference-signal-00)](https://datatracker.ietf.org/doc/html/draft-kelley-aipref-training-preference-signal)
+- [Fonte: IETF — Associating AI Usage Preferences with Content in HTTP (draft-ietf-aipref-attach-05)](https://datatracker.ietf.org/doc/html/draft-ietf-aipref-attach)
+- [Fonte: IETF — A Vocabulary For Expressing AI Usage Preferences (draft-ietf-aipref-vocab-08)](https://datatracker.ietf.org/doc/html/draft-ietf-aipref-vocab)
+- [Fonte: IETF — AI Preferences Working Group (charter)](https://datatracker.ietf.org/wg/aipref/about/)
+- [Fonte: RFC 9309 — Robots Exclusion Protocol](https://www.rfc-editor.org/rfc/rfc9309.html)
+- [Fonte: Google Search Central — Google's common crawlers](https://developers.google.com/search/docs/crawling-indexing/google-common-crawlers)
+- [Fonte: OpenAI — Crawler controls (bots)](https://developers.openai.com/api/docs/bots)
+- [Fonte: Cloudflare Blog — Giving users choice with Cloudflare's new Content Signals Policy](https://blog.cloudflare.com/content-signals-policy/)
+- [Fonte: Anthropic — Does Anthropic crawl data from the web?](https://support.claude.com/en/articles/8896518-does-anthropic-crawl-data-from-the-web-and-how-can-site-owners-block-the-crawler)
