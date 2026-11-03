@@ -1,0 +1,102 @@
+---
+title: "Push lento com agentes de IA: as quatro trocas do Pando para escalar Git"
+date: "2026-11-03"
+description: "A OpenAI trocou consistência global e packfile por cliente por consistência causal e packs reutilizáveis no Pando. As quatro trocas e o que copiar hoje."
+author: "Hernando Candido"
+tags: [Git, Infraestrutura, Agentes de IA, Codex, Monorepo, Desempenho]
+excerpt: "A OpenAI trocou consistência global e packfile por cliente por consistência causal e packs reutilizáveis. As quatro trocas do Pando e o que copiar."
+readingTime: 6
+sponsored: false
+premium: false
+---
+
+Se o seu CI já reclama de push, espere o dia em que cada engenheiro tiver meia dúzia de agentes abrindo branch ao mesmo tempo. A OpenAI chegou nesse ponto no próprio monorepo e trocou o backend do Git por um sistema chamado **Pando**. Segundo o post de engenharia publicado em 2 de novembro, a latência mediana de push caiu quase **5x** e o sistema entrega quase **1 petabyte de dados Git por dia**.
+
+O número é a manchete. O aprendizado é outro: o ganho veio de quatro renúncias deliberadas, decidir o que o controle de versão **não** precisa garantir.
+
+## O ponto de ruptura
+
+Codex mudou o padrão de uso. Um engenheiro passou a ter várias mudanças prontas para CI ao mesmo tempo, e cada push pode disparar vários jobs que buscam o mesmo commit.
+
+No fim de 2025, o monorepo começou a engasgar: fetch e push lentos, merges falhando e confiabilidade que chegava a cair **abaixo de 90%**.
+
+A suspeita óbvia era o Git ter batido no limite. A OpenAI concluiu o contrário: dava para manter protocolo e cliente e trocar só o backend.
+
+## As quatro trocas
+
+Antes delas, um detalhe de leitura. O próprio post publica o mesmo ganho em duas unidades: "quase 5x" no resumo e "quase 80%" na seção de deploy. Não é contradição — 5x mais rápido é 1/5 do tempo, o que equivale a 80% menos. Quem cita só um dos dois está reduzindo a informação pela metade.
+
+### 1. Consistência causal no lugar de um retrato único
+
+Garantir que todos os branches reflitam o mesmo instante exige ordenar todas as atualizações de ref. É aí que pushes para branches sem relação começam a esperar uns pelos outros.
+
+O Pando abre mão do retrato global e mantém serialização **por ref**. Se `foo` e `bar` mudam durante um clone, um cliente pode ver `foo` na versão 1 e `bar` na 2, enquanto outro vê o inverso.
+
+No uso diário isso quase não aparece: o que importa é a ordem dentro de um mesmo branch.
+
+### 2. Packfile reaproveitado no lugar de um pack por cliente
+
+Num servidor Git comum, o servidor calcula a diferença entre o que o cliente tem e o que ele quer, comprime e envia. Dois clientes com históricos diferentes podem exigir dois packs diferentes, e esse trabalho de CPU praticamente não se cacheia.
+
+O Pando guarda o pack enviado pelo escritor como blob imutável. Quem busca depois baixa **os mesmos bytes**, com as dependências registradas junto.
+
+O preço é explícito: o cliente pode baixar objetos que já tem. Em troca, a conta de metadados fica em **O(1)** por push e **O(log Δ)** por fetch, com Δ sendo a distância em versões de ref até o commit desejado. É a mesma lógica de [reaproveitar o que já foi calculado](/blog/cache-engineering-o-que-apagar-do-kv-cache-do-agente-e-o-que-nunca-cortar) que se aplica a cache de agente.
+
+### 3. Anunciar só o trunk no lugar de todos os refs
+
+Um servidor tradicional mostra todos os branches ao cliente, que monta um pack menor. Com milhões de branches, só o anúncio de refs pode passar de **100 MiB**.
+
+O Pando anuncia um trunk designado por padrão. O pack gerado depende apenas do que o servidor permitiu excluir — e por isso pode ser servido de novo para outro cliente.
+
+A troca: pushes sucessivos no mesmo branch reenviam mais. No monorepo da OpenAI, o packfile mediano ficou **abaixo de 20 KiB**, com p99 **abaixo de 3 MiB**.
+
+### 4. Compactação tipo LSM no lugar de repack
+
+Cada push gera um pack inicial. Workers de fundo agrupam esses packs em coberturas que crescem geometricamente até **L4**. As coberturas funcionam como uma skip list sobre as versões de ref e deixam o planejamento de fetch logarítmico.
+
+Detalhe contraintuitivo: packs de todos os níveis continuam disponíveis, sem garbage collection. Servir vem de todas as camadas.
+
+## O que dá para usar hoje, sem o Pando
+
+Uma das peças é padrão do protocolo Git v2. A capacidade `packfile-uris` permite que o cliente avise que aceita **URI em vez de objetos** dentro do pack. Os protocolos suportados são http e https, e a resposta traz o hash do pack seguido do endereço.
+
+O Pando usa isso de forma radical: devolve um pack inline vazio e manda links para um serviço de entrega chamado Express, com cache regional e **mais de 99% de acerto**.
+
+Com isso, clone e fetch saturam link de **10 Gbps** em VM comum de nuvem. E o cliente também muda: a OpenAI mantém um build público do Git com download e indexação de packs independentes em paralelo, além do conceito de explicit haves.
+
+## Por que isso importa para quem tem agente commitando
+
+Agente de código transforma repositório em carga de escrita: um branch por tarefa, um push por tentativa, CI buscando o mesmo commit em vários jobs.
+
+Nesse regime o gargalo sai da CPU e vai para a **coordenação**. Quem serializa atualização de branches sem relação paga latência de disco e de rede no caminho crítico do push. As duas alternativas que a OpenAI modelou, commit em três fases com quórum e log de escrita compartilhado, tropeçam exatamente aí: a primeira põe o disco das réplicas no caminho, a segunda faz todo push disputar o mesmo manifesto.
+
+Vale também como sinal de método. O Pando saiu do zero à produção em **10 semanas**, com o núcleo desenhado por um engenheiro e implementado por times de agentes em Rust, validado com simulação determinística e formalização em Lean e TLA+ para caçar race conditions.
+
+Se você mede agente por custo e acerto, a conta fica incompleta sem essa camada: [trocar o harness muda a conta, não o acerto](/blog/harness-de-agente-de-codigo-trocar-muda-a-conta-nao-o-acerto-e-como-medir), e a infraestrutura abaixo dele muda os dois.
+
+## O que ainda não dá para usar
+
+O Pando é interno. O post diz que a OpenAI está explorando formas de compartilhar a tecnologia, sem data, sem licença e sem produto anunciado.
+
+O que existe publicamente é o build do cliente e as correções enviadas ao Git upstream para download concorrente e retomada de transferência.
+
+Consistência causal também não é de graça: se alguma ferramenta sua compara branches num instante único, esse modelo quebra a premissa.
+
+E os números vêm de um monorepo com hardware e blob storage próprios, não de um benchmark que se extrapola. [Medir trabalho útil em vez de olhar ocupação](/blog/utilizacao-de-gpu-a-50-nao-e-gpu-ociosa-como-medir-o-trabalho-util) ensina a mesma disciplina pelo outro lado.
+
+## FAQ
+
+### O Pando é open source?
+Não. O backend é interno da OpenAI e o post não anuncia licença nem data de liberação. O que está público é o build do cliente Git em github.com/openai/git, com mudanças enviadas ao projeto upstream.
+
+### Consistência causal quebra o meu fluxo no Git?
+No uso normal, não. A garantia que desaparece é o retrato de todos os branches num mesmo instante. A ordem dentro de um branch continua serializável, e é isso que push, log e code review usam.
+
+### Vale trocar meu servidor Git por isso hoje?
+Não existe o que instalar. O que dá para copiar é o diagnóstico: se push e fetch travam com muitos branches ativos, o problema provavelmente é coordenação, não CPU. Cache de pack reutilizável e `packfile-uris` são o caminho possível.
+
+## Fontes
+
+- [Fonte: OpenAI — Scaling Git at OpenAI](https://openai.com/index/scaling-git-at-openai)
+- [Fonte: Git — documentação do protocolo v2 (packfile-uris)](https://raw.githubusercontent.com/git/git/master/Documentation/gitprotocol-v2.adoc)
+- [Fonte: OpenAI — build público do Git](https://github.com/openai/git)
