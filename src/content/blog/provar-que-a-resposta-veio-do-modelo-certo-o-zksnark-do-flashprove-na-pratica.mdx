@@ -1,0 +1,103 @@
+---
+title: "Provar que a resposta veio do modelo certo: o zkSNARK do FlashProve na prática"
+description: "O FlashProve prova que uma resposta saiu de pesos específicos. O que os 110 tokens/s medem, por que 0 de 96 respostas passaram e onde a prova não chega."
+date: "2026-11-04"
+excerpt: "Prova criptográfica de inferência: como funciona, os números reais do FlashProve e o detalhe de operação que decide se a verificação vale alguma coisa."
+readingTime: 7
+author: "Hernando Candido"
+tags: [Prova de Inferência, zkSNARK, FlashProve, Anthropic, Segurança em IA, Proveniência, Criptografia, Engenharia de IA]
+sponsored: false
+premium: false
+---
+
+**Resposta curta:** prova de inferência é um mecanismo criptográfico que deixa qualquer pessoa confirmar que uma resposta de IA foi produzida por um conjunto exato de pesos, sem ver esses pesos. Em **2 de novembro de 2026** a Anthropic publicou o **FlashProve**, protótipo aberto (Apache 2.0) que faz isso com **zkSNARK** e chega a **110 tokens por segundo** numa única H100, provando um Llama 4 Maverick de 400 bilhões de parâmetros. O número é real e mede menos do que parece: é taxa de **prefill em regime**, sem gerar nada. E o que decide se isso te serve não é a criptografia, é de onde vem o identificador do compromisso.
+
+## Por que você não consegue checar hoje
+
+Você manda um prompt e recebe uma resposta. Qual modelo respondeu?
+
+Não dá pra saber. Pode ser um mais barato no lugar pra cortar custo, um mais caro pra inflar benchmark, ou um stream adulterado no caminho. E julgar pelo texto não resolve: modelo barato engana olho humano em tarefa fácil.
+
+O FlashProve ataca isso em duas fases. **Fora de linha**, o provedor publica um **compromisso**, identificador curto que trava um conjunto exato de pesos, e os pesos continuam secretos. **Em linha**, cada resposta vem com uma prova de que o modelo comprometido, naquele prompt, produz exatamente aqueles tokens. Quem tem o compromisso, o prompt e a resposta confere numa CPU comum, sem GPU e sem os pesos.
+
+O que fica escondido são os **pesos**. O que **não** fica escondido é a **arquitetura**.
+
+## Os números, com a condição junto
+
+O modelo é o **Llama 4 Maverick**, misto de especialistas de **400 bilhões de parâmetros**, cerca de **17 bilhões ativos por token**, em conversão pública de **4 bits** (uns **232 GB**). Cada janela tem **1.024 tokens** e cada prova cobre **um token**.
+
+A página de desempenho do próprio repositório mede:
+
+- **1, 8 e 24 pedidos por lote:** 17,41, 76,34 e 111,23 tokens/s. No lote de 24, a espera vai de **220,7 a 225,9 segundos** do começo do lote até as provas.
+- **64 por lote:** 123,31 tokens/s, mas não é pra confiar em placa de 80 GB. A GPU encostou em **80.629 de 81.559 MiB** e as oito tentativas em pesos sintéticos falharam numa chamada CUDA.
+
+A prova tem **18,78 MB** em média. O cliente baixa **6,24 MB** uma vez por compromisso e o provedor guarda **2,15 GB** por compromisso. Commitar leva uns **39 minutos** e vale por cerca de **16 milhões de pedidos**.
+
+Verificar é barato: cerca de **21 segundos numa thread**, com até **3,53 GB** no maior processo, e um lote de 24 provas conferido pelo middleware de integração levou **94 segundos**.
+
+Provar é o que assusta. Por GPU, lotes de 24 são **93 vezes mais lentos** (92,2 a 94,1 entre pares de execuções) que o prefill do vLLM de estoque na carga mais alta testada, e **71,4 vezes** mais lentos que o prefill de 24 pedidos de uma vez.
+
+Antes do FlashProve, provar esse mesmo modelo era coisa de **14,3 horas para 1.000 tokens** num DGX Spark, com prova de **93,6 GB** e quase um dia pra verificar (o VerInf).
+
+## Por que 110 tokens por segundo não é o número que você quer
+
+O resumo executivo do post diz que a GPU "gera provas a cerca de 110 tokens por segundo". A página de desempenho do repositório explica o que isso significa: são **taxas de prefill em regime**, em que cada pedido conta os seus **1.024 tokens de prompt**, **nada é gerado**, e **start-up e commit não entram na conta**.
+
+O número mede o custo de provar uma passada sobre tokens de prompt, não o de provar uma resposta gerada. O documento separa as duas coisas e avisa que uma passada confere **um token**.
+
+A segunda camada é pior. A prova é sobre uma versão **inteira** do modelo, sob **decodificação gulosa**, e essa versão escolhe um token de topo diferente da versão de 16 bits em **6,81% das posições**.
+
+A consequência foi medida: de **96 respostas armazenadas** do vLLM de estoque, em 16 bits e em FP8, **nenhuma** passou na comparação exata. Zero de 96. Essa contagem saiu de uma implementação em Python do modelo inteiro, não dos programas liberados, e o guia marca assim.
+
+Com um plug-in de vLLM desenhado pra calcular o modelo inteiro exatamente, **48 de 48** respostas curtas foram provadas e conferidas, a **0,58 a 1,46 segundo por token**.
+
+Ligar a prova na sua API não é opção neutra: ou você serve um modelo computacionalmente diferente do que serve hoje, ou aceita uma comparação mais frouxa.
+
+## Verde pode significar duas coisas diferentes
+
+O código de saída **0** do verificador cobre dois desfechos. **YES** é correspondência exata: cada token é a escolha do modelo inteiro. **WITHIN LIMITS** é a política de **clipped gap**, mais frouxa, que aceita diferença dentro de limites declarados. Os outros: **1** é rejeitado, **5** é sem veredito, **14** é chamada inválida.
+
+Se o seu monitor checa só "saiu zero", ele trata as duas promessas como a mesma. Um painel que lê verde como garantia exata está publicando uma garantia que o verificador não deu.
+
+## O elo que nenhuma criptografia conserta
+
+O README tem uma regra que vale mais que o resto: o **identificador do compromisso** tem que vir de uma parte em que **você** confia. Nunca do servidor que está sendo verificado, nunca de arquivo que veio junto com a prova.
+
+A prova é matematicamente sólida. Um provedor que tente passar saída de outro modelo é pego, exceto com probabilidade de cerca de **q/2^124 mais 2^-101** depois de q consultas de hash, demonstrado em **Lean 4**.
+
+Mas "sólida contra quem?" decide tudo. Se o mesmo servidor que entrega a resposta entrega o identificador pra conferir a resposta, você não provou nada. O fingerprint você lê por outro caminho, nunca pelo e-mail que chegou. A prova move o problema, não o elimina.
+
+## O que a Anthropic declarou como limite
+
+- **Arquitetura não é escondida.** Só os pesos.
+- **Contexto de 1.024 tokens.** Janelas de frontier hoje passam de centenas de milhares.
+- **Canal lateral fora do escopo.** O tempo de gerar a prova pode vazar informação.
+- **Sem garantia de que Lean, paper e código sejam iguais entre si.** O verificador rápido em C++ não carrega garantia formal.
+- **Artefato de pesquisa, versão 0.16.0:** não mantido, não recebe contribuição.
+
+Dois detalhes de leitura mudam a manchete. O registro das execuções **não está no repositório** e nenhuma página publica os checksums dos programas que geraram os números, então ninguém reproduz exatamente aquelas medições.
+
+E a meta pública de **30 de setembro de 2026** foi cumprida **por um projeto separado**, que assina o tráfego de inferência e recalcula num servidor confiável. Em **19 de outubro de 2026** a empresa trocou o nome da meta pra "inference verification". O FlashProve é a outra rota, não a que fechou o prazo.
+
+Dá pra testar sem GPU: a rota 1 compila o verificador em 1 a 2 minutos e confere uma prova guardada em menos de 2 segundos, com menos de 2 GB de RAM. Mas o exemplo é um modelo pequeno com **pesos sintéticos**, e ele mostra que o verificador funciona, não diz nada sobre um modelo servido.
+
+## Perguntas frequentes
+
+### Preciso trocar tudo pra usar prova de inferência?
+Não. O caminho de menor atrito hoje é assinar as respostas e recalcular em ambiente confiável, que é o que a própria Anthropic fez pra bater a meta de setembro de 2026.
+
+### Qual é a diferença entre YES e WITHIN LIMITS?
+YES é correspondência exata, cada token é a escolha do modelo inteiro. WITHIN LIMITS usa a política de clipped gap, que aceita diferença dentro de limites declarados. Os dois saem com código 0.
+
+### O FlashProve esconde os pesos do modelo?
+Esconde os pesos, não a arquitetura. Quem recebe a prova não aprende os pesos nem quais especialistas rodaram em cada camada.
+
+Leia também: [por que a marca d'água do Claude prova processamento e não autoria](/blog/a-marca-dgua-invisvel-do-claude-no-pega-s-quem-cola-pega-voc-tambm) e [o que muda quando o problema é identidade de agente, não de modelo](/blog/identidade-de-agente-delegacao-impersonacao-e-o-token-de-curta-duracao).
+
+## Fontes
+
+- [Fonte: Anthropic Research, Progress on provable inference for large language models](https://www.anthropic.com/research/provable-inference)
+- [Fonte: Anthropic, relatório técnico do FlashProve](https://www.anthropic.com/document/flashprove-technical-report)
+- [Fonte: repositório anthropics/FlashProve no GitHub](https://github.com/anthropics/FlashProve)
+- [Fonte: FlashProve, guia de desempenho](https://github.com/anthropics/FlashProve/blob/main/guide/performance.md)
+- [Fonte: TechCrunch, Anthropic is working on a system to prove AI models' identity](https://techcrunch.com/2026/11/03/anthropic-is-working-on-a-system-to-prove-ai-models-identity/)
