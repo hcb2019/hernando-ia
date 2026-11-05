@@ -1,0 +1,118 @@
+---
+title: "Conceito subjetivo em classificador de IA: o limite se descobre, não se escreve"
+description: "O Agile Deliberation, do Google Research, troca o prompt escrito no chute por imagens de fronteira: F1 sobe 11 pontos e a precisão 22 — com recall caindo 17."
+date: "2026-11-05"
+excerpt: "Definir comida saudável ou clickbait num prompt sempre deixa buraco. O método do Google Research expõe o limite com exemplos ambíguos, e o resultado mostra o preço: mais precisão, menos recall."
+readingTime: 6
+author: "Hernando Candido"
+tags: [Classificação de Imagem, Conceito Subjetivo, Human-in-the-Loop, Moderação de Conteúdo, Avaliação de LLM, Google Research, Engenharia de IA]
+sponsored: false
+premium: false
+---
+
+**Resposta curta:** quando o rótulo é subjetivo, escrever a definição num prompt não funciona, porque o limite do conceito não está escrito em lugar nenhum. O **Agile Deliberation**, do Google Research, resolve isso mostrando imagens de fronteira para a pessoa decidir, uma ambiguidade por rodada. O classificador sai de **0,48 para 0,59 de F1** na moderação e de **0,48 para 0,58** na curadoria. O preço aparece junto: na moderação, a precisão sobe **22 pontos** e o recall cai **17**.
+
+![Diagrama do fluxo do Agile Deliberation, do Google Research: escopo do conceito, iteração com imagens de fronteira e refinamento da definição](https://storage.googleapis.com/gweb-research2023-media/images/AgileDeliberation2_Workflow.width-1250.png)
+
+## O rótulo que ninguém escreve igual duas vezes
+
+"Conteúdo enganoso". "Comida saudável". "Oferta boa". Você escreve isso no prompt e o modelo devolve uma decisão.
+
+Só que o limite não estava no prompt. Estava na sua cabeça — e nem lá estava fechado. Conceito objetivo, tipo semáforo, tem fronteira universal: é o que [benchmark de visão mede bem](/blog/o-que-a-ia-ainda-nao-ve-o-benchmark-que-mede-raciocinio-visual-intuitivo), e mesmo ali o modelo trava no que a cena implica. Conceito subjetivo é outra camada: muda com contexto cultural, política da empresa e o entendimento de quem revisa.
+
+O Google partiu de entrevistas com **5 especialistas em moderação** e da análise de **20 definições** do trabalho real deles. O padrão: ninguém começa com a definição pronta. Começa vago e descobre a fronteira ao esbarrar em caso ambíguo.
+
+## Por que escrever a definição primeiro falha
+
+O caminho padrão é escrever o prompt e mandar ver. O paper mediu: com o conceito descrito de primeira, o zero-shot ficou em **0,48 de F1** nos dois conceitos testados.
+
+O formato do erro explica mais que o número. Na moderação, precisão **0,35** com recall **0,80**. O modelo não errava por omissão — jogava quase tudo dentro do balde. Onde a definição deixava vazio, o prior preenchia.
+
+Decomposição automática por LLM, sem humano no loop, subiu para **0,53** e **0,50**. Melhor, e ainda longe. Enriquecer o prompt não resolve um limite que só o dono do conceito conhece.
+
+## As duas etapas do método
+
+### Escopo: no máximo três conceitos-unidade
+
+A primeira etapa não escreve prompt, decompõe. O conceito vira no máximo **três conceitos-unidade**, cada um com subconceitos positivos e negativos ilustrados por imagens do acervo. O teto de três é deliberado: acima disso a pessoa não raciocina sobre a própria definição.
+
+Quem trabalha não digita — olha imagem e mantém, inverte ou descarta cada subconceito. O produto serve a dois leitores: é **política legível para humano** e é **prompt para o VLM**. Mesmo artefato, duas funções.
+
+### Iteração: uma dimensão por vez
+
+A cada rodada o sistema busca imagens **semanticamente ambíguas** para a definição atual. A pessoa rotula, comenta quando discorda, e a definição é reescrita.
+
+Cada lote ataca **uma ambiguidade só** — molho, açúcar, porção. Se mistura dimensões, a pessoa não sabe o que está ajustando e o feedback vira ruído.
+
+A definição nova é escolhida entre várias candidatas pela melhor F1 sobre tudo já rotulado: atualização gulosa, sem beam search, para o histórico ficar auditável.
+
+## O detalhe que muda tudo: fronteira semântica
+
+O jeito clássico de achar caso difícil é active learning: pegar amostras com probabilidade perto de 0,5. Isso assume probabilidade calibrada — e saída de VLM generativo não é calibrada. O modelo crava confiança no que humano acha ambíguo e fica morno no óbvio.
+
+Então o paper ignora margem de confiança e monta a fronteira no espaço semântico: consultas de fronteira, **50 a 100 imagens por consulta**, agrupamento por código esparso e bandit UCB para escolher o grupo seguinte. Cada imagem chega com uma frase dizendo qual é a ambiguidade dela.
+
+## Os números, com o recorte certo
+
+No grupo que usou o framework:
+
+- **Moderação:** F1 de **0,48 para 0,59**; precisão de **0,35 para 0,57**; recall de **0,80 para 0,63**.
+- **Curadoria:** F1 de **0,48 para 0,58**; precisão de **0,33 para 0,44**; recall de **0,99 para 0,84**.
+
+Tem um detalhe de leitura que muda a conta. O paper escreve "11%" e "10%", mas o que muda é **ponto de F1**, não porcentagem relativa: de 0,48 para 0,59 são 11 pontos e 23% de ganho relativo. Publicar "11%" sem dizer qual dos dois é a diferença entre número certo e número inflado. E há inconsistência interna: o abstract fala em **7,5 pontos** sobre a decomposição automática; a Tabela 1 dá **6 e 8**.
+
+São **18 sessões de 90 minutos com 9 participantes**, uns 45 minutos definindo e 200 imagens de teste por conceito. Pouco, e o paper assume: F1 absoluto não se compara entre grupos, porque cada grupo trabalhou um conceito. O que se compara é o **delta contra o zero-shot do próprio grupo**.
+
+## O que você compra e o que você paga
+
+A troca é direta: **precisão sobe, recall cai**. Na moderação são 22 pontos a mais de acerto no que ele marca e 17 a menos de cobertura. Se o erro caro é deixar passar conteúdo ruim, você ganhou; se é bloquear o permitido, comprou o problema.
+
+E tem um botão no meio: nota de 1 a 5, corte em 3. Nada no paper sugere que 3 seja universal.
+
+## Quando não vale a pena
+
+No grupo de deliberação manual com comida saudável, o zero-shot já vinha em **0,82** e deliberar **piorou** para 0,79.
+
+A leitura é a única sensata: deliberação rende quando a sua interpretação **diverge** do prior do modelo. Se o prior já concorda com você, mexer no limite atrapalha.
+
+Regra prática: **meça o zero-shot antes de investir em definição**. Se ele já acerta o que você quer, o problema é outra parte do sistema — e vale a mesma disciplina de [avaliar o critério, não só o desfecho](/blog/como-avaliar-a-qualidade-de-decisao-de-um-agente-de-ia-taste-bench).
+
+## Como rodar isso hoje
+
+O código está aberto no repositório `google-research`, com notebook que refaz o exemplo de comida saudável de ponta a ponta: Gemini 2.5 Pro na decomposição, 2.5 Flash no resto, sem fine-tuning. O índice de recuperação do demo são duas fatias do LAION-400M em FAISS, uns **260 MB**; as 100 fatias completas, uns **13 GB**.
+
+## Minha Opinião
+
+A parte que eu levaria para qualquer projeto não é o classificador de imagem. É a inversão de ordem. A gente aprendeu a escrever prompt primeiro e olhar dado depois; em conceito subjetivo, isso é começar pelo artefato mais frágil. A definição não é a entrada do trabalho, é o resultado dele.
+
+E a consequência é incômoda para quem vende IA que entende a sua política: se a política nunca foi escrita de forma consistente, o modelo não tem o que entender — ele inventa o limite, com toda a confiança do mundo. Explicitar o critério é trabalho seu.
+
+## Perguntas frequentes
+
+### Preciso fazer fine-tuning?
+Não. O framework funciona só com prompt e API: o Gemini 2.5 Pro decompõe o conceito e o 2.5 Flash classifica, gera consultas e minera ambiguidade. Nenhum modelo foi treinado no estudo.
+
+### Serve para texto ou só para imagem?
+Só imagem foi testado: dois conceitos, 200 imagens de teste em cada. A ideia de expor o caso de fronteira transfere para texto, mas não há medição publicada nesse domínio.
+
+### Quantas imagens preciso rotular?
+Cada rodada mostra pelo menos cinco imagens, focado em uma ambiguidade só. No estudo, a pessoa gastou uns 45 minutos definindo o conceito.
+
+## O que revisar depois
+
+**Estável:** a inversão de ordem, a distinção entre fronteira semântica e margem de confiança, e a troca precisão-recall.
+
+**Atualizável:** os números de F1 e os nomes dos modelos. Era Gemini 2.5; a conclusão sobre calibração pode mudar quando os modelos passarem a calibrar melhor.
+
+## Takeaways
+
+- **Conceito subjetivo não se especifica, se descobre:** o limite aparece quando você vê o caso ambíguo, não quando escreve a regra.
+- **Zero-shot com precisão de 0,35 é sinal de prior do modelo, não de conceito difícil:** meça antes de culpar o dado.
+- **Deliberação compra precisão e paga com recall.** Se falso negativo for caro, esse não é o seu método.
+
+## Fontes
+
+- [Fonte: Google Research — Agile Deliberation: How AI helps humans define the gray areas](https://research.google/blog/agile-deliberation-how-ai-helps-humans-define-the-gray-areas/)
+- [Fonte: arXiv 2512.10821 — Agile Deliberation: Concept Deliberation for Subjective Visual Classification](https://arxiv.org/abs/2512.10821)
+- [Fonte: repositório google-research — agile_deliberation](https://github.com/google-research/google-research/tree/master/agile_deliberation)
+- [Fonte: MarkTechPost — Google AI Research Releases Agile Deliberation Framework](https://www.marktechpost.com/2026/11/04/google-agile-deliberation-subjective-image-classifiers/)
