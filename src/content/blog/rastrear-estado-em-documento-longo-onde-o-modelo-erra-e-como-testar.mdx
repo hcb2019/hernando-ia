@@ -1,0 +1,113 @@
+---
+title: "Rastrear estado em documento longo: onde o modelo erra e como testar"
+description: "No StateBench, do Ai2, os modelos de fronteira caem ao acaso quando a sequência passa de 10K tokens. Os quatro níveis de estado e como testar o seu formato."
+date: "2026-11-06"
+excerpt: "Modelo de fronteira lê 128K tokens e ainda perde qual variável mudou de valor depois de centenas de atualizações. O StateBench separa quatro níveis de dificuldade e mostra onde cada arquitetura para."
+readingTime: 5
+author: "Hernando Candido"
+tags: [Contexto Longo, Rastreamento de Estado, Benchmarks, Arquitetura de LLM, Gated DeltaNet, Agentes de IA, Engenharia de IA]
+sponsored: false
+premium: false
+---
+
+**Resposta curta:** o modelo lê o documento inteiro e ainda erra o valor da variável depois de várias atualizações. No **StateBench**, do Allen Institute for AI, os quatro modelos de fronteira testados — **Gemini 3.8 Flash, Claude Opus 5.5, GPT-6 Sol e GPT-6 Luna** — caem ao nível do acaso nos dois níveis mais difíceis quando a entrada chega a **10K a 64K tokens**; nos mais longos, o post do Ai2 reporta **13% ou menos** (paper no arXiv em **02/11/2026**, post em **03/11/2026**).
+
+A causa não é uma só: em transformer, o teto é a arquitetura; em modelo recorrente ou híbrido, é treino.
+
+![Gráfico do post do Ai2 com a acurácia de Gemini 3.8 Flash, Claude Opus 5.5, GPT-6 Sol e GPT-6 Luna nos quatro níveis do StateBench conforme o tamanho da entrada em tokens](https://www.datocms-assets.com/64837/1792006435-statebench-draft-blog-google-docs-image-3.png)
+
+## Contexto longo e estado não são a mesma coisa
+
+Um teste de contexto longo acha um dado no meio de 100 mil tokens. O estado muda de valor no caminho — é isso que o benchmark mede.
+
+O exemplo do post do Ai2 é de romance policial: se o texto diz que **John entregou a faca para Mary**, o estado dos dois mudou. A versão difícil tem um passo a mais — John entregou o item que estava na mochila dele, e antes o livro já dizia que **Edward pôs uma faca ali**. Quem só acha a última menção à faca erra o dono.
+
+## Os quatro níveis, do fácil ao difícil
+
+A escada vem da **teoria de Krohn–Rhodes**; cada nível aceita um tipo a mais de atribuição.
+
+- **r-trivial:** atribuição imutável. `let x = 4` e nunca muda — data de nascimento.
+- **aperiódico:** atribuição por valor. `x = 4`, depois `x = 2`; o último vence — um termostato.
+- **solúvel:** atualização autorreferente. `x = x + 5`; cada passo depende do valor corrente — placar de jogo.
+- **finito geral:** atribuição por referência. `x = y`, troca de duas variáveis — o mágico trocando a bola de copo.
+
+Para comparar de forma justa, o StateBench pega **uma sequência do nível finito geral** e deriva as três mais fáceis dela: mesmas variáveis, mesmos valores, mesmos pontos de atribuição. A sequência sai em **seis formatos** e vai até **128K tokens**.
+
+## O que os modelos pré-treinados fazem
+
+Modelos abertos treinados nos mesmos dados: **Olmo 3** (7B, transformer), **Olmo Hybrid** (7B, com camadas de Gated DeltaNet), mais versões de 275M e 2,7B. Nenhum viu mais de **64K tokens** no treino.
+
+- **r-trivial vai bem**, com uma exceção: o transformer de 275M cai ao acaso depois do comprimento visto no treino.
+- **aperiódico derruba.** Os 7B chegam a **cerca de 90%**, degradam dentro da janela de treino e caem depois do corte; GDN de 275M segura **~50%**.
+- **finito geral é acaso em todos os comprimentos** — e **solúvel não foi reportado** nessa rodada.
+
+## Onde os de fronteira param
+
+Aqui a avaliação é generativa: os modelos recebem a sequência e devolvem o valor final de cada variável, sem múltipla escolha.
+
+r-trivial e aperiódico vão bem. **Solúvel e finito geral desabam** conforme a entrada cresce, até o acaso entre **10K e 64K tokens**. O post do Ai2 dá o número da ponta: **13% ou menos**.
+
+A explicação do paper é **sensibilidade**: nos níveis difíceis, mais passos podem alterar a resposta final, então sobra pouca margem para perder uma atualização.
+
+## O formato da pergunta muda o resultado
+
+O híbrido de 275M e o Gated DeltaNet ficam **quase no teto** em r-trivial formatado como RULER — e **quase no acaso** nos mesmos problemas formatados como edição de células de planilha. Modelo pequeno sofre mais, mas até os de 7B mostram preferência.
+
+O gráfico de pré-treinados reporta o **melhor resultado entre os seis formatos**. A média que circula por aí é a do formato mais amigável, não a do seu produto.
+
+## Treinar do zero separa arquitetura de dado
+
+Modelos de **275M do zero**: dois transformers, dois híbridos e dois Gated DeltaNet com restrições diferentes de memória. Treino com até **256 atribuições**, teste até **64.000** — 250 vezes o comprimento do treino.
+
+- **GDN e híbridos generalizam quase perfeitamente** em r-trivial, aperiódico e solúvel até dezenas de milhares de atribuições.
+- **Transformers aprendem os níveis fáceis**, degradam em sequências longas e **nunca aprendem finito geral**.
+- No nível mais difícil, a variante GDN com memória mais flexível ficou perto do perfeito até cerca de **10 vezes** o comprimento do treino.
+
+Para GDN e híbridos, a distância entre pré-treinado e treinado direto é **de treino**; para transformer, **é de arquitetura** — nem do zero ele aprende o nível mais difícil.
+
+## O que fazer com isso na prática
+
+- **Não terceirize o estado que você consegue calcular.** Se o valor é derivável de eventos que você já tem (saldo, estoque, dono de um item), calcule fora do modelo e passe pronto.
+- **Teste no formato do seu produto.** Agente que edita planilha precisa ser avaliado com células de planilha, não com a versão RULER que o benchmark favorece.
+- **Conte a sensibilidade antes de confiar.** Quantos passos podem mudar a resposta final? Se são muitos, quebre a sequência em blocos com estado intermediário explícito.
+- **Contexto longo é orçamento de atenção, não memória.** Apagar do histórico tem custo e reescrever reencoda tudo — o mecanismo está em [cache engineering](/blog/cache-engineering-o-que-apagar-do-kv-cache-do-agente-e-o-que-nunca-cortar).
+
+Se o caso é conferir o que um agente fez no banco, a lógica é a de [avaliar pelo estado final](/blog/como-avaliar-um-agente-de-ia-que-mexe-no-banco-estado-final-nao-resumo): compare o estado, não o resumo.
+
+## O que o paper não cobre
+
+- **Número fixo de variáveis.** Tarefa real inventa entidade no meio do caminho — numa conversa longa, gente e objeto novos aparecem — e os autores dizem que o framework não cobre isso.
+- **Dois registros do mesmo número.** O blog fala em **13% ou menos**; o paper diz **nível do acaso**. Não se contradizem, mas não são a mesma régua — e as sequências são sintéticas, não ecológicas.
+
+## Minha Opinião
+
+A indústria vende contexto longo como memória. Não é.
+
+Memória é o que você consulta; estado é o que você atualiza. Um agente que perde o valor de uma variável depois de 40 chamadas de ferramenta não tem bug de janela de contexto: ele faz, a cada passo, uma conta que a arquitetura dele não sustenta.
+
+O achado mais útil não é o 13%. É que boa parte do que a gente chama de limite do modelo é limite de **dado de treino** — o que desloca a pergunta de qual modelo contratar para qual tarefa ensinar.
+
+Até lá: guarde estado fora do prompt, num JSON seu, e deixe o modelo calcular só o próximo passo.
+
+## Takeaways
+
+- **Estado não é contexto:** achar o fato é recuperação; acompanhar a cadeia de atualizações é outra capacidade, e os modelos de fronteira caem ao acaso entre 10K e 64K tokens.
+- **O formato decide o resultado:** as mesmas sequências vão de quase o teto a quase o acaso só mudando a roupagem — teste no seu.
+- **Transformer não aprende o nível mais difícil nem treinando do zero; GDN e híbridos aprendem.** Externalizar estado é engenharia, não prompt.
+
+## FAQ
+
+### O que é rastreamento de estado em um LLM?
+É acompanhar como informações sobre entidades mudam ao longo de um texto: variável reatribuída, objeto que troca de dono, personagem que muda de lugar. O StateBench mede isso em quatro níveis, do valor imutável até a troca por referência.
+### Contexto longo resolve o problema de estado?
+Não sozinho. Os modelos de fronteira testados vão bem nos níveis fáceis, mas caem ao acaso nos níveis solúvel e finito geral entre 10K e 64K tokens. Janela maior adia o problema; não muda a operação exigida.
+### Como testar se o meu modelo acompanha estado?
+Monte uma sequência de atribuições no formato do seu produto, derive versões mais simples do mesmo traço e compare a acurácia por comprimento. O dataset e o código do StateBench são abertos.
+
+## Fontes
+
+- [Fonte: Ai2 no Hugging Face — StateBench: Testing how language models track state changes over long documents](https://huggingface.co/blog/allenai/statebench)
+- [Fonte: arXiv — A Fine-Grained Hierarchy and Benchmark for State Tracking in Language Models](https://arxiv.org/abs/2611.03094)
+- [Fonte: arXiv HTML — versão completa, com tabelas e figuras](https://arxiv.org/html/2611.03094v1)
+- [Fonte: GitHub — allenai/state-bench](https://github.com/allenai/state-bench)
+- [Fonte: Hugging Face Datasets — allenai/state-bench](https://huggingface.co/datasets/allenai/state-bench)
