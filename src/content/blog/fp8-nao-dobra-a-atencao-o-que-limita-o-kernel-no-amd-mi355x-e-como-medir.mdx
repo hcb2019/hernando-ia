@@ -1,0 +1,101 @@
+---
+title: "FP8 não dobra a atenção: o que limita o kernel no AMD MI355X e como medir"
+description: "FP8 tem o dobro do pico do BF16, mas atenção não dobra: o softmax roda no vector pipe. Os 39% de pico do AITER, o relógio que depende do dado e como medir."
+date: "2026-11-07"
+excerpt: "O FP8 acelera só as duas multiplicações de matriz da atenção e deixa o softmax intocado. No MI355X, o kernel padrão do AITER chega a 39% do pico em FP8 contra 49% em BF16 — e medir com entrada gaussiana esconde parte do ganho."
+readingTime: 5
+author: "Hernando Candido"
+tags: [FP8, FlashAttention, AMD MI355X, Inferência de LLM, Kernel de GPU, Quantização, Benchmarks, Engenharia de IA]
+sponsored: false
+premium: false
+---
+
+**Resposta curta:** FP8 não dobra a velocidade da atenção porque acelera só as duas multiplicações de matriz. O softmax entre elas roda no **vector pipe**, na mesma velocidade do BF16, e ainda ganha uma conversão para 8 bits. No **AMD Instinct MI355X**, o kernel FP8 do **AITER** (biblioteca de kernels da AMD) chega a **39% do pico FP8** a 32K tokens, contra **49% do pico BF16** do kernel BF16 da mesma biblioteca — paper no arXiv em **05/11/2026**.
+
+E o número que circula é de entrada aleatória: nas ativações reais, o mesmo kernel faz **1,16x** onde a gaussiana faria **1,30x**, porque o relógio do MI355X depende dos valores que passam pelas unidades.
+
+![Gráfico da Zyphra com o throughput dos kernels FP8 e BF16 do ZYFA contra os do AITER nas ativações capturadas de Mistral-7B, Qwen3-8B e DeepSeek-V2-Lite](https://cdn.sanity.io/images/6pyafx7r/production/385bad65c4d32d17f4e6a375608524ba040d7d89-2800x1575.png?w=1400&q=75&auto=format)
+
+## O que o FP8 acelera e o que fica de fora
+
+Atenção é **QKᵀ**, softmax e **PV**. O FP8 dobra o pico das instruções de matriz; o softmax é elementwise e roda no vector pipe na mesma aritmética do BF16.
+
+Para uma wave com **32 queries contra um bloco de 128 chaves**, o vector pipe precisa de **0,44x** os ciclos do matrix pipe em BF16 e de **0,94x** em FP8. O softmax passa a comer quase o mesmo tempo que a matriz — e sem sobreposição perfeita, o segundo 2x não aparece.
+
+Pior: no MI355X o hardware não avisa quando a multiplicação terminou, como em Hopper e Blackwell. A sobreposição depende só da ordem das instruções, e no kernel FP8 do AITER o matrix pipe fica **ocioso em 31,7% dos ciclos**. Daí o ZYFA emitir assembly, com um gerador Python que fixa cada instrução.
+
+## Três técnicas, um obstáculo cada
+
+- **Lean P:** o código de um e4m3 positivo, lido como inteiro, cresce **8** a cada dobra do valor — logo o código de 2ˣ é 8x mais uma constante, e uma multiply-add com conversão inteira resolve em **6 ciclos** contra **14** da exponencial. Preço: erro **1,22x a 1,36x** o do P exato, ainda **0,26x** o do AITER na média geométrica.
+- **Ping-pong de duas waves no mesmo SIMD:** uma emite as matrizes do bloco enquanto a outra calcula as probabilidades FP8, com barreira em cada fase. O matrix pipe sai de **60%** dos ciclos ocupado para **86%**.
+- **Escala por bloco de 64 chaves e normalização pela soma arredondada:** o bloco vai por uma potência de dois antes de arredondar, e a instrução escalada do CDNA4 divide o fator de volta no PV de graça. A soma que normaliza é das probabilidades **já arredondadas**; o AITER soma as não arredondadas, e toda probabilidade que virou zero continua contando. Custa **6%** de ciclos.
+
+Nas ativações capturadas a 16K tokens, com relógio estabilizado: **1,16x** no Mistral-7B, **1,17x** no Qwen3-8B e **1,76x** no DeepSeek-V2-Lite, que usa **MLA** (query-key 192, value 128). Ali o padrão do AITER é o **Composable Kernel**, que emite a instrução FP8 do **CDNA3** — metade do throughput por clock da instrução do CDNA4. Parte do 1,76x é só a troca de instrução, e o post admite: em gaussiana a 32K, o kernel HIP base do ZYFA, sem a soma no matrix unit, sem escala por bloco e sem a escala em assembly, já faz **1,51x** o CK. A mediana sobre todas as camadas do forward, em ativação real, é **1,26x** e **1,25x**.
+
+## O número que engana: gaussiana contra ativação real
+
+Com q, k e v aleatórios em atenção multi-head, o ZYFA mede **1,34x a 2,02x** e bate **53% do pico FP8** a 32K no head dimension 128. Em ativação real o ganho cai, e a razão é o **relógio sustentado**: cada bit que troca entre 0 e 1 puxa corrente. Um loop de MFMA em FP8 roda a **2,34 GHz** com operandos constantes e a **2,07 GHz** com operandos que mudam.
+
+No layer 20 do Mistral-7B, o ZYFA faz a chamada em **867 µs** e o AITER em **1.003 µs**. Só que o ZYFA roda a **1.628 MHz**, contra **2.108 MHz** do AITER: precisa de menos ciclos e perde no relógio.
+
+O motivo é o próprio acerto. O AITER escreve subnormais e zeros nos blocos muito abaixo do máximo da linha, e esses valores trocam poucos bits; a escala por bloco do ZYFA mantém tudo normal e paga em clock.
+
+![Gráfico da Zyphra com ciclos por chamada e relógio sustentado do kernel FP8 no layer 20 do Mistral-7B, comparando ativação capturada e entrada gaussiana](https://cdn.sanity.io/images/6pyafx7r/production/3657f43d5cbdc5318d39a8685d5bc88791415da1-2800x1575.png?w=1400&q=75&auto=format)
+
+## Onde o erro de verdade entra
+
+Erro de uma chamada, contra atenção em fp64 nos mesmos inputs quantizados: **1,20e-02** no ZYFA contra **6,41e-02** no AITER no Mistral-7B. No MLA encolhe para **8,36e-03** contra **1,02e-02**, porque ali o AITER já roda o CK. No modelo inteiro, a KL contra o BF16 fica em **3,4 × 10⁻³** e **5,9 × 10⁻³**.
+
+A repartição importa mais que o total: quantizar **Q, K e V** adiciona **8 vezes** o erro de quantizar as probabilidades — o erro do FP8 em atenção é, na prática, erro de entrada.
+
+Daí a recomendação que rende mais. Uma **rotação de Hadamard** em Q e K ao longo da dimensão da cabeça deixa o QKᵀ igual e espalha os canais grandes: corta o erro de entrada pela metade e derruba a KL de **45,7** para **21,9** vezes o topo da faixa de ruído do BF16, com **1,001x** o tempo.
+
+Manter as cabeças sensíveis em BF16, que parece o caminho óbvio, é a pior troca: nem com **90%** das cabeças em BF16 o modelo chega à faixa de ruído, e o misto demora mais que a atenção toda em BF16.
+
+## Como auditar um speedup de kernel você mesmo
+
+- **Meça na ativação do seu modelo, não em randn.** Capture q, k e v depois do RoPE de uma camada real.
+- **Cronometre em relógio sustentado.** Aqueça, rode por segundos e só então abra a janela: o clock cai sob carga e depende do dado.
+- **Diga qual baseline.** O padrão do AITER muda por shape — assembly num, CK noutro. "1,99x" pode ser instrução nova contra instrução antiga.
+- **Uma camada não é o modelo, e prefill não é decode.** A melhor camada dá 1,76x, a mediana do forward fica em 1,25x a 1,26x, e esses kernels cobrem só o forward causal.
+
+Se a placa está ocupada e não rendendo, o diagnóstico é outro: o de [utilização de GPU](/blog/utilizacao-de-gpu-a-50-nao-e-gpu-ociosa-como-medir-o-trabalho-util). Precisão fora da atenção segue a lógica de [quantização de LLM](/blog/quantizacao-de-llm-como-escolher-4-bit-8-bit-gptq-e-awq).
+
+## O que o paper não cobre
+
+- **Um nó de 8 MI355X**, ROCm 7.2.3, PyTorch 2.12, AITER 0.1.19, teto de **1.400 W** e clock automático.
+- **Só prefill causal** com q e k do mesmo comprimento: sem decodificação, KV cache paginado, lote variável ou backward.
+- **Três modelos** e texto de PG-19, sem tarefa downstream. E ponto no tempo: kernels e baselines mudam rápido, e o relógio dependente de dado pode mudar com firmware ou política de energia.
+
+O que envelhece são as razões e a escolha de kernel padrão. O que continua verdadeiro é o custo do softmax no vector pipe, a dependência do relógio com o operando e a regra de medir em ativação real.
+
+## Minha Opinião
+
+FP8 virou sinônimo de "metade do preço" no slide de vendas. Em atenção, o 2x é sobre um pedaço do tempo, e o pedaço que sobra roda na mesma velocidade de antes.
+
+Quem compra GPU por datasheet vai continuar confundindo pico com entrega: o pico pressupõe 2,4 GHz, e a própria Zyphra diz que fica bem abaixo disso sob carga real.
+
+O que me interessa no paper não é o 1,76x: é que boa parte dele vem de uma instrução mais nova, não de um truque de kernel, e os autores escrevem isso. Se eu fosse time de infra, copiava o hábito, não o número.
+
+## Takeaways
+
+- **FP8 acelera matriz, não softmax:** o vector pipe consome 0,94x os ciclos do matrix pipe em FP8, contra 0,44x em BF16 — o 2x de pico não vira 2x de kernel.
+- **O relógio depende do dado:** menos bits trocando é clock mais alto, então um kernel com menos ciclos pode perder tempo, e gaussiana superestima o ganho.
+- **O erro é da entrada:** quantizar Q, K e V pesa 8 vezes mais que quantizar P, e a rotação de Hadamard corta isso pela metade quase de graça.
+
+## FAQ
+
+### Por que FP8 não dobra a velocidade da atenção?
+Porque só as duas multiplicações de matriz rodam na matriz. O softmax é elementwise, roda no vector pipe na mesma velocidade do BF16 e ainda converte cada probabilidade para 8 bits — o piso de tempo não cai pela metade.
+### O que é o ping-pong schedule de um kernel de atenção?
+Duas waves no mesmo SIMD se revezam: uma emite as matrizes enquanto a outra calcula as probabilidades FP8, com barreira em cada fase. A matriz sai de 60% para 86% dos ciclos ocupada.
+### Como saber se o speedup de um kernel é real para o meu caso?
+Meça nas ativações do seu modelo, com relógio sustentado, contra o kernel que a biblioteca escolhe por padrão no mesmo shape, e olhe a mediana de todas as camadas. Prefill e decode são benchmarks separados.
+
+## Fontes
+
+- [Fonte: Zyphra — ZYFA: Fast and Accurate FP8 Attention on AMD MI355X](https://zyphra.com/our-work/zyfa)
+- [Fonte: arXiv — ZYFA: Speed and Accuracy of FP8 FlashAttention on AMD CDNA4](https://arxiv.org/abs/2611.07496)
+- [Fonte: GitHub — Zyphra/zyfa, código e tabelas de performance](https://github.com/Zyphra/zyfa)
+- [Fonte: GitHub — ROCm/aiter, biblioteca de kernels usada como baseline](https://github.com/ROCm/aiter)
+- [Fonte: arXiv — FlashAttention-3: Fast and Accurate Attention with Asynchrony and Low-precision](https://arxiv.org/abs/2407.08608)
