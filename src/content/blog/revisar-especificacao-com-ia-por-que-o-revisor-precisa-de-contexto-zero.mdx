@@ -1,0 +1,110 @@
+---
+title: "Revisar especificação com IA: por que o revisor precisa de contexto zero"
+date: 2026-11-09
+description: "Como revisar especificação com IA sem contexto: o protocolo do plugin EGM, suas cinco etapas e o que o isolamento do revisor não garante."
+author: "@hernando.ia"
+excerpt: "Um revisor de IA que participou da conversa valida o que você já acredita. O Google abriu o plugin Elephant-Goldfish Model, que separa quem lembra de quem julga — e cuja regra mais dura é que revisão no mesmo contexto não conta como revisão."
+tags: ["engenharia-de-software", "agentes-de-ia", "spec-driven-development", "revisao-de-especificacao", "google"]
+sponsored: false
+premium: false
+---
+
+Um revisor de IA que participou da conversa valida o que você já acredita. Em **22 de outubro de 2026** o Google abriu, sob **Apache 2.0**, o plugin **Elephant-Goldfish Model** (EGM), que separa quem lembra de quem julga. O **Elefante** carrega o contexto do projeto e escreve a especificação; o **Goldfish** lê o documento **sem ter visto nada da conversa**. Se o Goldfish não consegue explicar o plano de volta, o problema não é o revisor: é o documento.
+
+## O que foi aberto, e o que o anúncio não diz
+
+O post de abertura é do Google Open Source Blog, assinado por Brian Suchy, Jim Quinn, Elise Ewing, Oliver Newth e Dave Rensin. Ele afirma que o plugin nasceu interno e que "**milhares de Googlers** usam o plugin todo dia para enviar código de produção" — afirmação do Google, não medição independente.
+
+Duas ressalvas: o README diz que **não é um produto oficialmente suportado pelo Google**; e a cobertura por ambiente já é maior do que o anúncio prometia.
+
+## Os dois papéis: memória de um lado, julgamento do outro
+
+O Elefante é uma sessão longa, com o contexto do projeto, e uma regra explícita: **não se escreve código ali**. Ele fecha o `concepts_brief.md` e, depois, o documento de design em `docs/designs/`, parando a cada seção para ouvir você.
+
+O Goldfish é o oposto: sessão nova, recebendo o documento e os arquivos que ele referencia. O argumento do Google é que, como não compartilham os **pontos cegos do designer**, eles perguntam o que ninguém do time ia perguntar.
+
+O humano decide o trade-off, aprova o design e manda implementar.
+
+## As cinco etapas, e o corte que separa spec de plano
+
+O anúncio descreve três checagens: compreensão, revisão antagonística e prontidão. O `skills/egm-review/SKILL.md` executa **cinco**: zoom out inicial, compreensão, crítica de design (revisores de design, estrutura e estilo em paralelo), zoom out intermediário e prontidão. As duas de zoom out olham o documento inteiro antes e depois do detalhe.
+
+Antes disso, o plugin faz um corte que quase ninguém comenta: procura o header `## Detailed Implementation Plan` (ou sinônimos) e divide o documento em especificação e plano. As etapas 5 a 8 revisam a especificação; a 9 revisa o plano, olhando caminho de arquivo, estrutura de dados e assinatura de função.
+
+A razão é simples: **criticar o plano de um design que ainda não fecha é retrabalho garantido**. Sem plano no documento, o plugin roda as quatro primeiras etapas e para — e existe um preset, `Feature spec only`, que faz isso de propósito.
+
+## O teste que importa: a paráfrase
+
+A etapa de compreensão é a única que recebe **o documento sozinho**, sem a lista de contexto das outras. E o artefato começa por duas paráfrases — o revisor explica a arquitetura e a intenção com as próprias palavras — antes de listar qualquer achado.
+
+O SKILL.md proíbe o sintetizador nessa etapa: o relatório dele mantém só os achados, "e o autor precisa ver a paráfrase". O teste é **autocontenção, não nível de detalhe**.
+
+Isso resolve um problema de quem já pediu revisão a um LLM: uma lista de achados não distingue "o documento é ambíguo" de "o revisor quer opinar". A paráfrase distingue. Se ela sai errada, o defeito é do texto; se sai certa e os achados continuam, o defeito é do design.
+
+## "Revisão no mesmo contexto não é revisão Goldfish"
+
+A regra mais dura do repositório: se o seu ambiente não tem ferramenta de subagente, **pare**. Sem contexto novo, o plugin interrompe a revisão em vez de entregar um parecer contaminado.
+
+Só que "sem contexto" tem duas camadas, e o próprio repositório separa as duas. A primeira é o **isolamento de turnos**: o subagente não vê a conversa do pai. A segunda é a **exclusão de arquivos de instrução**: o subagente não vê o `AGENTS.md`, `CLAUDE.md` ou `GEMINI.md` do projeto.
+
+A documentação de ambientes diz que a evidência de isolamento é "mais estreita": são resultados separados. Os adaptadores de Claude marcam `omitClaudeMd: true`. Já a issue #237 relata que o Codex CLI 0.166.0 entregou `AGENTS.md` de projeto e de usuário mesmo com `fork_turns: "none"`, e que o Antigravity CLI injeta `AGENTS.md` e `GEMINI.md` no contexto do revisor. O repositório trata esses casos como **vazamento de instrução do host** — não como prova de que os turnos vazaram — e registra que nenhum controle de exclusão está verificado para Codex ou Antigravity.
+
+Tem mais uma: no Muse, o registro de testes anota que nove projeções de ferramenta não são suportadas, então **os revisores não ficam restritos por allowlist**. Revisor sem contexto, mas com ferramenta livre, faz mais do que você autorizou.
+
+## Contra a lisonja: rubrica, não pedido
+
+O SKILL.md carrega onze restrições de execução, e a maioria existe para arrancar do modelo o hábito de concordar. As principais: artefato sempre em arquivo, nunca no chat; "nunca concorde por padrão"; **crítica primeiro**; contra-argumento obrigatório para toda estratégia; proibição de "brilhante" e "ótimo" sobre a sua ideia; e só concordar depois de escrutínio.
+
+Essa é a parte que se leva embora sem instalar nada. **Lisonja não se resolve pedindo "seja crítico" uma vez** — se resolve com comportamentos proibidos e uma ordem que obriga o problema a aparecer antes do elogio.
+
+## Convergência: um re-audit por etapa
+
+Revisão adversarial sem freio vira loop de polimento. Cada etapa aceita **no máximo uma re-auditoria**: se você insistir, o plugin registra os achados residuais como trade-offs aceitos e avança.
+
+O custo está medido no `TESTING.md`: duas execuções ao vivo no Codex 0.163.0 em **573,13 s**, suíte completa do pacote ZIP em **482,30 s**, 15 revisores nativos por rodada (16 no Antigravity). E, no Antigravity, a skill de bootstrap ainda passa do limite de carregamento do ambiente.
+
+## O que aplicar sem instalar nada
+
+O método sobrevive ao plugin. A sequência que roda hoje com qualquer agente:
+
+- **Escreva em arquivo, não no chat.** Brief primeiro, spec depois, com o porquê de cada decisão.
+- **Peça a paráfrase antes da crítica.** "Explique a arquitetura e a intenção deste documento" — e leia como se fosse de outra pessoa.
+- **Só então abra a revisão adversarial**, com uma lente por revisor: design, estrutura, estilo.
+- **Corte a spec do plano.** Revise o design até fechar; depois critique caminho de arquivo e assinatura.
+- **Uma re-auditoria por etapa.** O que sobrar é decisão, não pendência.
+- **Teste o isolamento em duas perguntas.** Algo que só existia na conversa (resposta certa: "não sei") e, separado, se o revisor recebeu os arquivos de instrução do projeto.
+- **Salve páginas externas em arquivo local.** Revisor sem contexto não abre URL; no plugin, links do diretório de trabalho entram sozinhos e URLs externas exigem aprovação e cópia local.
+- **Rode a deriva semanal.** O `egm-drift-report` compara documentos e código; na divergência, o humano escolhe qual muda.
+
+## Estável e atualizável
+
+**Estável:** separação entre memória e julgamento, paráfrase como artefato, corte spec/plano, teto de re-auditoria e rubrica antilisonja — vale para qualquer modelo e ambiente.
+
+**Atualizável:** a matriz de suporte e as versões testadas (Antigravity CLI 1.4.5, Claude Code 2.1.308, Codex 0.163.0, Muse 1.4.14, omp v18.12.6), os números de issue e a contagem de etapas — o anúncio fala em três, o repositório executa cinco. Reavalie quando o plugin sair de 0.x ou quando a #237 fechar.
+
+### O plugin roda no Claude Code e no Codex?
+
+Roda, com ressalvas diferentes em cada um. Claude Code passou na instalação e na revisão após correção, com probe de isolamento aprovado. Codex passou em duas execuções ao vivo, com isolamento de turnos verificado e exclusão de arquivos de instrução não testada. Cowork parou na etapa 8 por limite de uso; ChatGPT Work tem lacunas de rastreio em nuvem.
+
+### A revisão com contexto zero substitui teste ou revisão humana?
+
+Não. O README diz que a revisão não substitui testes nem julgamento humano, e o fluxo manda abrir um PR com o design para outra pessoa. O Goldfish pega ambiguidade e premissa não dita; ele não prova que o código funciona.
+
+### Preciso instalar o plugin para usar o método?
+
+Não. O núcleo é a ordem: brief em arquivo, spec em arquivo, paráfrase por revisor sem contexto, revisão adversarial por lentes, teto de re-auditoria, decisão humana. O plugin orquestra e guarda os artefatos; sem ele você perde o gate automático, não o método.
+
+## Leituras relacionadas
+
+- [Skills de IA: o que são os SKILL.md](/blog/skills-de-ia-o-que-sao-os-skill-md-como-criar-e-o-que-muda-com-o-fim-dos-gems)
+- [Harness de agente de código: custo, não acerto](/blog/harness-de-agente-de-codigo-trocar-muda-a-conta-nao-o-acerto-e-como-medir)
+- [Vibe coding sem especificação é dívida técnica](/blog/opinion_20260616_vibe-coding-sem-especificacao-e-divida-tecnica-acelerada)
+
+## Fontes
+
+- [Fonte: Google Open Source Blog — Introducing the Elephant-Goldfish Model plugin](https://opensource.googleblog.com/2026/10/introducing-elephant-goldfish-model-plugin.html)
+- [Fonte: repositório Elephant-Goldfish Model — README](https://github.com/google/elephant-goldfish-model/blob/main/README.md)
+- [Fonte: EGM — Setup & Workflow Guide](https://github.com/google/elephant-goldfish-model/blob/main/docs/getting_started.md)
+- [Fonte: EGM — skills/egm-review/SKILL.md](https://github.com/google/elephant-goldfish-model/blob/main/skills/egm-review/SKILL.md)
+- [Fonte: EGM — docs/harnesses.md (status de suporte e isolamento)](https://github.com/google/elephant-goldfish-model/blob/main/docs/harnesses.md)
+- [Fonte: EGM — TESTING.md (registro de testes por ambiente)](https://github.com/google/elephant-goldfish-model/blob/main/TESTING.md)
