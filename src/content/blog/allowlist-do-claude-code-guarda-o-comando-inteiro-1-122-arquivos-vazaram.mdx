@@ -1,0 +1,108 @@
+---
+title: "Allowlist do Claude Code guarda o comando inteiro: 1.122 arquivos vazaram"
+date: "2026-11-10"
+description: "O 'não perguntar de novo' salva a string do comando, com a senha dentro, no settings.local.json. A Apiiro achou 1.122 cópias públicas com segredo real."
+excerpt: "A aprovação permanente de um agente não guarda 'pode rodar git', guarda a string exata que ele propôs. Quando a senha estava na linha, ela vai junto para o arquivo de permissões do projeto."
+readingTime: 6
+author: "Hernando Candido"
+tags: [Segurança em IA, Claude Code, Agentes de IA, Allowlist, Permissões, Segredos em Código, Git, DevSecOps]
+sponsored: false
+premium: false
+---
+
+Não é o modelo que guarda a senha. É o arquivo de permissões. Quando você clica em "Yes, and don't ask again" no Claude Code, a ferramenta grava a string do comando aprovado em `.claude/settings.local.json`, dentro do projeto. Se a senha estava naquela linha, ela vai junto, em texto puro.
+
+Quem mediu: a Apiiro varreu o GitHub público entre 1º e 3 de novembro de 2026 e achou **104.185 cópias** desse arquivo em 103.617 repositórios. **1.122** (1,1%) tinham pelo menos um segredo real, somando **1.379 segredos distintos**. Ninguém testou se as chaves ainda funcionam; uma das organizações avisadas confirmou que a sua estava viva.
+
+O número que importa não é o do vazamento. É o do mecanismo: a aprovação que você deu para economizar um prompt virou credencial em disco, num arquivo que o repositório não marca como privado.
+
+## O mecanismo: aprovação permanente é uma string no disco
+
+A documentação é explícita. Ao escolher a aprovação permanente para um comando de shell, o Claude Code salva uma regra de `allow` em `.claude/settings.local.json` na raiz do repositório git, resolvida pelos worktrees para o checkout principal. A regra vale nas sessões seguintes em qualquer subpasta.
+
+E o que fica salvo é o que o prompt ofereceu: às vezes um padrão, como `Bash(npm test &#42;)`; às vezes o comando exato. No segundo caso, a senha digitada nele é preservada junto.
+
+O resto do desenho segue a mesma lógica:
+
+- **Aprovação de arquivo não é salva.** Editar arquivo vale até o fim da sessão, então o problema não está aí.
+- **Comando composto gera regra por subcomando**, até 5 por comando. Aprovar `git status && npm test` salva uma regra para `npm test`.
+- **A regra cobre só o que a opção nomeou.** Se o prompt não consegue mostrar tudo que a regra liberaria, ele oferece aprovação única.
+
+E o agente ajuda a espalhar. Em **539 dos 1.105 repositórios** com segredo real que a Apiiro rastreou, um commit com Claude como coautor alterou o arquivo. Segundo a Apiiro, as instruções de commit da ferramenta mandam o modelo não commitar `.env` nem `credentials.json`. O próprio arquivo de configuração dele não está nessa lista.
+
+## Por que o gitignore não te salva
+
+Na primeira vez que escreve o arquivo num repositório git, o Claude Code adiciona `&#42;&#42;/.claude/settings.local.json` ao seu arquivo **global** de excludes: o `core.excludesFile`, ou `$XDG_CONFIG_HOME/git/ignore`, ou `~/.config/git/ignore` quando a variável não existe.
+
+Três consequências:
+
+1. A proteção vive na sua máquina e no seu usuário git. Ela não viaja com o projeto, porque nada é escrito no `.gitignore` do repositório.
+2. Pasta que só virou repositório depois, ou arquivo criado à mão antes de o Claude escrever nele, nunca passou por essa escrita.
+3. Arquivo já rastreado ignora o exclude. A documentação diz que uma cópia rastreada é tratada como fornecida pelo repositório, e as regras ficam retidas até você confiar na pasta.
+
+Os dados mostram o acúmulo. Na mediana dos repositórios com segredo, o arquivo estava no branch padrão havia **217 dias** em 2 de novembro de 2026; em 118, havia mais de um ano. **211 forks de 74 repositórios** carregam os mesmos segredos. E versões antigas guardam **734 segredos** em 509 repositórios que não aparecem em nenhuma cópia atual, porque alguém apagou o arquivo.
+
+Apagar, sozinho, não resolve. Rotacionar resolve. E vale notar o limite do sandbox: isolar o agente num microVM resolve o que ele lê da máquina, não o que ele grava dentro do projeto, como mostrei no post sobre [sandbox para agente de IA](/blog/sandbox-para-agente-de-ia-o-que-o-microvm-isola-e-onde-a-rede-vaza).
+
+## O que os scanners de segredo não pegam
+
+A Apiiro rodou gitleaks e TruffleHog sobre as 104.185 cópias, sem a etapa de verificação que os dois oferecem. Dos 1.122 arquivos com segredo real, o gitleaks marcou **564** e o TruffleHog, **643**. **215 não foram marcados por nenhum.**
+
+Não é bug dos scanners, é o formato. Eles procuram prefixo de provedor e string aleatória longa. Senha depois de `PGPASSWORD=`, `sshpass -p`, `mysql -p` ou num header bearer de curl é palavra comum no meio de uma linha de comando comum.
+
+A densidade confirma que o hábito é o problema: um em cada dez arquivos acima de 8 KB tinha segredo real, contra menos de um em 500 abaixo de 500 bytes.
+
+![Captura do arquivo de permissões do Claude Code com uma regra de allowlist que guarda o comando aprovado inteiro, senha incluída](https://apiiro.com/_b44/api/apps/6991bfdc25eeb87584b7bd76/files/mp/public/6991bfdc25eeb87584b7bd76/a99707d2e_agent-leaks-image1-v3.png)
+
+## Como auditar hoje, nesta ordem
+
+1. **Cheque o que é público.** Busque `.claude/settings.local.json` e `.claude/settings.json` na sua organização do GitHub. Cada resultado é um arquivo que qualquer pessoa lê agora.
+2. **Cheque o histórico.** Procure o arquivo nos commits, mesmo onde ele já não existe. Fork e clone guardam o que o branch atual não tem.
+3. **Rotacione antes de limpar.** Remover o arquivo não apaga histórico, forks nem clones.
+4. **Desfaça o rastreamento.** `git rm --cached .claude/settings.local.json` e o caminho no `.gitignore` do repositório.
+5. **Revise a cópia local.** Mesmo sem nunca ter sido commitada, apague toda regra que contenha segredo.
+6. **Olhe fora do git.** O arquivo pode ter ido embutido num pacote npm, numa imagem Docker, num zip, numa pasta sincronizada.
+
+## Como configurar para não repetir
+
+- **Segredo nunca na linha de comando.** Referencie `$DB_URL` do seu gerenciador: a regra salva grava o nome da variável, não o valor.
+- **Aprove padrão, não comando literal.** `Bash(npm run &#42;)` em vez da linha exata que rodou uma vez.
+- **Deny para o que nunca deve rodar.** Deny ganha de allow, e allow não abre exceção dentro de deny: `Bash(aws &#42;)` bloqueia até `Bash(aws s3 ls)`. Um deny de ferramenta nua, como `Bash`, remove a ferramenta do contexto.
+- **Cuidado com curinga antes do subcomando.** `Bash(git &#42; main)` casa `git -c`, que executa programas.
+- **Runner de ambiente não é removido.** `timeout`, `nice` e `command` são descartados antes da comparação; `npx`, `docker exec` e `devbox run` não são. `Bash(devbox run &#42;)` casa `devbox run rm -rf .`. Para esses, escreva a regra com o comando interno.
+
+Para time de segurança, a lista do que tratar como sensível agora inclui `.claude/`, `.cursor/`, `.gemini/`, `.specstory/`, memórias do agente e notas de handoff: igual a `.env`, no notebook e no repositório. E o scanner precisa pegar senha dentro de comando, não só formato de chave. A lógica de camadas para dar menos privilégio ao agente está no post sobre [permissões de agentes de IA](/blog/permissoes-de-agentes-de-ia-o-que-o-full-disk-access-libera-e-como-limitar).
+
+## O que ainda depende do fornecedor
+
+Boris Cherny, chefe do Claude Code, respondeu no Hacker News em 7 de novembro. Disse que a ferramenta historicamente não faz limpeza de segredo, que o time está vendo como prevenir, e listou o que vai prototipar: garantir que o modo automático pegue esse caso e embutir uma varredura básica de segredo. Também defendeu que o Claude Code ignora o arquivo quando o cria, o que sugere que as cópias expostas foram criadas à mão.
+
+As duas coisas cabem: o exclude global cobre o caso comum, não cobre arquivo manual, pasta que virou repositório depois, nem arquivo já rastreado. E a correção de fundo, que reduz o valor de qualquer arquivo vazado, é a credencial curta por tarefa, que eu já detalhei em [identidade de agente](/blog/identidade-de-agente-delegacao-impersonacao-e-o-token-de-curta-duracao).
+
+## O que é estável e o que revisar
+
+**Estável:** como a aprovação permanente é gravada, a precedência deny sobre ask sobre allow, o excludes global, a lista de wrappers removidos e a regra de comando composto. É desenho de produto, não notícia.
+
+**Atualizável:** os números do levantamento e o comportamento da ferramenta se a varredura de segredo embarcar.
+
+## Perguntas frequentes
+### Apagar o settings.local.json resolve o vazamento?
+Não. Versões antigas ficam no histórico, nos forks e nos clones. O primeiro passo é rotacionar cada credencial que o arquivo já teve, e só depois limpar.
+### Gitleaks ou TruffleHog pegam senha dentro de comando?
+Pegam parte. Sem a etapa de verificação, gitleaks marcou 564 e TruffleHog 643 dos 1.122; 215 não foram marcados por nenhum. O ponto cego é senha depois de `PGPASSWORD=`, `sshpass -p` ou em header bearer.
+### Aprovar padrão em vez de comando exato basta?
+Reduz muito, não zera. `Bash(npm run &#42;)` grava um padrão sem a senha original, mas curinga amplo libera mais do que parece: `Bash(git &#42; main)` casa `git -c`.
+### Isso acontece em outros agentes de código?
+A Apiiro comparou a documentação de 16 agentes e o Claude Code foi o único confirmado a salvar o comando inteiro num arquivo de projeto por padrão. Segredo em transcrição e nota de handoff aparece em vários: 120 de 2.523 transcrições e 33 de 2.095 notas tinham segredo real.
+
+## Schema recomendado
+
+O `page.tsx` já gera `Article` e `BreadcrumbList`. O único schema que depende do corpo é o `FAQPage`, montado a partir dos headings `###` terminados em "?" com o parágrafo imediatamente abaixo. Por isso as respostas acima ficam coladas na pergunta.
+
+## Fontes
+
+- [Apiiro: Coding Agents Are Leaking Your Secrets to GitHub](https://apiiro.com/blog/coding-agents-leaking-secrets-github-dont-ask-again)
+- [Claude Code Docs: Settings files and precedence](https://code.claude.com/docs/en/settings)
+- [Claude Code Docs: Configure permissions](https://code.claude.com/docs/en/permissions)
+- [Issue 5544 no repositório anthropics/claude-code](https://github.com/anthropics/claude-code/issues/5544)
+- [Comentário de Boris Cherny no Hacker News](https://news.ycombinator.com/item?id=50407882)
