@@ -1,0 +1,124 @@
+---
+title: "Camada de conhecimento do agente de dados: de 43% a 95% sem trocar o modelo"
+date: "2026-11-11"
+description: "A PayPal diz que o acerto do assistente interno foi de 43% para 95% sem trocar o LLM. O que entra na camada de conhecimento e como testar."
+excerpt: "O modelo não mudou e o acerto dobrou. O que a PayPal colocou fora do modelo: definições, golden queries e playbooks — guardados como procedimento ordenado, não como parágrafo fatiado."
+author: "Hernando Candido"
+tags: [Agentes de IA, Camada de Conhecimento, Avaliação de Agentes, RAG, Engenharia de IA, Dados, MCP, LLM]
+sponsored: false
+premium: false
+readingTime: 6
+---
+
+A PayPal diz que o assistente interno de ciência de dados dela saiu de **43% para 95% de acerto** em perguntas de negócio sem trocar o modelo. O que mudou ficou do lado de fora: as **definições**, as consultas que já funcionam e o passo a passo de como investigar cada pergunta.
+
+Abaixo: o que entra nessa camada, como guardar procedimento sem quebrar a resposta, quando forçar a leitura da memória e por que o teste que aprovou o agente pode não valer nada em produção.
+
+## O que a PayPal diz ter mudado
+
+A reportagem é da VentureBeat, que cobriu a fala de **Ren Zhang**, VP e head global de produto de IA da PayPal, em 8 de outubro. O assistente já tinha acesso a dados revisados e de boa qualidade. Ter o dado não era o gargalo.
+
+O gargalo era o **significado**. Uma pergunta sobre "novas contas" pode recuperar os registros certos e aplicar a definição errada de "nova". Isso não é falha de busca: é regra de negócio que ninguém escreveu em lugar nenhum.
+
+A camada que a PayPal montou tem peças concretas:
+
+- **Definições:** o vocabulário do negócio, que o dado sozinho não carrega.
+- **Golden query:** a consulta que diz como puxar o dado para um fim específico, em vez de deixar o modelo improvisar o SQL.
+- **Playbook analítico:** como investigar a pergunta — quais segmentos olhar, quais produtos, quais comportamentos acompanhar (falha de login e uso de passkey são os exemplos citados).
+
+"Nosso IP é justamente construir essa camada de conhecimento", disse Zhang. O desenho é deliberadamente **agnóstico de modelo**: "se o modelo está melhorando, eu só plugo e uso. Eu não deveria mudar o meu conhecimento."
+
+## Por que separar o conhecimento do modelo
+
+A parte de comércio mostra o outro lado da conta. A equipe testou quatro ou cinco modelos; os maiores entregavam capacidade, mas o agente abria com **uns 15 segundos de latência**.
+
+Trocaram para um modelo de **8 bilhões de parâmetros**: a latência caiu bastante e o acerto caiu junto. Afinaram o modelo pequeno para o domínio de comércio, o acerto subiu, mas ainda ficou abaixo do necessário.
+
+A decisão seguinte é a que quase ninguém copia: **reduziram o peso do fine-tuning**. O ganho existe, mas vem com custo de manutenção — exige especialista e cada release de modelo reabre o trabalho. "Se você treina com muita frequência, fica caro demais."
+
+Pense assim: fine-tuning é uma dívida que vence a cada versão nova. A camada de conhecimento é um ativo que **sobrevive** à versão nova. Um melhora o modelo; o outro melhora o que você entrega ao modelo. A escolha entre modelos grandes e pequenos também passa por custo e latência, e o critério é o mesmo que está em [roteamento de modelos LLM](/blog/roteamento-de-modelos-llm-como-equilibrar-custo-latencia-e-qualidade-em-producao).
+
+## Procedimento não é parágrafo
+
+Tem um caso no relato que vale mais que qualquer benchmark. Um tool interno de perguntas de RH respondia mal porque o procedimento **não estava representado** de um jeito que sustentasse a resposta.
+
+A correção foi de armazenamento, não de prompt: pararam de quebrar as instruções em pedaços separados e passaram a guardar os **passos na ordem, juntos**.
+
+A regra prática que sai daí: se você fatia um procedimento por tamanho de chunk, o passo 4 descola do passo 3 e o modelo remonta uma sequência que nunca existiu. Um chunk deve ser **um procedimento inteiro**, com os passos numerados na ordem, mesmo que fique grande. Tamanho de chunk é métrica de índice; ordem de passo é requisito de resposta.
+
+## Quem decide quando a memória é lida
+
+A segunda metade da conversa é de **Deepika Khera**, diretora sênior de IA da PayPal, na VB Agentic Infrastructure Stack Summit de 28 de outubro. O ponto dela: não basta ter o conhecimento, é preciso decidir **quando** o agente consulta.
+
+Dois modos, com critério claro:
+
+- **MCP** quando o agente precisa raciocinar sobre qual ferramenta escolher.
+- **Chamada direta** quando o passo é obrigatório e não pode depender do julgamento do modelo.
+
+No fluxo de desenvolvimento de software eles tiveram que **forçar** a leitura: "para esse fluxo, a gente teve que impor: é aqui que eu quero usar a memória". Deixar a critério do agente era exatamente o que faltava.
+
+A memória episódica completa o desenho: sessões e resultados de pull request são registrados, e um processo noturno de **destilação** olha a experiência de vários usuários e grava lições para as próximas interações. Toda decisão proposta é conferida contra a fonte de verdade antes de virar ação.
+
+## O erro de avaliação que sobrevive à troca de modelo
+
+Zhang aponta um furo que não aparece no dashboard: o conjunto de teste pode ter acerto alto e **não parecer com produção**. "Seu modelo é o mesmo. Seu processo é o mesmo, mas a distribuição é completamente diferente."
+
+Os números do levantamento **VB Pulse de outubro**, citados na reportagem, dão o tamanho do problema:
+
+- **42%** dos que fazem avaliação antes do deploy tiveram um recurso de agente ou LLM que passou no teste interno e falhou depois, no último ano.
+- Entre esses, **49%** disseram que o incidente mais sério chegou ao cliente.
+- **39%** não têm nenhum check automático nem alerta entre as formas de descobrir saída errada: dependem de alguém notar.
+
+O que a PayPal faz com isso: simulação offline mais ampla, geração sintética de perguntas, teste de turno único e multi-turno, juiz modelo somado a avaliação humana e comentário de funcionário depois do deploy.
+
+Sobre o resultado, eles reportam mais de **1.000 perguntas** e cerca de **1.600 horas** economizadas em 10 semanas — com a ressalva dela de que volume de pergunta não prova produtividade. Medir o agente pelo estado final, e não pelo resumo que ele escreve, é o mesmo cuidado que aparece em [avaliar um agente que mexe no banco](/blog/como-avaliar-um-agente-de-ia-que-mexe-no-banco-estado-final-nao-resumo).
+
+## Isso tem nome na engenharia de dados
+
+O desenho de tirar a definição do modelo não nasceu na PayPal. Na documentação do **dbt**, um semantic model é um bloco YAML que declara **entidades** (as chaves de junção, dos tipos primary, foreign, unique ou natural), **dimensões** (de tempo ou categóricas, com `agg_time_dimension` obrigatório) e **métricas simples** (agregações sobre colunas, usadas como peça de métricas maiores).
+
+A doc chama esses modelos de fundação da definição de dados no **MetricFlow**, que alimenta o Semantic Layer. Não quer dizer que a PayPal use dbt — quer dizer que o padrão é reconhecível: o mesmo dado, com o mesmo nome, definido **uma vez, fora do LLM**.
+
+Quem troca de modelo não reescreve a definição. Quem muda a definição mexe num arquivo versionado, com diff e revisão.
+
+## Minha opinião
+
+Eu acho que essa é a pauta mais subestimada do ano, porque ela não tem demo. Não dá print de "definição de nova conta escrita num YAML" no palco.
+
+Mas o número fala mais alto que qualquer benchmark: **o modelo não mudou e o acerto dobrou**. Isso desmonta a intuição de que precisão é função do tamanho do modelo. Precisão é função de quanto do seu negócio está escrito num lugar que o modelo consegue ler.
+
+O que me pega é a parte do procedimento fatiado. É o tipo de erro que não dá exceção: o sistema responde, o acerto do teste fica bonito e o usuário recebe uma sequência de passos que ninguém segue naquela ordem.
+
+Se eu fosse montar isso amanhã, começaria pela lista de termos ambíguos, não pelo modelo. E trataria a camada como código: versionada, revisada, com dono.
+
+## Como montar a sua camada
+
+1. Liste as 20 perguntas que mais chegam e escreva a definição de cada termo ambíguo delas.
+2. Para cada pergunta, guarde a consulta que já funciona e o roteiro de investigação.
+3. Guarde procedimento como lista ordenada, não como parágrafo fatiado por tamanho.
+4. Decida por passo se a leitura da memória é opcional (MCP) ou obrigatória (chamada direta).
+5. Versione a camada fora do modelo e troque o modelo com o mesmo conjunto de perguntas.
+6. Pese o conjunto de teste pela frequência real das perguntas, não pela facilidade de escrevê-las.
+7. Compare o custo de manter o fine-tuning com o custo de manter a camada, e refaça essa conta a cada release.
+
+## Estável ou atualizável
+
+**Estável:** separar definição de modelo; guardar procedimento como lista ordenada; leitura obrigatória em passo crítico; avaliar pela distribuição real e não pela média do conjunto de teste.
+
+**Atualizável:** os 43% e 95% (número declarado pela empresa, sem conjunto de avaliação publicado); os 15 segundos de latência; os percentuais do levantamento VB Pulse; os nomes e versões de modelo citados na conversa.
+
+## Perguntas frequentes
+
+### Preciso de fine-tuning para melhorar a precisão do meu assistente?
+A PayPal reduziu o peso do fine-tuning justamente porque o custo de manutenção vencia a cada release de modelo, e segurou o ganho na camada de conhecimento. Fine-tuning continua fazendo sentido quando a lacuna é de formato, estilo ou jargão muito específico, não quando a lacuna é de definição de negócio.
+
+### Camada de conhecimento é a mesma coisa que RAG?
+Não. RAG é o mecanismo de buscar trechos; a camada de conhecimento define **o que é a resposta correta**. No exemplo da "nova conta", o agente encontrou o registro e aplicou o conceito errado: buscar mais documento não resolve conceito faltando.
+
+### Quantos agentes usar numa investigação?
+O número segue a tarefa. A PayPal usa **sete** agentes no fluxo de resposta a incidentes que cobre mais de 33 mil serviços, juntando Datadog, ServiceNow e logs internos, e até **18** num fluxo separado de revisão de segurança. Dividir o trabalho não elimina o risco central: diagnóstico errado leva a correção errada.
+
+## Fontes
+
+- [Fonte: VentureBeat — PayPal says its AI assistant went from 43% to 95% accuracy without changing the model](https://venturebeat.com/orchestration/paypal-says-its-ai-assistant-went-from-43-to-95-accuracy-without-changing-the-model)
+- [Fonte: dbt Developer Hub — Semantic models](https://docs.getdbt.com/docs/build/semantic-models)
