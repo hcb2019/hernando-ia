@@ -1,0 +1,122 @@
+---
+title: "Token pooling: 74,8% menos vetores com 97,8% do nDCG no índice ColBERT"
+date: "2026-11-12"
+description: "Pooling de tokens corta 74,8% dos vetores de documento de um índice multi-vetor mantendo 97,8% do nDCG@10. O que o treino com dois orçamentos recupera."
+excerpt: "O índice ColBERT guarda um vetor por token, e a conta chega a 12,8 GB por milhão de documentos só de resíduos. Fundir vetores parecidos tira 74,8% deles — e treinar o encoder com dois orçamentos na mesma batch recupera a qualidade que a fusão come."
+author: "Hernando Candido"
+tags: [Busca Vetorial, ColBERT, Embeddings, RAG, Sentence Transformers, Índice Vetorial, Recuperação de Informação, Engenharia de IA]
+sponsored: false
+premium: false
+readingTime: 6
+---
+
+O modelo multi-vetor guarda **um vetor por token**, não um por documento. É o que faz o ColBERT achar evidência espalhada em parágrafos diferentes — e o que faz o índice crescer na casa dos gigabytes antes de você indexar o primeiro milhão.
+
+A saída mais barata não é trocar de modelo: é **agrupar vetores parecidos e guardar a média do grupo**. Com o fator de pooling em 4, isso tira **74,8% dos vetores de documento**, e o modelo treinado para sobreviver à compressão mantém **97,8% do nDCG@10**. Um modelo comum, sem esse treino, mantém 94,6%.
+
+![Gráfico do Hugging Face comparando o nDCG@10 médio no NanoBEIR com o número de vetores de documento guardados, para fatores de pooling de 2, 3, 4 e 6 e para a recuperação sem pooling](https://huggingface.co/datasets/huggingface/documentation-images/resolve/main/blog/token-pooling/mve_token_pooling_results.png)
+
+## Por que o índice estoura
+
+Vetor único comprime o documento inteiro num vetor. Multi-vetor guarda uma **coleção de vetores contextuais de token**, e é essa coleção que se acumula.
+
+Num cenário de 200 vetores de 128 dimensões com quantização residual de 4 bits, cada documento gasta **12,8 KB só de resíduos**. Um milhão de documentos vira **12,8 GB**. Reduzindo cada documento a 50 vetores, o mesmo milhão cai para **3,2 GB**, com a mesma dimensionalidade e a mesma precisão.
+
+O que se compra com esse custo é a pontuação MaxSim: cada vetor da consulta escolhe o melhor vetor do documento e as pontuações somam.
+
+## O que o pooling faz com os vetores
+
+O `HierarchicalTokenPooling` não corta vetor: **funde os parecidos** com clusterização hierárquica de Ward sobre similaridade de cosseno.
+
+Começa com um grupo por token e funde os dois grupos cuja fusão **aumenta menos a dispersão interna**, medida pela soma das distâncias ao quadrado até a média do grupo. Isso constrói uma hierarquia, e você escolhe o nível que cabe no orçamento. Cada grupo vira a média dos seus vetores, normalizada de novo para o MaxSim.
+
+Três detalhes operacionais: o **primeiro token é protegido** (`num_protected_tokens=1`, normalmente o `[CLS]`); o pooling vale só para **documento**, então a consulta fica intacta e a latência de busca não muda; e a entrada precisa estar **L2-normalizada** antes.
+
+## Os três botões do orçamento
+
+O mesmo módulo aceita três controles, e a escolha muda o comportamento quando os documentos têm tamanhos diferentes:
+
+- `max_tokens=16` fixa um teto de vetores por documento, tokens protegidos incluídos.
+- `pool_factor=4` mantém cerca de **um quarto** dos vetores originais — documento longo fica proporcionalmente com mais capacidade.
+- `distance_threshold` usa um limite de fusão compartilhado, e a contagem passa a variar conforme a geometria dos embeddings.
+
+O `distance_threshold` é calibrado, não chutado: rode `calibrate_distance_threshold` sobre embeddings de uma amostra do corpus com `target_tokens=16` e reaproveite o número. O alvo é **média**, não garantia — e a média alcançada muda em outro corpus.
+
+## O treino que recupera o que a compressão come
+
+Pooling já funciona num modelo qualquer. O problema aparece quando o documento tem uma distinção que importa e a fusão apaga essa distinção: o objetivo original de treino nunca pediu ao encoder para trabalhar com representação comprimida.
+
+A correção é treinar com **duas perdas na mesma batch** — uma sobre os embeddings originais, outra sobre os comprimidos — somadas em partes iguais. O `MultiVectorTokenPoolingLoss` embrulha a loss de recuperação e recebe a lista de poolers com os pesos. Como a clusterização é discreta, o gradiente volta por estimador straight-through: cada membro recebe o gradiente inteiro através da média, sem dividir pelo tamanho do grupo. É o mesmo princípio do Matryoshka, aplicado a **vetores** em vez de **larguras**.
+
+Resultado em nDCG@10 médio no NanoBEIR@13, modelo comum contra treinado para pooling:
+
+- **Sem pooling:** 193,22 vetores, 51,84 → 52,39 (+0,55)
+- **Fator 2:** 96,86 vetores, 50,10 → 51,74 (+1,64)
+- **Fator 4:** 48,68 vetores, 49,03 → 51,23 (+2,20)
+- **Fator 6:** 32,62 vetores, 47,07 → 49,85 (+2,78)
+- **Teto de 4:** 4,00 vetores, 37,22 → 43,00 (+5,78)
+
+A leitura está no sentido da última coluna: **quanto menor o orçamento, maior o ganho do treino** — no regime de 4 vetores por documento, quase **6 pontos**. O ganho transborda para configurações que o treino não viu: com `distance_threshold` calibrado para 29,58 vetores em média, o modelo treinado retém **97,3%** da própria pontuação sem compressão guardando **84,7% menos vetores**, contra 93,3% do modelo comum no mesmo orçamento.
+
+## O número que não fecha se você ler rápido
+
+Os 97,8% são **retenção**: o nDCG@10 comprimido dividido pelo nDCG@10 não comprimido **do mesmo modelo**.
+
+E tem uma comparação que costuma sumir dos resumos: o modelo treinado, comprimido, pontua **51,23** — abaixo dos **52,39** do mesmo modelo sem compressão e dos **51,84** do modelo comum sem compressão nenhuma. O treino não faz a compressão vencer o não comprimido; ele faz a compressão custar pouco.
+
+Sobre o alcance: é **uma execução**, um epoch sobre 120 mil tripletos do MS MARCO, seed 42, sem busca de hiperparâmetro, em **NanoBEIR@13**. É evidência de que o método funciona, não previsão do seu corpus. O artigo de 2024 é mais conservador e mais amplo: **50%** de redução de espaço praticamente sem degradação, e **66% a 75%** com degradação abaixo de 5% **na vasta maioria dos conjuntos de dados** — recorte do próprio artigo.
+
+## A armadilha do índice que não reproduz
+
+A documentação do módulo traz um aviso que vale mais que o tutorial. Com `normalize_embeddings=False`, a implementação só casa com o **PyLate acima da 1.3.4**, depois do conserto do Ward condensado. Ela **não** reproduz o PyLate 1.3.4 ou anterior, nem o `HierarchicalTokenPooler` do colpali-engine, que usa outra entrada de linkage, renormaliza as médias e não tem token protegido.
+
+Traduzindo: índice criado com uma ferramenta e consultado com outra **não é reprodutível byte a byte**. Para chegar perto do colpali-engine, use `num_protected_tokens=0` com `normalize_embeddings=True`. E o `LambdaTokenPooling`, para função própria, não entra no checkpoint porque não é serializável.
+
+Com kernel, a clusterização de Ward roda em CUDA e fica de **30 a 150 vezes** mais rápida que o SciPy; o kernel de MaxSim exige CUDA e Triton.
+
+## A fila de compressão
+
+A ordem recomendada por quem mantém a biblioteca é uma fila de custo-benefício:
+
+1. **Quantização do embedding** para 4, 2 ou 1 bit (Fast-PLAID), que reduz o armazenamento por coordenada. É o raciocínio da [quantização de LLM](/blog/quantizacao-de-llm-como-escolher-4-bit-8-bit-gptq-e-awq) aplicado ao índice.
+2. **Token pooling** para reduzir o número de vetores de documento, com o fine-tuning acima.
+3. **Matryoshka** para reduzir a dimensionalidade de cada vetor de token.
+
+Se a dimensionalidade padrão passa de 128, o Matryoshka sobe na fila. As três se combinam — e o critério de quem corta custo de inferência é o mesmo: [medir antes de escolher](/blog/custo-de-inferencia-cortar-o-vocabulario-do-tokenizer-sem-trocar-o-modelo).
+
+## Minha opinião
+
+Eu acho essa a publicação mais útil da semana justamente porque não é um lançamento. Não tem modelo novo, tem um parâmetro e um treino de duas perdas — e resolve um problema que trava gente de verdade: quem montou busca com ColBERT descobriu o tamanho do índice **depois** de o pipeline já estar funcionando.
+
+O que me convence é a honestidade da curva: o ganho cresce quando o orçamento aperta, e isso descreve um comportamento, não um número de marketing. Minha reserva é a de sempre: **NanoBEIR@13 não é o seu corpus**. Treze conjuntos pequenos medem direção, não magnitude — eu rodaria a avaliação no meu próprio conjunto, olhando a cauda das consultas que pioraram, antes de escolher o orçamento.
+
+## Como testar no seu corpus
+
+1. Meça o **nDCG@10 sem pooling** com o seu modelo e o seu conjunto. Esse é o denominador de tudo.
+2. Conte os vetores por documento e multiplique pelo custo por vetor para saber o tamanho do índice hoje, em GB.
+3. Treine com as duas perdas, compare com uma execução de loss comum (**mesma seed e mesmos dados**) e avalie em pelo menos dois orçamentos.
+4. Fixe no README qual ferramenta gerou o índice e em que versão.
+
+## Estável ou atualizável
+
+**Estável:** a conta de armazenamento por vetor; fundir vetores parecidos e guardar a média do grupo; proteger o `[CLS]`; comprimir só documento e deixar a consulta intacta; treinar com dois orçamentos na mesma batch; a ordem quantização, pooling e Matryoshka.
+
+**Atualizável:** os 74,8% e os 97,8% (uma execução em NanoBEIR@13); os nomes `HierarchicalTokenPooling`, `MultiVectorTokenPoolingLoss` e o parâmetro `token_pooling`; a compatibilidade com PyLate e colpali-engine; a aceleração por kernel.
+
+## Perguntas frequentes
+
+### Token pooling funciona sem treinar o modelo?
+Sim, e é o caminho mais rápido: o pooling entra na indexação e não exige mudança de arquitetura nem processamento na consulta. A diferença está na retenção — no fator 4, o modelo comum mantém 94,6% do próprio nDCG@10 e o treinado mantém 97,8%.
+
+### Isso deixa a busca mais lenta?
+Não no lado da consulta. Os embeddings de query não são comprimidos e o MaxSim continua igual; o custo extra fica na indexação, na clusterização de cada documento.
+
+### Preciso reduzir a dimensionalidade também?
+Depende do ponto de partida. Se a dimensionalidade padrão for maior que 128, a ordem recomendada coloca o Matryoshka antes ou junto do pooling. O que decide é o tamanho final do índice contra o nDCG no seu corpus.
+
+## Fontes
+
+- [Fonte: Hugging Face Blog — Token Pooling-Aware Training for Multi-Vector Embedding Models](https://huggingface.co/blog/token-pooling)
+- [Fonte: arXiv 2409.14683 — Reducing the Footprint of Multi-Vector Retrieval with Minimal Performance Impact via Token Pooling](https://arxiv.org/abs/2409.14683)
+- [Fonte: Sentence Transformers — multi_vector_encoder.modules](https://sbert.net/docs/package_reference/multi_vector_encoder/modules.html)
+- [Fonte: Hugging Face — modelo mve-ModernBERT-base-token-pooling](https://huggingface.co/tomaarsen/mve-ModernBERT-base-token-pooling)
