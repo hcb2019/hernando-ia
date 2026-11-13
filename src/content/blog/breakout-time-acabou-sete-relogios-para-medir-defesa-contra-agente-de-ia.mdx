@@ -1,0 +1,104 @@
+---
+title: "Breakout time acabou: sete relógios para medir defesa contra agente de IA"
+date: "2026-11-13"
+description: "A CrowdStrike aposentou o breakout time e ninguém concordou no substituto. Os sete relógios do setor, com os números de cada um, e o que medir no seu agente."
+excerpt: "A métrica que a CrowdStrike criou em 2018 foi declarada morta em setembro de 2026, sem substituto acordado. O que sobra são sete relógios medindo coisas diferentes — e um deles você mede sozinho: o tempo de revogar o seu agente."
+author: "Hernando Candido"
+tags: [Segurança em IA, Agentes de IA, Detecção e Resposta, Métricas de Segurança, CrowdStrike, Claude Code, Revogação de Credencial, Engenharia de IA]
+sponsored: false
+premium: false
+readingTime: 7
+---
+
+**Resposta curta:** em **1º de setembro de 2026**, no Fal.Con, o CEO da CrowdStrike, George Kurtz, aposentou no palco o **breakout time** — a métrica que a própria empresa criou em 2018 para medir quanto tempo um invasor leva para sair do primeiro host comprometido e alcançar o próximo. Sete meses antes, o relatório anual dela chamava a mesma métrica de "o sinal mais claro de como a intrusão mudou". O substituto não existe: há debate interno e nenhum concorrente publicou um padrão.
+
+O que existe são **sete relógios** medindo coisas diferentes, e nenhum deles, sozinho, responde se dá para conter antes do dano. A conta que quase ninguém faz: detectar rápido deixou de ser o gargalo — num dos incidentes deste ano, a detecção levou **19 minutos** e a primeira resposta, **19 horas**.
+
+## O que a CrowdStrike encontrou nas quatro campanhas
+
+Em **21 de outubro de 2026**, a área de contra-adversário da CrowdStrike publicou quatro atores até então não reportados, rastreados entre **maio e agosto**. Todos deixaram o próprio framework de agente ofensivo exposto em diretório aberto — foi assim que os pesquisadores viram o que acontecia.
+
+O primeiro opera contra a saúde argentina: pelo menos **15 organizações** comprometidas, com credenciais e prontuários exfiltrados de pelo menos uma. Dois agentes dividem o trabalho: um "Supervisor" escolhe a próxima tarefa de uma máquina de estados, um "Executor" executa — base derivada do **PentestGPT**, com servidores MCP próprios.
+
+O segundo tem **mais de 20 alvos nomeados**, comprometeu governos de dois países e mirou empresas privadas nos **EUA e no Brasil**. Chegava aos modelos Claude por um proxy de IA baseado na China, do tipo "estação de transferência".
+
+O terceiro é o mais instrutivo: um ator indonésio juntou **819 skills** copiadas do GitHub e mandou o Claude Code invadir sem orquestração. Precisou de intervenção humana várias vezes para **contornar os guardrails do modelo** — e ainda assim comprometeu domínios de governo. O quarto, russo, usou um comando de barra com fluxo de sete etapas contra um fornecedor de CRM nos EUA.
+
+A conclusão, com confiança moderada: os casos "provavelmente demonstram que a IA agêntica **comoditiza** operações cibernéticas ofensivas de base", e um agente "frequentemente atinge o objetivo em menos de uma hora". E **guardrail de modelo não é fronteira de segurança**: cria atrito, e atrito se vence com insistência.
+
+## Por que a métrica de 2018 parou de medir
+
+O breakout time nasceu em 2018, quando a média de crimes cibernéticos era de **1 hora e 58 minutos**. Em 2025 caiu para **48 minutos**; no relatório de 2026, divulgado em **24 de fevereiro**, a média ficou em **29 minutos** e o recorde em **27 segundos**, com um caso em que a exfiltração começou **4 minutos** após o acesso inicial.
+
+No comunicado de fevereiro, Adam Meyers chamou a métrica de "o sinal mais claro de como a intrusão mudou". Em **1º de setembro**, Kurtz voltou ao número: o recorde de 27 segundos não era velocidade de máquina. "Isso era velocidade humana com ferramentas melhores, e o breakout time acabou." Michael Sentonas emendou: "Não sobrou lacuna para medir." A regra 1-10-60 caiu junto — "mais ou menos morta", disse Meyers, que hoje fala em **30 horas** de janela de patch onde antes falava de 30 dias.
+
+O que ocupou a lacuna foi volume: um humano emite dezenas de comandos por hora, um agente cerca de **1.500**. No Fal.Con, o CISO da AWS, CJ Moses, contou que um honeypot pegou um agente **completando um ataque inteiro em 12 minutos e 42 segundos**, com 94 eventos e zero erro de sintaxe.
+
+"Não é o uso de exploits novos e desconhecidos", disse Meyers. "É usar o que já sabíamos, mais rápido."
+
+## Os sete relógios
+
+A lista é a minha organização do material apurado pelo VentureBeat, não um padrão publicado. Dois relógios medem o atacante; cinco medem você.
+
+- **Throughput de comando (atacante):** comandos por hora, a métrica mais barata de estimar e a que muda de ordem de grandeza com agente.
+- **Handoff do broker de acesso (atacante):** tempo entre a invasão e a passagem do acesso a um segundo grupo. O M-Trends 2026, da Mandiant, mede mediana acima de **8 horas** em 2022 e **22 segundos** em 2025.
+- **Relógio de estágio (defesa):** cada etapa da resposta cronometrada. No incidente do instituto holandês DIVD, em **21 de setembro**, dois zero-days deram root no sistema de tickets e agentes de IA conduziram o resto: detecção em **19 minutos**, primeira resposta em **19 horas**, contenção **9 horas** depois, num time voluntário.
+- **Tempo médio até a defesa (defesa):** da divulgação da falha até a correção.
+- **Dano até descoberta (defesa):** a proposta de Sentonas, que ele mesmo disse não gostar: "O ataque se move em minutos ou menos. A investigação não pode levar horas."
+- **Revogação de agente (defesa):** quanto tempo até o agente que errou perder o acesso. É o único que depende só de você.
+- **Janela de exploração (defesa):** da divulgação à primeira exploração. A Moody's, citando a Flashpoint, mediu **115 dias** em 2024 e **44 dias** em 2025; a Verizon mede **43 dias** para remediar falha já explorada no DBIR de 2026. A CISA traduziu em prazo: **três dias** para o caso mais urgente, com triagem forense, na BOD 26-04 — detalhada em [outro post](/blog/como-priorizar-patches-quando-a-ia-encontra-falhas-mais-rapido-que-voce-corrige).
+
+![Tabela 1 da BOD 26-04: prazos de remediação definidos por exposição do ativo, status na KEV, automação do exploit e impacto técnico](https://www.cisa.gov/sites/default/files/styles/large/public/2026-06/BOD_26-04_Table_1_Remediation_Timelines_0.png)
+
+Nenhum relógio responde sozinho se dá para conter antes do dano. O CEO da SentinelOne, Tomer Weingarten, defende mais granularidade, não menos métrica: "O tempo em que você coleta o primeiro sinal quase não tem relação com a sua triagem por IA."
+
+Eu acho que a morte do breakout time é mais honesta do que parece: a métrica funcionou enquanto o intervalo entre um host e outro era grande o bastante para ser visto. O erro seria trocar por outra média — média esconde a cauda, e é a cauda que dói. Prefiro medir o pior caso, com dono nomeado e botão testado.
+
+## O relógio que você controla: revogação de agente
+
+Em outubro de 2026, o VentureBeat Intelligence perguntou a **89 pessoas** que rodam agentes em produção ou piloto quanto tempo levariam para revogar um agente que saiu da linha.
+
+- Entre as **53** que dão identidade própria a cada agente, **32** revogam em minutos e só **1** disse mais de um dia ou que precisaria rastrear a credencial antes.
+- Entre as **36** que deixam agentes compartilharem credencial, apenas **12** revogam em minutos, e **10** levam mais de um dia ou precisam rastrear a credencial.
+- No total: **44** em minutos, **32** em horas e **11** acima de um dia.
+
+Duas ressalvas do levantamento: a amostra é autosselecionada, com 102 respostas qualificadas, e o estudo **não testou** se a identidade própria é o que acelera a revogação — correlação, não causa. O problema do compartilhamento aparece no kill switch: revogar a chave derruba todo agente e toda pessoa que a usa, então o time adia, e o relógio que vale é o da reunião.
+
+### Como medir o seu, hoje
+
+1. **Escolha um agente em produção** e escreva o nome do dono que pode apertar o botão.
+2. **Cronometre quatro passos:** a decisão, a revogação do token, o encerramento das sessões e a confirmação de que o worker parou de chamar ferramenta.
+3. **Repita com o token antigo** e confira se ele é recusado — não presuma.
+4. **Anote o p50 e o pior caso** e repita uma vez por mês.
+
+Se o passo 2 depende do time de plataforma, você não tem revogação: tem fila. O pré-requisito está em [identidade de agente](/blog/identidade-de-agente-delegacao-impersonacao-e-o-token-de-curta-duracao): identidade própria, delegação no token e credencial curta. E como o agente comprometido quase sempre chega por credencial vazada, veja a [allowlist que guardou 1.122 comandos](/blog/allowlist-do-claude-code-guarda-o-comando-inteiro-1-122-arquivos-vazaram) e o [sandbox de microVM](/blog/sandbox-para-agente-de-ia-o-que-o-microvm-isola-e-onde-a-rede-vaza).
+
+## O que é estável e o que revisar em 12 meses
+
+**Estável:** a separação entre relógios do atacante e do defensor; detecção rápida não compensar resposta lenta; guardrail não ser fronteira de segurança; identidade própria por agente como pré-requisito de revogação.
+
+**Atualizável:** todos os números citados — 29 minutos, 27 segundos, 1.500 comandos por hora, 22 segundos, 19 minutos e 19 horas, 115 e 44 dias, 43 dias, e os 44 em minutos contra 32 em horas.
+
+**Revisar quando:** a CrowdStrike publicar a métrica prometida para o próximo relatório, surgir um padrão formal de medição de resposta a agente, ou o levantamento for repetido com amostra desenhada para testar causalidade.
+
+## Perguntas frequentes
+
+### O que é breakout time?
+É o tempo que um invasor leva para sair do primeiro host comprometido e alcançar outro na rede. A CrowdStrike criou a métrica em 2018, quando a média era de quase duas horas, e a aposentou em setembro de 2026, com a média em 29 minutos e o recorde em 27 segundos.
+
+### Breakout time ainda serve para alguma coisa?
+Como série histórica, sim; como meta operacional, não. Com agente a 1.500 comandos por hora, o intervalo entre um host e outro pode ser curto demais para carregar significado. O que continua útil é a pergunta que ele fazia: quanto tempo você tem antes do dano?
+
+### Como medir o tempo de revogação de um agente?
+Nomeie o dono, cronometre quatro passos (decisão, revogação do token, encerramento das sessões e confirmação de que o worker parou) e repita com o token antigo. Registre o p50 e o pior caso, mensalmente.
+
+## Schema recomendado
+
+`Article` com `headline`, `description`, `datePublished`, `dateModified`, `author` e `mainEntityOfPage`, gerado pelo componente da página; as três perguntas do FAQ podem virar `FAQPage` desde que as respostas do corpo não mudem.
+
+## Fontes
+
+- [Fonte: CrowdStrike — CrowdStrike Uncovers New Agentic AI Campaigns (21/10/2026)](https://www.crowdstrike.com/en-us/blog/crowdstrike-uncovers-new-agentic-ai-campaigns/)
+- [Fonte: VentureBeat — AI agents are making security's breakout-time metric obsolete, and no one agrees on what replaces it (12/11/2026)](https://venturebeat.com/security/ai-agents-are-making-securitys-breakout-time-metric-obsolete-and-no-one-agrees-on-what-replaces-it)
+- [Fonte: CrowdStrike — 2026 Global Threat Report, press release (24/02/2026)](https://www.crowdstrike.com/en-us/press-releases/2026-crowdstrike-global-threat-report/)
+- [Fonte: CISA — Tabela 1 da BOD 26-04, cronogramas de remediação (imagem oficial)](https://www.cisa.gov/sites/default/files/styles/large/public/2026-06/BOD_26-04_Table_1_Remediation_Timelines_0.png)
