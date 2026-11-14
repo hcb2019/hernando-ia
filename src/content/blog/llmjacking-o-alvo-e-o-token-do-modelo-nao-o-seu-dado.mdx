@@ -1,0 +1,89 @@
+---
+title: "LLMJacking: o alvo é o token do modelo, não o seu dado"
+date: "2026-11-14"
+description: "O Fireworks vazou dataset e peso de modelo para quem queria revender token. E a Notion descobriu que a garantia contratual de retenção zero não valeu."
+excerpt: "A Fireworks levou um ataque cujo produto é revender acesso a LLM. A Notion, cliente, descobriu na investigação que a promessa de retenção zero não tinha se sustentado."
+author: "Hernando Candido"
+tags: [Segurança em IA, LLMJacking, Provedor de Inferência, Retenção Zero, Chave de API, Incidente de Segurança, LGPD, Engenharia de IA]
+sponsored: false
+premium: false
+readingTime: 7
+---
+
+Em 23 de outubro um provedor de nuvem que hospedava as máquinas de pesquisa da Fireworks teve um incidente. No dia seguinte, o invasor usou esse acesso para chegar nas máquinas de desenvolvimento e alcançou dado de cliente. A Fireworks detectou no mesmo dia.
+
+O que interessa a quem constrói com IA não é o vazamento. É o que o atacante queria: **ele não estava atrás do seu dado, estava atrás do seu token de modelo**. A motivação, segundo o boletim da própria Fireworks, é financeira, e o produto final é revender acesso a LLM — a prática que a Google Threat Intelligence Group chama de **LLMJacking**.
+
+E a segunda lição é mais dura. A Notion escreveu que a Fireworks deu **garantia contratual de retenção zero** e que, na investigação, descobriu que o dado tinha sido retido nos endpoints que ela usava. Contrato assinado não é controle técnico.
+
+![Figura 1 do relatório da GTIG, gráfico de uso mostrando o pico de requisições de API produzido pelo LLMJacking](https://storage.googleapis.com/gweb-cloudblog-publish/images/Figure_1_Usage_chart_showing_LLMJacking_ge.max-2000x2000_ttHac9S.png)
+
+## O que aconteceu, com as datas
+
+O primeiro boletim da Fireworks saiu em **9 de outubro de 2026**; a atualização, em **9 de novembro**. No começo, só segredos armazenados pela própria empresa eram conhecidos como acessados. Depois vieram informação de conta e de cobrança e, para um conjunto limitado de contas, **segredos, datasets e modelos incompletos**. Número de cartão não é guardado pela Fireworks e não foi afetado. A empresa diz que **Inferência, Training SDK e Nexus**, retenção zero por padrão, não foram impactados, e que a forense ficou com a Unit 42, da Palo Alto Networks.
+
+A Notion confirmou **menos de 1% dos workspaces** atingidos. Desligou a conexão em 3 de novembro, apagou o dado em 4, desativou a feature Insights e parou de servir modelos abertos por lá. Vazaram as mensagens escritas no chat e o texto completo da resposta do modelo — na maior parte das transcrições, sem metadata que ligasse a conversa a um usuário. A Uber também notificou motoristas: informação de carteira de motorista de milhares de pessoas saiu.
+
+## Por que o atacante não quer o seu dado
+
+A entrada não é o chatbot de frente: são **tokens de identidade de nuvem e chaves de API** — Service Account key, PAT do GitHub, sessão ativa, chave esquecida em repositório público. É o material que aparece quando um agente carrega credencial que não devia, assunto que já tratei em [destilação adversarial de LLM](/blog/destilacao-adversarial-de-llm-o-que-e-o-ataque-que-extrai-o-raciocinio-do-modelo).
+
+O que muda a escala é a monetização. O grupo vende acesso para **LLM Mixers**, gateways que fazem proxy, agregam e revendem acesso não autorizado no mercado clandestino. Do relatório de 2 de novembro:
+
+- Cobrança fraudulenta acima de **US$ 100 mil em um único dia**, e **US$ 1 milhão** acumulado em algumas organizações antes da revogação.
+- **Mais de 500 mil chamadas de API em menos de 8 horas** em um caso, passando **quase US$ 1 milhão** de custo de token para a vítima.
+- Plano de revenda ilimitado por **cerca de US$ 60 por mês** com modelos de fronteira, contra US$ 100 a US$ 250 do preço normal.
+
+Antes de gastar, o atacante **testa a chave com uma requisição de um único token**, com `max_tokens=1`: volume baixo, custo zero, invisível para alerta de volume.
+
+E em vários casos investigados, **o serviço de LLM não estava habilitado** na conta no momento do comprometimento. O atacante habilitou. Por isso a GTIG recomenda tratar habilitação não autorizada de serviço de modelo como evento crítico.
+
+## O contrato dizia retenção zero. O disco não.
+
+A Notion explica que a retenção zero dela cobre as requisições enviadas aos provedores de modelo. Features que precisam guardar a requisição — histórico de chat e Insights — ficam fora da promessa, porque o produto precisa do dado. O Insights mandava as requisições guardadas para a Fireworks rodar a análise que o administrador vê.
+
+E aqui vem a frase que resolve o artigo: a Fireworks deu à Notion **compromisso contratual de retenção zero**, e na investigação a Notion descobriu que **o dado tinha sido retido nos endpoints que ela usava**.
+
+As duas empresas podem estar tecnicamente corretas: a Fireworks fala do comportamento padrão da Inferência, a Notion fala do endpoint que usou. A diferença mora em qual rota, com qual feature e por qual caminho o dado passa — e isso o cliente não vê de fora.
+
+É a assimetria do [aprendizado federado](/blog/aprendizado-federado-como-treinar-ia-quando-o-dado-nao-pode-sair-do-lugar): a promessa de que o dado não sai precisa ser provada por arquitetura, não por contrato. Retenção zero por feature é pergunta que você faz. Retenção zero por fornecedor é frase de slide.
+
+## Como checar isso no seu stack
+
+- **Retenção zero por endpoint, não por empresa.** Qual rota guarda, por quanto tempo e com qual base legal. Se a resposta não nomeia endpoint, não é resposta.
+- **Separe produção de pesquisa e escope a chave.** O caminho do incidente passou por máquina de R&D, não pela inferência — e é lá que ficam dataset, peso e segredo. Chave barata não deve invocar modelo caro; chave de dev não deve tocar produção.
+- **Monitore requisição minúscula.** A varredura com `max_tokens=1` é o primeiro sinal, e alerta de volume não pega.
+- **Corrija o gateway.** A GTIG descreve escalada no LiteLLM pelo endpoint `/key/regenerate`, de chave virtual para `PROXY_ADMIN`. O identificador citado, CVE-2026-40217, aparece no NVD e no GitHub ligado a outra falha do mesmo projeto: execução de código no endpoint de guardrails, corrigida na **1.83.11**, nota **8.8** no CVSS 3.1. O número não fecha com o texto — atualize para 1.83.11 ou superior e trate o identificador como pista, não como escopo.
+- **Não cole segredo no chat.** A própria Notion recomenda rotacionar chave que apareça na transcrição afetada. Transcrição guarda o que foi digitado — o mesmo motivo pelo qual a [allowlist do Claude Code](/blog/allowlist-do-claude-code-guarda-o-comando-inteiro-1-122-arquivos-vazaram) guarda o comando inteiro. Para a camada de baixo, veja [SSRF e permissões em MCP](/blog/seguranca-em-mcp-ssrf-permissoes-e-o-ataque-que-atravessa-protocolos).
+
+## Se você é o controlador, o incidente é seu
+
+A LGPD não olha para quem hospedou o dado. O art. 48 da Lei 13.709/2018 manda o controlador comunicar à autoridade nacional e ao titular o incidente que possa acarretar risco ou dano relevante — no prazo definido pela ANPD e com, no mínimo, seis informações: natureza dos dados afetados, titulares envolvidos, medidas técnicas usadas, riscos, motivo da demora e medidas de mitigação.
+
+Ou seja: se o provedor vaza, o incidente é seu no relatório, e essas seis informações você precisa ter antes de responder.
+
+## O que é estável e o que vence
+
+Estável: a economia do ataque. Enquanto chave de modelo valer dinheiro no mercado clandestino, o alvo vai ser credencial e a conta cai na fatura de quem foi comprometido.
+
+Atualizável: valores de cobrança fraudulenta, preço do plano de revenda, versão corrigida do LiteLLM e o andamento da investigação da Fireworks.
+
+## Perguntas frequentes
+
+### O que é LLMJacking?
+Sequestro de acesso corporativo a modelos para revender uso. O atacante pega token de nuvem ou chave de API válida, consome a cota da vítima e revende por gateways clandestinos. A conta fica com quem foi invadido.
+
+### Por que a retenção zero não protegeu a Notion?
+Porque era compromisso contratual sobre endpoints, não verificação de arquitetura — a própria Notion contou que a investigação achou dado retido nos endpoints que ela usava.
+
+### O que eu faço hoje se uso um provedor de inferência?
+Liste os endpoints que guardam dado, separe chave por ambiente e por modelo, ponha teto de gasto granular, alerte para requisição de um token e mantenha rotação que você execute em minutos.
+
+## Fontes
+
+- [Fireworks AI — Update on October 2026 security incident](https://fireworks.ai/security/bulletins/october-2026-security-incident-update)
+- [Notion — Notice about the Fireworks AI incident that may impact some Notion workspaces](https://www.notion.com/help/security-incident-involving-a-third-party-ai-vendor)
+- [Google Threat Intelligence Group e Mandiant — The Rise of LLMJacking](https://cloud.google.com/blog/topics/threat-intelligence/llmjacking-monetizing-compromised-cloud-models)
+- [TechCrunch — Cyberattack on Fireworks AI allowed hackers to access Notion customers chat transcripts](https://techcrunch.com/2026/11/12/cyberattack-on-fireworks-ai-allowed-hackers-to-access-notion-customers-chat-transcripts/)
+- [NVD — CVE-2026-40217](https://services.nvd.nist.gov/rest/json/cves/2.0?cveId=CVE-2026-40217)
+- [GitHub Advisory — GHSA-wxxx-gvqv-xp7p, LiteLLM sandbox escape](https://github.com/advisories/GHSA-wxxx-gvqv-xp7p)
