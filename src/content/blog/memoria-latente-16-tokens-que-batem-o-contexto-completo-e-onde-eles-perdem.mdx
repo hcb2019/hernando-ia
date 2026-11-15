@@ -1,0 +1,128 @@
+---
+title: "Memória latente: 16 tokens que batem o contexto completo e onde eles perdem"
+date: "2026-11-15"
+description: "O Memorilla comprime uma coleção inteira de documentos em 16 tokens e supera o contexto completo no FactKG. Onde ganha, onde perde e o custo escondido."
+excerpt: "16 tokens de memória acertam mais que todos os documentos no contexto — 84,33% contra 80,43% no FactKG. A conta que falta nos resumos: 194 milhões de parâmetros treináveis e três etapas de treino."
+author: "Hernando Candido"
+tags: [Memória de LLM, Engenharia de Contexto, RAG, Memória Latente, Benchmarks, Stanford SNAP, Qwen3, Engenharia de IA]
+sponsored: false
+premium: false
+readingTime: 8
+---
+
+**Resposta curta:** um modelo congelado pode carregar uma coleção inteira de documentos em **16 tokens de memória** e, no FactKG, acertar **84,33%** contra **80,43%** de quem recebe todos os documentos no contexto, gastando **108 vezes menos tokens** para representar a fonte. É o **Memorilla**, do Stanford SNAP. O detalhe que os resumos de terceiros não contam: o módulo que fabrica esses 16 tokens tem **194.123.776 parâmetros treináveis** e passou por três etapas de treino — a última delas nos splits de treino dos oito benchmarks avaliados.
+
+![Figura 1 do paper: pontuação média nos oito benchmarks contra o número de tokens de documento entregues ao Qwen3-8B congelado, com o Memorilla na fronteira de Pareto a 16 tokens de memória](https://arxiv.org/html/2610.21375v3/figures/results/fig1_frontier.png)
+
+## O que o paper mediu
+
+O paper entrou no arXiv em **15 de outubro de 2026** e está na revisão **v3, de 3 de novembro**. Assinam Adibvafa Fallahpour, Parsa Idehpour, Vignesh Kothapalli, Nikita Mounier, Shirley Wu, Shayan Pardis e Jure Leskovec, com Stanford, Toronto, Vector Institute, Penn e MIT na fila de afiliações. O código está em `snap-stanford/memorilla`, Apache 2.0, com checkpoints publicados no Hugging Face.
+
+A configuração é a parte que importa para quem vai comparar: **encoder congelado Qwen3-Embedding-4B**, **decoder congelado Qwen3-8B** e **K igual a 16 tokens de memória** em todas as execuções, salvo ablação. Nada no LLM é treinado.
+
+São oito benchmarks em três famílias: personalização (PersonaMem-v2, LaMP-4, LaMP-7 e o PersonalizationV4, construído pelos próprios autores), documento longo (NarrativeQA e TriviaQA) e conhecimento intensivo (FactKG e PubMedQA).
+
+Na média dos oito, o Memorilla marca **49,68** contra **41,92** do xRAG, **40,75** do LLMLingua-2 e **38,02** do Mem0. Lidera em **cinco** dos oito benchmarks, é segundo em NarrativeQA e PersonalizationV4 e fica atrás no PubMedQA. Em tokens de documento, a média geométrica é **394 vezes menos** que o contexto completo, **113 vezes menos** que RAG com 50 chunks e **49 vezes menos** que o MemoRAG.
+
+## Por que menos contexto ganha de mais contexto
+
+O mecanismo tem três passos e nenhum deles envolve reescrever documento.
+
+Um encoder congelado transforma cada trecho em um vetor e a coleção vira uma matriz de N linhas, guardada uma única vez. Para cada pergunta, **16 slots aprendidos** passam por cross-attention com o embedding da pergunta, depois por blocos de cross-attention sobre **todos** os N vetores guardados — o desenho de latent array do Perceiver — e saem projetados para a dimensão de embedding do LLM. Esses 16 vetores entram no input embedding, antes do texto da pergunta.
+
+A diferença central para retrieval: não existe seleção discreta de top-k. Cada slot enxerga a coleção inteira e a pergunta decide o que fica. É leitura contínua, não corte.
+
+O resultado mais instrutivo está no FactKG, que exige compor fatos espalhados. A vantagem do Memorilla sobre o RAG-50 cresce com o número de entidades: **+4,23 pontos** com uma entidade, **+7,59 pontos** com quatro ou mais. E o RAG-50 desaba de **78,73** para **51,75** conforme os fatos compostos sobem de um para quatro, enquanto o Memorilla fica entre **80 e 89** em todas as profundidades. Parte da diferença é evidência que o RAG nunca recupera — **73,5% das claims do FactKG têm mais de 50 chunks**, então o top-50 nem chega perto de tudo.
+
+O achado que muda a intuição é outro: **contexto completo não é teto**. Quem recebe todos os documentos perde do Memorilla em todos os benchmarks menos o PubMedQA, e em **20 das 21 métricas** da tabela do apêndice. O RAG-50 supera o contexto completo em **15** dessas métricas. Enfiar tudo no prompt não é o baseline seguro que parece.
+
+## Onde a memória latente perde
+
+Três benchmarks o Memorilla não ganha, e vale ler cada um com o custo de token do lado.
+
+No **PubMedQA**, ele faz **59,00%** contra **69,00%** do LLMLingua-2 e **67,00%** de quatro outros baselines. O motivo é quase didático: os quatro abstracts do benchmark somam **324 tokens**. Comprimir 324 tokens em 16 é gargalo com perda, num caso onde ler direto era barato. Memória não é remédio para contexto curto.
+
+No **NarrativeQA**, o MemoRAG lidera com ROUGE-1 de **21,80** e ROUGE-L de **20,51** contra **19,68** e **19,31**, gastando **50 vezes mais tokens**. Faz sentido: o MemoRAG coloca passagem literal na frente do modelo, e é exatamente o que a compressão joga fora.
+
+No **PersonalizationV4**, **66,65%** contra **67,88%** do MemoRAG, com **690 vezes** mais tokens do lado do baseline.
+
+A quebra por tipo de pergunta explica a divisão melhor que qualquer média. No NarrativeQA, o Memorilla ganha **+4,91** de ROUGE-L em perguntas de "why" e **+7,02** em "how". O RAG-50 ganha **+3,45** em "who" e **+2,93** em "which". Pergunta conceitual premia estrutura global comprimida; pergunta de recitação de entidade premia o token exato.
+
+Os próprios autores delimitam o risco: o Memorilla pode perder detalhe factual fino, provavelmente porque o encoder nunca foi treinado para compressão, e sugerem combinar memória latente com retrieval de texto — a estrutura que a memória captura, mais a entidade que o retrieval devolve. Esse parágrafo é a conclusão do paper, não a minha.
+
+## A conta de serving: o que fica plano
+
+O apêndice traz a medição de serving que decide se isso te serve. Uma **H100-80GB**, batch 1, bf16, greedy, no máximo 32 tokens novos, documentos de 250 tokens, mediana de cinco medições depois de dois warmups.
+
+- **Codificação:** 22,92 ms com 1 documento, 2.588,84 ms com 512. Cresce linear, mas é paga uma vez por documento.
+- **Armazenamento:** 5 KB por documento, plano.
+- **Forward do módulo de memória:** 2,01 ms com 1 documento, 1,96 ms com 512.
+- **Transferência CPU para GPU:** 0,014 ms, depois 0,060 ms.
+- **Ponta a ponta com Memorilla:** 740 ms com 1 documento, 739 ms com 512.
+- **Ponta a ponta com contexto completo:** 749 ms com 1 documento, **19.932 ms** com 512.
+
+A coleção de 512 documentos vira **128.064 tokens** de contexto, acima do limite de 32.768 que o stack impõe, então a linha do contexto completo usa YaRN com fator 4. E o store é **7.266 vezes menor** que o KV cache equivalente no PersonalizationV4: 50.455 tokens de documento a 144 KiB por token dão 6,9 GiB, contra 200 embeddings de 2.560 valores bf16.
+
+Nota metodológica que muda a leitura: os tempos saem de `generate` do Hugging Face transformers **sem paged KV cache**, então a latência do contexto completo depende do stack de serving. Num servidor com paged KV cache o número do contexto completo melhora — não o suficiente para 19.932 ms, mas o suficiente para você não citar essa coluna como se fosse universal.
+
+A lição de arquitetura está no caso de 1 documento: **740 contra 749 ms**. O ganho não é a pergunta ficar mais rápida. É a conta parar de crescer quando a coleção cresce, e ser amortizada pelas Q perguntas que leem o mesmo store.
+
+## O que o resultado custa de verdade
+
+Aqui está o que separa "16 tokens" de "de graça".
+
+O módulo de memória tem **194,1 milhões de parâmetros treináveis** e foi treinado em três estágios: **1,98 milhão** de paráfrases reconstruídas da Wikipedia inglesa (o módulo precisa preservar informação suficiente para o LLM reproduzir o trecho), **1,34 milhão** de exemplos de dez datasets de leitura, QA e sumarização, e um terceiro estágio nos **splits de treino dos oito benchmarks avaliados**. O checkpoint multi-task serve FactKG, TriviaQA, NarrativeQA, PubMedQA, LaMP-4 e LaMP-7; PersonaMem-v2 e PersonalizationV4 recebem ajuste específico.
+
+Ou seja: os 84,33% do FactKG são um resultado **in-domain**, em benchmark cujo split de treino entrou na receita. Você não pega os 16 tokens publicados e usa no seu corpus sem treinar o módulo no seu domínio — o que o paper é honesto em dizer, e o que qualquer resumo que só repete a manchete omite.
+
+As ablações fecham o resto do desenho.
+
+- **K igual a 16 é escolha, não teto:** no PersonaMem-v2, com K igual a 4 o placar é 26,58 — praticamente o closed-book de 25,64 — e sobe para **44,60** com 16. No PersonalizationV4, de 57,66 para **66,65**. Treinar com K igual a 128 não melhora nada.
+- **Não é só adaptação:** um LoRA de rank 130 com 268,4 milhões de parâmetros, no Qwen3-4B e **sem documento nenhum no contexto**, perde em toda métrica primária para o Memorilla, ainda que as diferenças em PubMedQA e LaMP-7 estejam dentro do ruído.
+- **Teste de ruído limpo:** sem documentos reais, o Memorilla perde **5,93** no FactKG. O ganho vem da evidência guardada, não do ajuste.
+- **Encoder maior não resolve:** trocar o encoder de 4B para 8B move cada nota em no máximo **1,3**, exceto PubMedQA, com **+3,00** — que são três das cem perguntas.
+
+## Como testar no seu caso
+
+Três perguntas antes de gastar GPU:
+
+1. **A evidência já cabe no contexto?** Se a coleção inteira tem 300 tokens, comprimir é perda sem ganho — o PubMedQA é o retrato disso.
+2. **A pergunta pede relação ou pede token exato?** "Why" e "how" premiam a memória; "who" e "which" premiam o retrieval literal.
+3. **A coleção cresce?** O argumento econômico só aparece quando N sobe: com 1 documento, 740 contra 749 ms.
+
+O protocolo que eu usaria, na ordem:
+
+- Quatro braços, sempre: closed-book, contexto completo, RAG com top-50 e a memória candidata. Sem os quatro, você mede entusiasmo.
+- Quebrar o resultado por tipo de pergunta e por número de entidades. Foi nessa quebra que a diferença do paper apareceu; na média ela se esconde.
+- Medir **tokens de documento entregues por pergunta**, não tokens de prompt. É a métrica que o paper reporta no apêndice e a única que compara métodos diferentes de compressão.
+- Medir latência no **seu** stack, com paged KV cache. A coluna de 19.932 ms não vai se reproduzir em vLLM, e você precisa saber o número do seu caso antes de prometer ganho.
+
+Se a sua camada de conhecimento já resolve com procedimento e golden query, como no caso da [camada de conhecimento do agente de dados](/blog/camada-de-conhecimento-do-agente-de-dados-de-43-a-95-sem-trocar-o-modelo), memória latente é a camada de cima e não substitui a de baixo. Se o seu problema é o índice crescer, [token pooling no ColBERT](/blog/token-pooling-74-8-menos-vetores-com-97-8-do-ndcg-no-indice-colbert) ataca o mesmo custo por outro caminho. E se a dúvida é se o modelo acompanha estado ao longo do documento, vale começar por [onde ele erra ao rastrear estado](/blog/rastrear-estado-em-documento-longo-onde-o-modelo-erra-e-como-testar).
+
+## O que é estável e o que revisar
+
+**Estável:** a troca central — compressão preserva estrutura global e perde token exato, então memória latente ganha em pergunta conceitual e perde em recitação de entidade. Também estável é o achado de que contexto completo não é teto, e o formato de custo: leitura plana em K, codificação linear por documento.
+
+**Atualizável:** os números por benchmark, as versões dos modelos (Qwen3-8B e Qwen3-Embedding-4B), o default de K igual a 16, os checkpoints publicados e o próprio repositório, que está em desenvolvimento ativo. Quando sair uma versão com encoder treinado para compressão — a lacuna que o paper aponta — a comparação com retrieval literal muda de lugar.
+
+## Perguntas frequentes
+
+### O que são memory tokens?
+São vetores no espaço de embedding do modelo, injetados antes do texto da pergunta. Não são texto: o LLM os lê como parte do prompt, mas ninguém consegue imprimir o que eles contêm. O que a coleção virou é representação latente, não resumo.
+
+### Memória latente substitui RAG?
+Não pelos números do paper. Ela ganha quando a pergunta pede relação entre documentos e perde quando pede o token exato, e o próprio paper mostra o MemoRAG liderando em NarrativeQA e PersonalizationV4 justamente por levar passagem literal. A recomendação dos autores é combinar os dois.
+
+### Preciso treinar o modelo?
+O LLM não — ele fica congelado o tempo inteiro. Mas o módulo de memória precisa ser treinado, ou você usa o checkpoint publicado, e o encoder tem que ser o mesmo do treino: trocar 4B por 8B move pouco, mas treinar do zero muda a matriz toda.
+
+### Funciona em português?
+Não há resultado publicado em português. O primeiro estágio de treino usa paráfrases da Wikipedia em inglês e os oito benchmarks são em inglês. O encoder Qwen3 é multilíngue, o que é pré-requisito, não evidência de desempenho em PT.
+
+## Fontes
+
+- [Memorilla: Latent Semantic Memory for LLMs — arXiv 2610.21375, abstract e histórico de revisões](https://arxiv.org/abs/2610.21375)
+- [Memorilla — versão HTML v3 do paper, com tabelas e ablações](https://arxiv.org/html/2610.21375v3)
+- [Repositório snap-stanford/memorilla no GitHub, licença Apache 2.0](https://github.com/snap-stanford/memorilla)
+- [Checkpoint Memorilla-Qwen3-8B no Hugging Face](https://huggingface.co/memorilla/Memorilla-Qwen3-8B)
+- [Página do projeto em memory.stanford.edu](https://memory.stanford.edu/)
