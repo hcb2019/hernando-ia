@@ -1,0 +1,130 @@
+---
+title: "XYBench: o modelo responde o que você pediu, não o que você queria"
+date: "2026-11-16"
+description: "Em 8.115 perguntas com premissa errada, o modelo resolveu o pedido literal em 75% a 86% e o objetivo real em 59% a 71%. O que o XYBench mede."
+excerpt: "Identificar a premissa errada não muda o que o modelo responde: mesmo com o diagnóstico certo, o objetivo real fica de fora em parte dos casos. As três métricas do XYBench e a armadilha do eval de múltipla escolha."
+author: "Hernando Candido"
+tags: [Benchmark de LLM, Problema XY, Avaliação de LLM, LLM-as-Judge, Engenharia de Prompt, Agentes de IA, Engenharia de IA]
+sponsored: false
+premium: false
+readingTime: 8
+---
+
+**Resposta curta:** o **XYBench** juntou **8.115 perguntas** em que o pedido literal (o Y) esconde o objetivo real (o X). O exemplo do paper é "como faço parse de XML com regex" quando o que a pessoa quer é extrair dados de um XML.
+
+Nos cinco modelos avaliados, a solução do Y apareceu em **75% a 86%** das respostas no Stack Overflow. A do X veio em **59% a 71%**. Nas respostas humanas, o X está presente em 67% e domina o texto em **55%** dos casos, contra **35% a 41%** dos modelos.
+
+**O achado que muda a forma de avaliar:** identificar a premissa errada não muda o que o modelo responde. Mesmo quando acerta o diagnóstico, ele deixa a solução do objetivo real de fora em **15% a 39%** dos casos no Stack Overflow. Essa faixa é conta minha, de 100 menos os 61% a 85% que o paper mede.
+
+## O que é o problema XY, e por que isso é problema de produto
+
+Quem atende suporte ou escreve documentação já viu: a pessoa pede ajuda com a abordagem que escolheu, não com o problema que tem. Ela quer **X** e pergunta sobre **Y**, convencida de que Y leva a X.
+
+No paper, o par canônico é "como faço parse de XML com regex". Responder Y entrega algo que funciona até o primeiro XML com atributo aninhado. Responder X entrega um parser de verdade.
+
+Isso não é detalhe de Stack Overflow. É o mesmo erro que aparece em bot de suporte, agente de código e assistente de dados: a resposta obedece a instrução e o usuário continua travado.
+
+O benchmark separa o que uma resposta cooperativa deveria ter em três coisas medidas de forma independente: a solução do pedido declarado, a solução do objetivo implícito e a nomeação da premissa errada.
+
+## Como as 8.115 perguntas foram montadas
+
+- **1.557** do Stack Overflow, **184** de 17 sites do Stack Exchange, **102** garimpadas à mão em fóruns, Reddit e chats.
+- **6.272** construídas a partir de guias do WikiHow: um Sonnet 4.5 gera a pergunta em cima de um erro plausível do guia e um filtro com GPT-5 descarta os casos em que responder o Y já resolve.
+- **2.701** respostas humanas de referência no Stack Overflow e **378** no Stack Exchange, até quatro por pergunta.
+
+**A proporção importa:** **77% do benchmark é sintético** (6.272 de 8.115). Só 1.843 perguntas são reais. Isso não derruba o resultado, mas limita o que você pode afirmar com ele.
+
+**Uma linha do repositório não fecha.** A tabela do README lista **6.268** perguntas de WikiHow. O paper, na Tabela 1, lista **6.272**, e a soma só chega aos 8.115 com esse número. Com 6.268 daria 8.111. Publico as duas versões porque é a diferença que quem abrir o repo vai encontrar.
+
+A avaliação roda com **Claude Sonnet 4.5** como juiz, e dois humanos anotaram 500 respostas para conferir o juiz. A concordância é alta em presença de solução, média em diagnóstico e a mais fraca justamente em ênfase, como está na seção de limites.
+
+## O placar no Stack Overflow
+
+- **Solução do pedido literal (Y):** 75% (Qwen3.5-9B) a 86% (DeepSeek-V4 Pro). Respostas humanas: 58%.
+- **Solução do objetivo real (X):** 59% (Claude Sonnet 4.6) a 71% (GPT-5). Respostas humanas: 67%.
+- **Resposta organizada em torno do X:** 35% a 41%. Respostas humanas: 55%.
+- **Premissa errada identificada:** 47% a 60%. Respostas humanas: 79%.
+- **Totalmente pragmática** (identifica, oferece o X e foca no X): 25% a 31%. Respostas humanas: 47%.
+
+![Gráfico do blog da Ai2 com o título Cinco modelos e as melhores respostas humanas nas perguntas de Stack Overflow do XYBench, comparando GPT-5, DeepSeek-V4 Pro, Qwen3.5-9B, Gemini 3.1 Pro, Claude Sonnet 4.6 e as respostas humanas em três medidas: mencionar uma solução para o objetivo real, focar no objetivo real e desviar o usuário da abordagem equivocada](https://www.datocms-assets.com/64837/1794335992-xybench-stackoverflow-results.png)
+
+**A métrica que pune o humano.** Na pontuação "totalmente cooperativa", que exige solução do Y **e** do X com foco equilibrado, os humanos marcam 18% e os modelos 20% a 28%. O humano não perdeu: ele simplesmente não responde o Y quando o Y está errado. Métrica bem desenhada não é a que deixa o modelo bonito — é a mesma escolha que aparece quando precisão sobe e recall cai no [classificador de conceito subjetivo](/blog/conceito-subjetivo-em-classificador-de-ia-o-limite-se-descobre-nao-se-escreve).
+
+## Identificar não é agir
+
+O teste que separa diagnóstico de comportamento está na Tabela 10. Quando o modelo **não** identifica a premissa, a solução do X aparece menos (φ entre 0,10 e 0,45, p menor que 0,001). Quando identifica, ela aparece mais.
+
+Só que "mais" não é "sempre": mesmo com a premissa identificada, a solução do objetivo real fica fora em **15% a 39%** dos casos no Stack Overflow, no Stack Exchange e no conjunto manual. No WikiHow, com diagnóstico correto, a solução do X aparece em apenas **36%** das respostas.
+
+Ou seja: o modelo sabe que a pessoa está errada e, ainda assim, entrega a resposta que ela pediu. É o comportamento de quem responde para encerrar o ticket, não para resolver o problema.
+
+## Preferir no múltiplo, falhar no aberto
+
+O experimento de múltipla escolha é o mais desconfortável do paper. Dão ao modelo duas respostas: uma que atende só o Y e outra que nomeia a confusão e ataca o X. Em ordem aleatória, com tamanho parecido.
+
+Os seis modelos escolhem a resposta pragmática em **71% a 84%** dos casos no Stack Overflow, **61% a 79%** no Stack Exchange, **64% a 79%** no conjunto manual e **56% a 83%** no WikiHow. Os cinco modelos da avaliação principal, escrevendo livremente, focam no X em **35% a 41%** dos casos.
+
+![Gráfico do blog da Ai2 com o título Escolher e escrever respostas focadas no objetivo nas perguntas de Stack Overflow do XYBench, comparando a taxa de escolha em múltipla escolha de 71% a 84% com a taxa de respostas livres focadas no objetivo de 35% a 41% nos cinco modelos](https://www.datocms-assets.com/64837/1794336134-xybench-picking-vs-writing.png)
+
+**Tradução para quem monta eval:** teste de múltipla escolha mede preferência, não capacidade. Se o seu número de qualidade vem de um juiz que escolhe entre duas respostas prontas, ele está medindo a metade fácil da tarefa.
+
+## "Peça para corrigir a premissa" mexe no diagnóstico, não na resposta
+
+O paper testa a instrução mais óbvia: acrescentar ao prompt um pedido para corrigir a premissa, caso exista. A identificação da premissa sobe **10 a 22 pontos** no Stack Overflow, **14 a 25** no Stack Exchange, **14 a 21** no conjunto manual e **6 a 26** no WikiHow.
+
+A presença da solução do X sobe só **2 a 8 pontos**, e a ênfase quase não se move. Mesmo com esse ganho, os modelos continuam até 13 pontos atrás dos humanos no diagnóstico do Stack Overflow e 22 no Stack Exchange.
+
+O teste mais duro é o oráculo: entregar ao modelo o pedido declarado **e** o objetivo real, sem ele precisar inferir nada. A ênfase no X dobra em alguns casos, mas só o Gemini 3.1 Pro alcança o nível humano, e apenas no Stack Overflow e no Stack Exchange.
+
+O detalhe que ninguém cita: no Claude Sonnet 4.6, com o objetivo explícito, a solução do X sobe de 59% para 67% e a identificação da premissa **cai de 47% para 34%**. Saber o destino melhora a instrução e piora a explicação do erro.
+
+## Como aplicar no seu caso
+
+1. **Separe as três notas.** Presença, ênfase e diagnóstico. Uma nota só esconde o caso mais comum: solução certa mencionada de passagem e resposta organizada em torno do erro. É o mesmo princípio de olhar o estado final em vez do resumo em [um agente que mexe no banco](/blog/como-avaliar-um-agente-de-ia-que-mexe-no-banco-estado-final-nao-resumo).
+2. **Não use múltipla escolha como prova de capacidade.** Use para descobrir se o modelo reconhece uma resposta boa, e diga isso no relatório.
+3. **Transforme a checagem de premissa em passo.** Uma etapa que devolve "o pedido declarado é Y, o objetivo provável é X, existe conflito: sim/não" e uma justificativa curta. É auditável e você mede separado.
+4. **Não presuma que perguntar resolve.** O XYBench é de turno único. O paper mostra que só 31,8% das threads do Stack Overflow tiveram retorno do autor da pergunta, e em 50 retornos amostrados 42% convergiram para o objetivo real. Clarificar é uma saída, não uma garantia.
+5. **Rode nas suas perguntas.** Pegue 50 conversas reais do seu log, rotule X e Y, e aplique as mesmas três medidas. O dataset está público e o código é Apache 2.0.
+
+## Onde o XYBench é frágil
+
+- **Composição:** 77% sintético, enviesado para problema procedural de guia, e o subconjunto manual foi escrito pelos próprios autores.
+- **Idioma:** só inglês. Não existe resultado em português, e pragmática muda com cultura.
+- **Juiz:** a concordância humano-juiz é de 97,5% ou mais em presença de solução, 84,6% a 93,3% em diagnóstico e **74,2% a 79,8%** em ênfase, com α de 0,587 a 0,600. Ou seja: a dimensão que sustenta a manchete é a menos confiável das três.
+- **Faixa do abstract:** o resumo fala em 0,75 a 0,92 para o pedido literal. Nas tabelas por fonte, o maior valor que localizei é 0,91 (GPT-5 no Stack Exchange). O número de manchete é o do abstract; o verificável é o da tabela.
+- **Turno único:** não mede conversa de três trocas, que é como suporte real funciona. É a mesma família de limite do [benchmark que mede rastreio de estado em documento longo](/blog/rastrear-estado-em-documento-longo-onde-o-modelo-erra-e-como-testar): o recorte de tarefa define o que o número prova.
+
+## O que é estável e o que revisar
+
+**Estável:** a separação entre presença, ênfase e diagnóstico; o achado de que reconhecer não é agir; a armadilha do eval discriminativo. Isso continua valendo quando os modelos mudarem.
+
+**Atualizável:** todos os números por modelo, a composição do dataset, a escolha do juiz e o placar. Uma versão nova do benchmark ou modelos novos mudam a tabela inteira.
+
+## Minha Opinião
+
+A indústria vende agente que "entende o que você quer". O dado diz outra coisa: ele responde o que você digitou, com educação e em três parágrafos.
+
+Na minha visão, a parte mais útil do XYBench não é o placar. É a prova de que a instrução "corrija a premissa" não conserta o comportamento. Isso derruba a esperança de resolver com prompt melhor e joga o problema para o desenho do fluxo.
+
+Se o seu produto depende de a pessoa sair com o problema resolvido, a checagem de premissa tem que ser etapa explícita, com saída própria e métrica própria. Confiar em que o modelo vai "perceber" é o mesmo que confiar em que ele vai lembrar do que você falou na semana passada.
+
+E tem uma lição para quem publica número de qualidade: eval de múltipla escolha é o jeito mais fácil de parecer bom. Setenta e um por cento escolhendo a resposta certa não diz nada sobre a resposta que o modelo escreve quando ninguém está olhando.
+
+## Perguntas frequentes
+
+### O que é o problema XY?
+É quando alguém pede ajuda com a abordagem que escolheu (Y) em vez do objetivo que tem (X). Responder Y pode até funcionar por um tempo, mas não resolve o problema real. O exemplo do paper é pedir regex para parsear XML em vez de pedir um parser.
+
+### O XYBench mede se o modelo pede esclarecimento?
+Não. A avaliação é de turno único: o modelo responde uma vez, sem poder perguntar de volta. O paper justifica com o dado de que 31,8% das threads do Stack Overflow tiveram retorno do autor e, desses, 42% convergiram para o objetivo real na primeira resposta humana.
+
+### Os números valem para português?
+Não há resultado publicado em português. As 8.115 perguntas são em inglês e o próprio paper lista a limitação de idioma e cultura. O que transfere é o método de medir presença, ênfase e diagnóstico, não a taxa exata.
+
+## Fontes
+
+- [XYBench: Can LLMs Respond Pragmatically to Queries with Misconceptions? — arXiv 2609.06842, abstract, autores e data de submissão](https://arxiv.org/abs/2609.06842)
+- [Versão HTML completa do paper, com Tabelas 1, 2, 10, 11, 12 e a seção de limitações](https://arxiv.org/html/2609.06842v1)
+- [Repositório allenai/XYBench no GitHub, com métricas, scripts de avaliação e licença Apache 2.0](https://github.com/allenai/XYBench)
+- [Dataset allenai/XYBench-dataset no Hugging Face, com os quatro subconjuntos](https://huggingface.co/datasets/allenai/XYBench-dataset)
+- [Post de lançamento no blog da Ai2, com exemplos e as figuras do resultado](https://huggingface.co/blog/allenai/xybench)
