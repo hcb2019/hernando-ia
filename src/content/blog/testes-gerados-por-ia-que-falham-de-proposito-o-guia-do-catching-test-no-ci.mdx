@@ -1,0 +1,96 @@
+---
+title: "Testes gerados por IA que falham de propósito: o guia do catching test no CI"
+date: "2026-11-17"
+description: "Catching test é o teste gerado para falhar no diff sob revisão. A Meta mediu: 74 bugs de privacidade pegos antes do merge e 19,5% de acerto no começo."
+excerpt: "Um teste que falha de propósito parece erro de configuração. Na Meta, ele virou gate de produção: 74 bugs de privacidade pegos antes do merge."
+author: "Hernando Candido"
+tags: [Testes, LLM, Mutation Testing, CI, Engenharia de Software, Catching Test, Qualidade de Código, IA, Meta]
+sponsored: false
+premium: false
+readingTime: 6
+---
+
+**Resposta curta:** catching test é um teste gerado para **falhar** no diff sob revisão. Se ele falha, existe evidência executável de que a mudança alterou comportamento, não um comentário de revisor. A Meta levou o padrão à produção e, no primeiro semestre de 2026, contou **74 bugs de privacidade pegos antes do merge**, com queda de 20% nos incidentes do tipo.
+
+![Arquitetura dos dois fluxos de geração de catching tests na Meta, dodgy diff e intent-aware](https://engineering.fb.com/wp-content/uploads/2026/10/JiTTesting-image-1.png?w=900)
+
+Em CI normal, vermelho é bloqueio. Aqui é o produto: não pergunta se o código funciona, pergunta o que mudou.
+
+## O que é um catching test
+
+A definição está no paper de abertura do tema, de Mark Harman, Peter O'Hearn e Shubho Sengupta. Um **hardening test** nasce passando e protege contra regressão futura. Um **catching test** nasce para falhar: pega a falha que a mudança atual introduziu.
+
+É outra categoria que revisão de código com IA: o revisor opina, o catching test prova. Custa mais computação.
+
+Revisão automática tem limite conhecido: [sem contexto controlado](/blog/revisar-especificacao-com-ia-por-que-o-revisor-precisa-de-contexto-zero), o revisor elogia o que deveria reprovar.
+
+## Mutação, oráculo e o vocabulário que falta
+
+Catching test é mutation testing com alvo: cria-se um **mutante**, versão do código com defeito plausível, e um teste que mate aquele mutante. Passa no pai e falha no diff, achou algo.
+
+Duas hipóteses antigas sustentam: a **do programador competente**, de que quase nenhuma mudança quebra algo, e a **de acoplamento**, de que falhas reais ficam perto dos mutantes simuláveis.
+
+O problema real é o oráculo. O implícito é fácil: crash, exceção, erro de tipo. O **geral** é a especificação do comportamento correto, quase sempre vaga e não escrita.
+
+Daí o vocabulário: **weak catch** é só um teste que falha na revisão atual; **strong catch** também deveria falhar segundo o oráculo geral, ou seja, aponta bug de verdade; **strictly weak catch** é falso positivo que revela bug no próprio teste. Separar o segundo do primeiro é o trabalho do sistema.
+
+## Os cinco estágios
+
+1. **Triagem.** Roda de madrugada, em capacidade ociosa, sobre os diffs do dia anterior marcados como de risco por mecanismo parecido com o Diff Risk Score.
+2. **Geração.** O **dodgy diff** trata o diff como mutante, sem intenção. O **intent-aware** infere o que a mudança queria fazer, lista riscos e constrói um mutante por risco.
+3. **Juiz LLM.** Modelos avaliam cada falha candidata olhando teste, trace de execução, diff e intenção inferida.
+4. **RubFake.** Regras determinísticas derrubam falso positivo óbvio. O juiz LLM tem semântica rica, mas é não determinístico; a regra é verificável.
+5. **Humano sobre o loop.** Ninguém revisa cada teste. O engenheiro define critério, acompanha agregado e confirma se a mudança era intencional.
+
+## Os números, com a régua de cada um
+
+O paper está no arXiv desde 30 de janeiro de 2026, submetido ao industry track do FSE 2026. Em 22.126 testes gerados:
+
+- **Intent-aware:** 52 weak catches em 811 testes (6,4%), 7,9% dos diffs.
+- **Dodgy diff:** 41 em 1.621 (2,5%), 4,0% dos diffs.
+- **ACH, o hardening por mutação:** 6 em 754 (0,8%), 1,6%.
+- **TestGen-LLM sem exigir cobertura:** 89 em 4.499 (2,0%), 3,6%.
+- **Coincidência:** 29 em 13.001 (0,2%).
+
+Total: 231 weak catches, cerca de 1% do volume.
+
+Os números que costumam aparecer separados: na implantação inicial, **41 avisos e 8 confirmados** (19,5%), 4 deles falhas graves; em escala, **589 engenheiros** (64% dos contatados) e **60% de verdadeiro positivo**, auto-reportado. Réguas diferentes, que não se somam.
+
+![Impacto dos catching JiTTests na Meta no primeiro semestre de 2026](https://engineering.fb.com/wp-content/uploads/2026/10/Catching-JiTTests-impact.png?w=900)
+
+## O filtro determinístico é a parte copiável
+
+RubFake é uma lista de padrões que não precisa de LLM: falha de índice num container sem os campos de chave mudarem, container esvaziado sem linha mexendo nele, assert de permissão quebrando em código alheio à mudança.
+
+Entram também os casos em que a intenção não combina com a falha: refactor e remoção de código morto deveriam preservar comportamento.
+
+O detalhe honesto: LLM e regra discordam com frequência; o paper mediu concordância apenas modesta. Funcionam como sinal complementar, não voto duplicado.
+
+## Minha Opinião
+
+O que me pega aqui não é o LLM, é a paciência estatística. No começo, **4 de cada 5 avisos eram falso positivo**. 19,5% é número feio, e é o que dá credibilidade ao 60% de depois.
+
+Teste que falha é prova, teste que passa é promessa. Gate baseado em teste executado resolve a camada de confiança que revisão automática não resolve sozinha.
+
+O resultado que ninguém repete: diffs que humanos **aceitaram** tinham mais falso positivo, diffs **rejeitados** tinham mais verdadeiro positivo. Ou o sistema acha bug onde o revisor passou batido, ou tem viés.
+
+Para time pequeno, fica o padrão: mutante do intent, teste que passa no pai e falha no filho, filtro por regra antes de acordar alguém.
+
+## Perguntas frequentes
+
+### Catching test substitui teste unitário?
+Não. Ele ataca o diff e busca regressão severa; a suíte de unidade protege o contrato ao longo do tempo.
+
+### Qual a diferença entre weak catch e bug confirmado?
+Weak catch é um teste que falha na revisão atual e pode ser falso positivo ou defeito no próprio teste. Strong catch também deveria falhar segundo a especificação correta. Só a confirmação humana transforma candidato em bug.
+
+### Dá para usar isso sem a infraestrutura da Meta?
+Dá para copiar o desenho: mutante a partir do intent, teste que passa no pai e falha no filho, filtro determinístico antes do juiz LLM e decisão humana no agregado.
+
+## Fontes
+
+- [Fonte: Engineering at Meta, Catching Bugs Before They Land](https://engineering.fb.com/2026/10/29/security/catching-bugs-before-they-land-jittestings-human-on-the-loop-approach-at-full-scale/)
+- [Fonte: arXiv 2601.22832, Just-in-Time Catching Test Generation at Meta](https://arxiv.org/abs/2601.22832)
+- [Fonte: arXiv 2504.16472, Harden and Catch for Just-in-Time Assured LLM-Based Software Testing](https://arxiv.org/abs/2504.16472)
+- [Fonte: arXiv 2501.12862, Mutation-Guided LLM-based Test Generation at Meta](https://arxiv.org/abs/2501.12862)
+- [Fonte: arXiv 2402.09171, Automated Unit Test Improvement using Large Language Models at Meta](https://arxiv.org/abs/2402.09171)
