@@ -1,0 +1,117 @@
+---
+title: "Code Mode: quando o agente para de pedir ferramenta e escreve código"
+date: "2026-11-18"
+description: "Code Mode troca a chamada de ferramenta em JSON por um programa que chama as ferramentas. O que muda no loop, os números reais e o limite de revisão."
+excerpt: "Em vez de pedir Bash, Read e Edit um por vez, o agente escreve um programa que faz as três chamadas e devolve só o que precisa ler. É o Code Mode — e ele muda onde está o gargalo e onde está o risco."
+author: "Hernando Candido"
+tags: [Agentes de IA, Code Mode, Claude Code, MCP, Engenharia de Contexto, Custos de Inferência, Engenharia de IA]
+sponsored: false
+premium: false
+readingTime: 6
+---
+
+**Resposta curta:** Code Mode é o agente escrevendo um programa que chama as ferramentas, em vez de pedir uma ferramenta por vez em JSON. A Anthropic colocou o modo no Claude Code como recurso experimental e desligado por padrão na v2.1.323; a Cloudflare cunhou o nome em 26 de setembro de 2025.
+
+O ganho não é "menos tokens" no abstrato. É o resultado intermediário deixar de voltar para o contexto do modelo.
+
+![Diagrama do loop do cliente MCP, em que a chamada e o resultado passam pelo modelo entre as operações](https://assets.claude.com/9ecf165020005c09a22a9472cee6309555485619.png)
+
+## O que muda no loop
+
+Sem Code Mode, o modelo emite um token especial de chamada, o harness pausa a geração, executa a ferramenta e devolve o resultado como entrada. O modelo relê tudo para decidir o próximo passo.
+
+Esse "relê tudo" é o custo real. A cada passo, o resultado inteiro atravessa o contexto, mesmo quando o próximo passo só precisava de um número dele.
+
+A Anthropic mede o efeito numa reunião de duas horas: baixar a transcrição do Drive e anexar no Salesforce faz o texto completo passar duas vezes pelo modelo, 50 mil tokens extras.
+
+Com Code Mode, o modelo escreve JavaScript, e o Claude Code executa na própria sessão. O bloco pode rodar comandos em paralelo, alimentar a chamada seguinte com o resultado da anterior e devolver só a parte que o modelo precisa ler.
+
+A doc usa um retry como exemplo: o código acha o arquivo, edita o limite e roda o teste, devolvendo caminho e saída. Três chamadas de ferramenta, uma leitura só.
+
+## A conta, com a régua de cada fornecedor
+
+Os números existem, mas medem coisas diferentes. Somar o que não soma é o erro clássico de resumo de release.
+
+- **Definições de ferramenta:** a Anthropic mediu 58 ferramentas ocupando cerca de 55 mil tokens antes de a conversa começar (GitHub 35 tools ~26K, Slack 11 ~21K, Sentry 5 ~3K, Grafana 5 ~3K, Splunk 2 ~2K).
+- **Execução de código com MCP:** no exemplo em que cada ferramenta vira um arquivo, o consumo caiu de 150.000 para 2.000 tokens, 98,7% de economia (post de 4 de novembro de 2025).
+- **Programmatic Tool Calling na API:** média de 43.588 para 27.297 tokens, 37% menos, em tarefas de pesquisa complexas. Vinte chamadas num bloco eliminam 19 passes de inferência.
+- **O número que a doc atual acrescenta:** em BrowseComp e DeepSearchQA, somar chamada programática melhorou 11% em média, com 24% menos tokens de entrada.
+- **Claude Code Code Mode:** a Anthropic não publica número. Nem de benchmark, nem de economia de tokens.
+
+O último item é o que separa este texto de um repost do anúncio. O modo do CLI não traz número porque a economia depende do formato da tarefa: quem tem muitas chamadas relacionadas economiza muito, e quem faz uma chamada por vez não economiza nada.
+
+## Como ligar no Claude Code
+
+O modo está atrás de uma variável de ambiente: `CLAUDE_CODE_EXPERIMENTAL_CODE_MODE=1`, no shell ou no bloco `env` do `~/.claude/settings.json`. Na primeira sessão o Claude Code pede confirmação e reinicia.
+
+Dois detalhes antes de apertar: o Claude Code ignora essa variável nos settings do projeto, então um repositório clonado não liga o modo para você. E o valor `0` em qualquer lugar vence o `1` em outro.
+
+Os requisitos são estreitos, e é aí que a maior parte dos times descobre que não pode usar:
+
+- **Versão:** v2.1.323 ou posterior; v2.1.326 se usar agent teams.
+- **Superfície:** sessão interativa no terminal, build nativo. Nada de `-p`, Agent SDK, painel do VS Code, app Desktop ou cloud sessions.
+- **Provedor:** conta Claude ou Console. Nada de gateway, Bedrock, Google Cloud Agent Platform, Microsoft Foundry ou Claude Platform on AWS.
+- **Organização:** sem configuração HIPAA e sem retenção zero.
+- **Modelos:** Opus 5.5, Sonnet 5.5, Haiku 5.5 e Fable 5.2.
+
+## Onde o risco muda de lugar
+
+O Code Mode não afrouxa permissão, mas muda a unidade de revisão.
+
+Cada chamada dentro do código continua passando pelas regras de deny e ask e pelos hooks PreToolUse, sob o nome usual da ferramenta, como Bash. O que muda é o que o classificador do auto mode enxerga.
+
+No auto mode, ele revisa cada pedaço de código, não cada chamada. E não vê valores calculados em tempo de execução, como um caminho que veio do resultado de uma busca.
+
+Para quem escreve hook, o efeito é direto: regras de Bash casam com o texto do comando, então um `cd 'app' && git push` pode chegar numa forma que a regra não cobre. Para inspecionar o código, é preciso casar a ferramenta REPL e ler o campo `tool_input.code`.
+
+Quem já viu o buraco entre intenção e comando registrado em permissão de agente reconhece o padrão — foi o mesmo tipo de surpresa que mostrei em [allowlist do Claude Code](/blog/allowlist-do-claude-code-guarda-o-comando-inteiro-1-122-arquivos-vazaram).
+
+## Tempo e sandbox
+
+Se o código roda um build longo, o Claude espera ou continua em background. Esperando, para depois de dez minutos, incluindo o tempo no prompt de permissão. Em background, roda até duas horas, e a sessão precisa ter começado em auto ou bypassPermissions.
+
+A sessão também vira meio caminho sem volta: só retoma com Code Mode ligado, e o modo não convive com Remote Control, Claude in Chrome ou computer use.
+
+Na Cloudflare, o schema do MCP vira uma API TypeScript com doc comments, o agente recebe uma ferramenta só, e o código roda em isolate V8 sem internet, apenas com bindings para os servidores conectados.
+
+Duas consequências: o resultado volta por `console.log`, e a binding já carrega a autorização, então o código gerado não tem chave para vazar. Um isolate por execução, sem container e sem prewarm. Onde esse isolamento fura está em [sandbox para agente de IA](/blog/sandbox-para-agente-de-ia-o-que-o-microvm-isola-e-onde-a-rede-vaza).
+
+## Quando usar e quando não usar
+
+A doc lista onde compensa: mudança que se repete em muitos arquivos, busca cujo resultado precisa ser filtrado antes de o modelo ler, e vários comandos independentes que podem rodar ao mesmo tempo.
+
+E onde atrapalha: uma chamada só, em que o programa vira cerimônia; tarefa em que o passo seguinte depende do julgamento do passo anterior, porque aí o valor está em o modelo reler; e pipeline de CI, onde sem `-p` e sem Agent SDK o ganho fica no terminal do dev.
+
+## Como medir no seu agente
+
+Três medidas resolvem a decisão sem depender de número de fornecedor.
+
+- **Tokens de definição por sessão:** se o schema que entra antes da primeira pergunta passa de 10 mil, o formato de ferramenta está competindo com a tarefa.
+- **Round trips por tarefa:** cada passada custa de centenas de milissegundos a segundos, e dez chamadas que fazem dez passadas têm espaço para cortar.
+- **Erro de seleção de ferramenta:** nome parecido confunde mais que parâmetro errado.
+
+Some uma quarta, de auditoria: quanto do código executado você reconstruiria depois. Sem isso, o ganho de custo vira dívida de revisão.
+
+## O que revisar depois
+
+A mecânica é estável: resultado intermediário voltando para o contexto, código filtrando antes de devolver, custo por round trip. Isso vale para qualquer fornecedor. Mas custo menor não é acerto maior — a separação entre os dois está em [harness de agente de código](/blog/harness-de-agente-de-codigo-trocar-muda-a-conta-nao-o-acerto-e-como-medir).
+
+O que envelhece rápido é a embalagem: nome da variável, versão mínima, superfícies e provedores bloqueados, limites de dez minutos e duas horas. A doc avisa que o recurso pode mudar ou ser removido em qualquer release, então releia os requisitos antes de prometer economia para o time.
+
+## Perguntas frequentes
+
+### Code Mode substitui o function calling?
+Não. O function calling segue sendo o protocolo do modelo; o Code Mode muda o que o harness faz com ele, expondo um ambiente onde o modelo escreve código que chama as ferramentas.
+
+### O Code Mode funciona na API, no CI ou no Bedrock?
+No Claude Code, não: só sessão interativa no terminal, com conta Claude ou Console, sem `-p`, Agent SDK, gateway, Bedrock ou Foundry. Na API existe o equivalente em outra forma, o Programmatic Tool Calling, que roda no container de execução de código.
+
+### O código que o modelo escreve fica registrado?
+Fica, mas escondido por padrão: a conversa mostra as chamadas, e o JavaScript fica numa linha Code colapsada que abre com Ctrl+O. Para auditar por hook, case a ferramenta REPL e leia `tool_input.code`, porque regras de Bash veem só o texto do comando.
+
+## Fontes
+
+- [Fonte: Claude Code Docs — Run tool calls from code with Code Mode](https://docs.claude.com/en/docs/claude-code/code-mode)
+- [Fonte: Anthropic Engineering — Code execution with MCP: building more efficient agents](https://www.anthropic.com/engineering/code-execution-with-mcp)
+- [Fonte: Anthropic Engineering — Introducing advanced tool use on the Claude Developer Platform](https://www.anthropic.com/engineering/advanced-tool-use)
+- [Fonte: Cloudflare Blog — Code Mode: the better way to use MCP](https://blog.cloudflare.com/code-mode/)
