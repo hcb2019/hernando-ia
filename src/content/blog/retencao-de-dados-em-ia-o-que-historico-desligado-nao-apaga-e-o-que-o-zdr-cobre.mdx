@@ -1,0 +1,154 @@
+---
+title: "Retenção de dados em IA: o que histórico desligado não apaga e o que o ZDR cobre"
+date: "2026-11-19"
+description: "Desligar o histórico muda o que você vê, não o que o provedor guarda. Os prazos de Google, OpenAI e Anthropic, o que o ZDR cobre e como checar no seu stack."
+excerpt: "Chat com histórico desligado fica cerca de dois meses na conta do Gemini, e conversa revisada por humano fica até três anos. Na API, o ZDR depende de aprovação e vale por endpoint. O mapa completo da retenção em IA."
+author: "Hernando Candido"
+tags: [Privacidade de Dados, LGPD, Retenção de Dados, Zero Data Retention, APIs de IA, Governança de IA, Engenharia de IA]
+sponsored: false
+premium: false
+readingTime: 8
+---
+
+**Resposta curta:** desligar o histórico **não** quer dizer que a conversa não foi guardada. No app Gemini, chat temporário e chat com histórico desligado ficam **cerca de dois meses** na sua conta, e conversa revisada por humano fica **até três anos**. Na API, *zero data retention* não é uma qualidade do fornecedor: é um ajuste aprovado por contrato, que vale por **organização** e por **endpoint** — e tem endpoint que continua guardando estado mesmo com ele ligado.
+
+![Imagem de divulgação do Google para os threads temporários do AI Mode no Search](https://storage.googleapis.com/gweb-uniblog-publish-prod/images/AIM_Temporary_Thread_Stills_2784x1566_1.max-1440x810.png)
+
+Tem duas conversas diferentes acontecendo nesta semana, e elas parecem se contradizer.
+
+Uma é sobre memória: o Google anunciou em **17 de novembro** os threads temporários no AI Mode. A outra é sobre guarda: a central de privacidade dos apps Gemini hoje diz que chat temporário e chat com histórico desligado ficam **cerca de dois meses** na conta.
+
+Mesma empresa, mesma semana, direções opostas. Não é contradição — é que uma fala do que volta pra você e a outra fala do que fica no servidor.
+
+## O que mudou nesta semana
+
+**17/11 — AI Mode ganhou modo temporário.** O post oficial diz que a sessão fica "completamente destacada da sua conta": as respostas não são informadas por preferências anteriores, não afetam a personalização futura e não vão para o histórico. Ao fechar o thread, ele desaparece. Já está rolando globalmente em desktop e mobile.
+
+**A mesma semana — a retenção do Gemini subiu.** A central de privacidade dos apps Gemini descreve hoje a retenção de chat temporário e de chat com histórico desligado como "cerca de dois meses", guardados com a sua conta. A versão de **12/11** da mesma central, recuperada em arquivo pela imprensa, falava em **72 horas**.
+
+**O detalhe que ninguém separa:** o post do AI Mode não publica prazo de retenção do lado do servidor. Ele diz que a sessão é destacada da conta e que o thread some da interface. Prazo de guarda e desaparecimento da tela são coisas distintas, e o Google só afirma a segunda nesse documento.
+
+## Histórico e retenção são duas camadas
+
+**Histórico** é a camada de memória. É o que faz o produto lembrar de você, personalizar resposta e aparecer na sua lista de conversas.
+
+**Retenção** é a camada de registro. É o que fica guardado para te responder, proteger a plataforma e atender pedido legal ou de segurança.
+
+No Gemini, o histórico tem auto-exclusão padrão de **18 meses**, ajustável para **3 meses**, **36 meses** ou indefinido. Isso controla a camada de memória. A retenção não muda com esse ajuste.
+
+A central de privacidade é explícita: "mesmo com o Gemini History desligado, conversas futuras ainda serão salvas por cerca de 2 meses" — para responder a você, processar feedback e proteger o Google, seus usuários e o público, com apoio de revisores humanos.
+
+Ou seja: desligar o histórico tira a conversa da sua vista. Não tira do lado deles.
+
+## Quem apaga o histórico não apaga o dado revisado
+
+A parte que costuma pegar as pessoas de surpresa: **conversas revisadas por humanos não são apagadas quando você apaga o histórico**. Elas ficam por **até três anos**.
+
+O mesmo vale para feedback: o conteúdo revisado e os dados associados ficam até três anos, desconectados da sua conta Google.
+
+E tem mais duas frases no mesmo documento que derrubam a intuição de "apaguei, acabou":
+
+- Apagar o histórico do Gemini **não** apaga dados guardados em outros serviços do Google, como Search Services History, Web & App Activity ou Timeline.
+- As configurações do Gemini **não** controlam o processamento das conversas para gerar dados anonimizados que melhoram os serviços.
+
+Nada disso é ilegal nem escondido. Está tudo escrito. O problema é que "modo privado" virou um botão de interface, e as pessoas leem esse botão como se fosse uma política.
+
+## ZDR é por endpoint, por organização e por contrato
+
+Aqui a conversa muda de consumidor para engenheiro, e fica mais interessante.
+
+**Na Anthropic**, *zero data retention* significa que os prompts e as respostas não são guardados em repouso depois que a resposta da API volta. Mas o próprio documento lista as condições:
+
+- O ZDR é habilitado **por organização**. Cada nova organização precisa de habilitação separada, e a habilitação não se estende automaticamente para outras organizações da mesma conta.
+- Cobre as APIs de Messages e Token Counting **para os recursos elegíveis**. Recurso marcado como não elegível na tabela — execução de código é o exemplo que o documento dá — fica de fora, mesmo chamando o mesmo endpoint `/v1/messages`.
+- Alguns modelos exigem **30 dias** de retenção e não estão disponíveis sob ZDR sem autorização expressa. A lista inclui Claude Fable 5.2, Mythos 5.2, Fable 5.1, Mythos 5.1, Fable 5 e Mythos 5.
+- Organização com ZDR **não pode chamar a API direto do navegador**: a API rejeita as requisições cross-origin. Precisa passar pelo seu backend.
+- Ficam fora: o Console (inclusive playground), os Managed Agents (as transcrições persistem até você apagar), os planos de consumidor, as interfaces de Teams e Enterprise, o Claude for Excel e integrações de terceiros.
+- E o detalhe que mais escapa: transcrições locais de sessão, geradas por ferramentas como Claude Code, ficam **6 anos por padrão**, ou pelo período de retenção configurado na sua organização.
+
+**Na OpenAI**, o padrão é log de monitoramento de abuso por **até 30 dias**, com prazo maior se a lei exigir ou se for necessário proteger o serviço. Sair disso é por aprovação prévia, em dois níveis: Zero Data Retention ou Modified Abuse Monitoring, escolhidos na organização ou no projeto — e o projeto pode ser marcado como "None", herdando nada.
+
+Com ZDR ligado, o parâmetro `store` de `/v1/responses` e `/v1/chat/completions` passa a ser tratado como `false` mesmo que a requisição peça `true`. E o documento avisa: endpoints marcados como não elegíveis **ainda podem guardar estado de aplicação** com o ZDR ativo.
+
+O mesmo documento reserva explicitamente o direito de tornar modelos inelegíveis ao ZDR para clientes específicos, com aviso por escrito. É o caso do **Private Retention com Private Safety Processing** — conteúdo em log criptografado, fora da revisão humana salvo exigência legal — e do **Safety Retention**, para conteúdo sinalizado por classificador.
+
+Traduzindo: "usamos um fornecedor com zero retenção" é uma frase incompleta. A frase inteira nomeia o endpoint, o modelo e o que está fora da cobertura.
+
+## Onde o dado continua mesmo com ZDR ligado
+
+Cinco lugares, em ordem de frequência com que aparecem em auditoria:
+
+- **Log de abuso.** Padrão de 30 dias na OpenAI; cerca de dois meses no app Gemini. É o registro mínimo que a plataforma mantém para se defender.
+- **Estado de aplicação.** Endpoint marcado como não elegível continua guardando o que precisa para funcionar: arquivo enviado, índice vetorial, lote, execução de código.
+- **Revisão humana.** Até três anos nas conversas revisadas do Gemini, e não some com a exclusão do histórico.
+- **Transcrição local do agente.** Seis anos por padrão nas sessões locais do Claude Code. Mora na sua máquina, não na política da API — e é o item que ninguém coloca no diagrama.
+- **Outros serviços.** Apagar no chat não apaga o que já foi para outra superfície do mesmo provedor.
+
+## O que a LGPD pede, na prática
+
+A lei brasileira não fala em "modo privado". Ela fala em finalidade e em término.
+
+O **art. 15** lista quando o tratamento termina: finalidade alcançada, fim do período, pedido do titular ou determinação da ANPD. O **art. 16** manda eliminar depois do término, com quatro exceções taxativas — obrigação legal ou regulatória, estudo por órgão de pesquisa, transferência a terceiro e uso exclusivo do controlador com dados anonimizados.
+
+O **art. 18** dá ao titular o direito de pedir eliminação de dados desnecessários, excessivos ou tratados em desconformidade, e de eliminar o que foi tratado com consentimento, ressalvadas as hipóteses do art. 16. O **art. 19** dá 15 dias para responder acesso ou confirmação.
+
+E dois artigos que transformam retenção em documento: o **art. 37** exige registro das operações de tratamento, e o **art. 46** exige medidas de segurança desde a concepção do produto.
+
+Na prática, o prazo de retenção do fornecedor é uma linha do seu registro, com data. "Indefinido" não é resposta aceitável quando existe finalidade declarada.
+
+Uma ressalva honesta: ZDR **não** é exigência da LGPD. É um dos meios de cumprir necessidade e finalidade. Contratar ZDR e continuar mandando dado sensível sem base legal não resolve nada. E isto aqui não é parecer jurídico — é o mapa técnico que o jurídico vai precisar.
+
+## O teste de 15 minutos no seu stack
+
+1. **Liste os endpoints que você chama** e marque, na tabela do fornecedor, quais são inelegíveis para ZDR.
+2. **Confira o nível da configuração.** Organização e projeto são ajustes distintos; projeto em "None" não herda a proteção da organização.
+3. **Verifique o efeito real de `store`.** Sob ZDR ele é forçado a `false` — se o seu código depende de guardar resposta, ele vai falhar silenciosamente.
+4. **Olhe as transcrições locais do agente.** Claude Code fica com 6 anos por padrão e não aparece na política da API.
+5. **Separe uso corporativo de uso pessoal.** ZDR não cobre plano de consumidor nem Console; um funcionário colando dado de cliente no chat pessoal fura o contrato inteiro.
+6. **Escreva o número no registro do art. 37**, com a data em que você conferiu e o link da página consultada.
+
+Se você quer o contexto de governança mais amplo, vale ver como o dado que não pode sair do lugar muda a arquitetura em [aprendizado federado](/blog/aprendizado-federado-como-treinar-ia-quando-o-dado-nao-pode-sair-do-lugar). E o mesmo raciocínio de credencial vale para [LLMJacking](/blog/llmjacking-o-alvo-e-o-token-do-modelo-nao-o-seu-dado), onde o alvo é o token, não o conteúdo.
+
+## Minha Opinião
+
+Botão de privacidade é interface. Retenção é contrato. A indústria passou anos ensinando o usuário a procurar o botão, e o botão nunca respondeu a pergunta que importa.
+
+Eu acho que o modo temporário é útil e honesto no que promete: ele resolve memória. Só que ele é lido como se resolvesse guarda, e a diferença entre as duas coisas é de meses ou de anos.
+
+Do lado de engenharia, a frase "usamos ZDR" virou senha de reunião. Quando eu pergunto quais endpoints estão cobertos, quase sempre vem silêncio. O documento do fornecedor está a um clique, com a tabela pronta.
+
+O detalhe mais duro é o das transcrições locais: seis anos por padrão, no disco do desenvolvedor, fora de qualquer promessa de nuvem. O log do agente sobrevive à política da API. Quem monta o inventário de dados olhando só para o provedor esquece justamente o arquivo que está na mesa ao lado.
+
+## O que revisar depois
+
+**Estável:** a separação entre histórico e retenção; a elegibilidade por endpoint e por organização; os deveres dos arts. 15, 16, 18 e 37 da LGPD. Isso não muda com release.
+
+**Atualizável:** os prazos. O Google mudou de 72 horas para cerca de dois meses em novembro de 2026, o que prova que o número anda. As tabelas de elegibilidade mudam a cada modelo novo, e a lista de modelos com retenção obrigatória de 30 dias na Anthropic é o tipo de item que envelhece em um trimestre.
+
+Regra prática: revise este artigo sempre que um fornecedor publicar modelo novo ou atualizar a página de retenção. Guarde a data da sua última conferência — ela vale mais que o número.
+
+## Perguntas frequentes
+
+### Desligar o histórico do Gemini apaga as conversas?
+Não. A central de privacidade diz que, com o histórico desligado, conversas futuras ainda são salvas por cerca de dois meses na conta, para responder ao usuário, processar feedback e proteger a plataforma. Isso tira a conversa da sua memória e da personalização, não do registro do provedor.
+
+### O que é zero data retention?
+É um arranjo contratual em que o provedor não guarda prompts e respostas em repouso depois de devolver a resposta da API. Vale por organização, cobre apenas endpoints e recursos elegíveis e não inclui console, planos de consumidor nem modelos com retenção obrigatória.
+
+### ZDR vale para quem usa o chat no plano pessoal?
+Não. Na Anthropic, o ZDR cobre a API e o Claude Code com chaves de organização comercial; planos Free, Pro, Max e Ultra ficam fora, assim como as interfaces de Teams e Enterprise. Na OpenAI, os controles de retenção são da organização da API, com aprovação prévia.
+
+### Quanto tempo o Google guarda uma conversa revisada por humano?
+Até três anos. A central de privacidade afirma que conversas revisadas não são apagadas quando o usuário apaga o histórico, e que o conteúdo revisado com o feedback fica até três anos, desconectado da conta.
+
+### A LGPD obriga a contratar ZDR?
+Não. A lei exige finalidade, necessidade e eliminação depois do término do tratamento. O ZDR é um meio técnico de reduzir retenção, não uma obrigação legal — e não substitui base legal nem inventário de dados.
+
+## Fontes
+
+- [Fonte: Google — Temporary threads are now available in AI Mode in Search](https://blog.google/products-and-platforms/products/search/temporary-threads-ai-mode/)
+- [Fonte: Google — Gemini Apps Privacy Hub](https://support.google.com/gemini/answer/13594961)
+- [Fonte: Google — How Google retains data we collect](https://policies.google.com/technologies/retention)
+- [Fonte: OpenAI — Data controls in the OpenAI platform](https://platform.openai.com/docs/guides/your-data)
+- [Fonte: Anthropic — API and data retention](https://docs.claude.com/en/docs/build-with-claude/zero-data-retention)
+- [Fonte: Planalto — Lei 13.709/2018, Lei Geral de Proteção de Dados](https://www.planalto.gov.br/ccivil_03/_ato2015-2018/2018/lei/L13709compilado.htm)
