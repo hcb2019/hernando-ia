@@ -1,0 +1,116 @@
+---
+title: "Tool retrieval: schemas de ferramenta sob demanda e a conta que pode crescer"
+date: "2026-11-20"
+description: "O Tool Retrieval do Gemini carrega schema de ferramenta sob demanda. O mecanismo, os ~26 tokens por ferramenta adiada e o caso em que a conta sobe."
+excerpt: "Carregar schema sob demanda corta milhares de tokens por request — mas o custo da busca pode passar a economia. Veja a conta, o modo cliente e os erros que só aparecem na segunda chamada."
+author: "Hernando Candido"
+tags: [Agentes de IA, Tool Retrieval, Gemini API, MCP, Engenharia de Contexto, Custos de Inferência]
+sponsored: false
+premium: false
+readingTime: 7
+---
+
+**Resposta curta:** tool retrieval é carregar o schema de uma ferramenta só quando o modelo precisa dela. O catálogo continua visível por nome e descrição, e o schema completo entra no contexto no momento do uso.
+
+O Google colocou o recurso em preview no Gemini, na Interactions API, em 19 de novembro de 2026. A ideia é simples. O detalhe não é: quem paga a conta deixa de ser o catálogo e passa a ser a busca.
+
+![Ilustração de capa do Google para o anúncio do Tool Retrieval, com o brilho do Gemini sobre fundo espacial](https://storage.googleapis.com/gweb-uniblog-publish-prod/images/Tool_retrieval_hero.width-1600.format-webp.webp)
+
+## O que muda no prompt
+
+Hoje cada ferramenta manda três coisas em todo request: nome, descrição e schema de parâmetros. Com retrieval, nome e descrição ficam e o schema sai.
+
+Você liga adicionando `tool_search` ao array de tools e marcando `defer_loading: true` nas ferramentas que quer adiar. Num item `mcp_server`, a flag adia todas as ferramentas que aquele servidor expõe.
+
+Quando o modelo precisa de uma, emite `tool_search_call`. A API resolve e devolve `tool_search_result`. O modelo então emite o `function_call`. No modo servidor, tudo dentro do mesmo request.
+
+Não é uma segunda chamada e não é um índice que você hospeda. Quem busca é o Gemini.
+
+Só que isso vale apenas na Interactions API, com a versão `v1beta`. O `generateContent` não suporta o recurso, e a documentação avisa que o surface pode mudar antes da disponibilidade geral.
+
+É outra camada do mesmo problema que o [Code Mode](/blog/code-mode-quando-o-agente-para-de-pedir-ferramenta-e-escreve-codigo) ataca pelo lado do resultado: lá o que não volta é o retorno da ferramenta, aqui é o schema dela.
+
+## O custo que o sob demanda esconde
+
+A cobrança tem três linhas.
+
+- **Uma linha por ferramenta adiada.** Nome mais `short_description`, ou a primeira frase da descrição. Em testes iniciais do Google, cerca de **26 tokens por ferramenta**. Duzentas ferramentas davam uns 5.200 tokens só de lista.
+- **A busca.** Uma busca server-side roda outra chamada de modelo com o contexto completo mais os schemas carregados. Custa mais ou menos o prompt do request de novo, menos os tokens cacheados. Duas buscas no mesmo turno são duas passadas.
+- **O schema carregado.** Depois que entra, fica. É cobrado como entrada em toda chamada e todo turno seguintes, igual a uma ferramenta declarada de início.
+
+O exemplo da própria documentação deixa o sinal da conta claro. Os números são redondos e ilustrativos, não medições.
+
+- **200 ferramentas de 400 tokens**, conversa de 2.000 tokens, 2 requests: 164.000 tokens estático contra cerca de 23.650 com retrieval.
+- **10 ferramentas de 400 tokens**, contexto de 30.000 tokens: 68.000 estático contra cerca de 92.830 com retrieval.
+
+Mesmo recurso, sinal invertido. No segundo caso você economizou 4.000 tokens de schema por request e pagou cerca de 31.000 na passada da busca.
+
+A regra fica assim: retrieval compensa quando o schema que você deixou de mandar é maior que o custo das buscas do turno. Com contexto grande e busca em quase todo turno, ele vira imposto.
+
+## Servidor ou cliente: quem faz a busca
+
+- **Server-side, o padrão.** O Gemini busca dentro das ferramentas que você declarou. Nenhum código de busca, nenhum round trip extra, funciona com servidores MCP. Encaixa em biblioteca grande e fixa.
+- **Client-side.** Você declara `tool_search` com `execution: "client"`, um `name`, uma `description` e seus próprios parâmetros. A busca, o ranking e o filtro são do seu app, que devolve as declarações. Custa um round trip por busca. Encaixa em registro proprietário, namespace por serviço e conjunto de ferramentas por usuário.
+
+O modo cliente também permite ferramenta que aparece no meio da conversa, quando o usuário conecta uma integração nova. Os schemas viajam no resultado, não no array inicial.
+
+Abaixo de mais ou menos 20 ferramentas estáveis, a documentação não recomenda mexer: o carregamento estático continua ganhando.
+
+## Os modos de falha que só aparecem na segunda chamada
+
+1. **Miss silencioso.** Busca que não encontra nada devolve texto, não erro estruturado de retrieval. Seu código não vê o buraco; vê o modelo respondendo sem a ferramenta.
+2. **Ferramenta citada por nome.** Se o nome aparece na instrução de sistema ou na saída de outra ferramenta, não adie essa. O modelo chama sem buscar e o request seguinte estoura com `Server side tool call context must be circulated`. A primeira chamada passa, a segunda falha.
+3. **Não tem descarregamento.** Ferramenta carregada fica no contexto até o fim da conversa. Não existe unload.
+4. **O array de tools vai inteiro em todo request.** A API não carrega a declaração de um request para o outro, nem com `previous_interaction_id`. Omita e o modelo só conhece o que já chamou.
+5. **Schema vazio.** Ferramenta adiada precisa levar o `parameters` completo. Declaração só com nome e descrição volta da busca com schema vazio, e o modelo não consegue chamar.
+
+Tem ainda a armadilha do cache. Adiar ferramenta encolhe o prompt. Se ele só passava do tamanho mínimo cacheável por causa dos schemas, agora fica abaixo — e você perde o prefixo cacheado. O [cache do agente](/blog/cache-engineering-o-que-apagar-do-kv-cache-do-agente-e-o-que-nunca-cortar) tem o mesmo tipo de fronteira.
+
+## Como medir sem se enganar
+
+Três campos de `usage` respondem a pergunta: `total_input_tokens`, o prompt da primeira chamada; `total_tool_use_tokens`, as chamadas extras dentro do mesmo request, incluindo cada busca; e `total_cached_tokens`, a parte servida pelo cache implícito.
+
+Compare a soma contra a linha de base estática no seu tráfego, não no exemplo de ninguém.
+
+E olhe os `steps`, não o `status`: uma resposta pode trazer `function_call` mesmo quando o status não é `requires_action`.
+
+A métrica que decide, porém, não é token. É taxa de acerto na chamada de ferramenta. Retrieval corta a fatura e pode derrubar justamente a ferramenta que o agente precisava, sem avisar.
+
+## Minha Opinião
+
+Eu acho que o valor disso não está no catálogo de quinze ferramentas que o agente usa todo dia. Está no rabo longo: os cinco servidores MCP que ninguém desliga e somam duzentas ferramentas.
+
+Para time pequeno, isso é decisão de arquitetura, não de desconto. Se você escolhe o modo cliente por causa de permissão, comprou segurança e pagou latência. É escolha certa, não erro de conta.
+
+O que me incomoda é o modo de falha. Miss devolve texto. Não tem exceção, não tem resultado vazio para tratar. Quem só olha a fatura vai achar que ganhou.
+
+Deixa carregado o que é quente, adia o que é raro, e põe um eval de chamada de ferramenta no CI antes de mudar o default do time.
+
+## Takeaways
+
+- **A conta é (schema que você deixou de mandar) menos (buscas vezes tamanho do prompt).** Contexto grande com busca em quase todo turno deixa essa conta negativa.
+- **26 tokens por ferramenta adiada é o preço mínimo; a busca é o preço real.** No exemplo da documentação, o mesmo recurso vai de quase 7 vezes mais barato a cerca de 36% mais caro.
+- **Miss de retrieval não levanta erro.** Só eval de acerto de chamada pega esse buraco.
+
+## O que é estável e o que deve mudar
+
+**Estável:** o que fica no contexto por padrão, o custo de uma busca como passada extra sobre o prompt, a estabilidade do prefixo cacheado e o fato de que filtro de permissão mora no lado cliente.
+
+**Atualizável:** os nomes de campo, a lista de modelos habilitados e a estimativa de 26 tokens. O post fala em Gemini 3.6 e posteriores, incluindo todos os Gemini 4; a página de referência lista quatro IDs (4-hydrogen, 4-argon, 3.8-flash e 3.6-flash) e avisa que o surface da API pode mudar antes da disponibilidade geral.
+
+## Perguntas frequentes
+
+### Tool retrieval substitui o function calling?
+Não. O loop é o mesmo: o modelo emite a chamada e você executa. O que muda é onde o schema está antes da chamada — fora do contexto até a busca.
+### Precisa de índice vetorial?
+No modo servidor, não. Não há índice para construir nem hospedar. No modo cliente, sim: busca e ranking são seus, e é por isso que namespace e permissão por usuário encaixam ali.
+### Funciona com servidor MCP remoto?
+Funciona. `defer_loading: true` num item `mcp_server` adia todas as ferramentas que aquele servidor expõe.
+### Por que minha conta subiu depois de ativar?
+Provavelmente porque quase todo turno buscou dentro de um contexto grande. Compare `total_tool_use_tokens` com `total_input_tokens` e conte as buscas por turno.
+
+## Fontes
+
+- [Fonte: Google — Introducing Tool Retrieval in the Gemini API](https://blog.google/innovation-and-ai/technology/developers-tools/gemini-api-tool-retrieval/)
+- [Fonte: Gemini API — Tool retrieval, documentação de referência](https://aistudio.google.com/docs/tool-retrieval)
+- [Fonte: Gemini API — Remote MCP servers](https://ai.google.dev/gemini-api/docs/function-calling#mcp)
