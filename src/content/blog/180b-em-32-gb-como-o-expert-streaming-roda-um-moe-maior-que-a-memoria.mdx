@@ -1,0 +1,102 @@
+---
+title: "180B em 32 GB: como o expert streaming roda um MoE maior que a memória"
+date: "2026-11-21"
+description: "Um MoE de 180B rodando em 32 GB de RAM: o que o expert streaming move por token, o que cada engine faz e onde o ganho real aparece."
+author: "Hernando Candido"
+tags: [MoE, Expert Streaming, Inferência Local, Transformers, vLLM, llama.cpp, Apple Silicon, Quantização, Engenharia de IA]
+sponsored: false
+premium: false
+---
+
+**Resposta curta:** um MoE de **180B** não precisa caber inteiro na memória. Se só os experts quentes ficam na GPU e o resto é **streamado do SSD**, o roteador decide o que ler em cada camada — e o modelo roda. Tarek Ziadé fez isso no Transformers e chegou a **13,9 tok/s num Mac M5 com 32 GB**: **6% atrás** do Strata, engine feito exatamente para essa inferência.
+
+O que separa a demonstração de um tutorial: ele mediu **quatro engines** no mesmo hardware, publicou as flags e escreveu o que ninguém gosta — **14 tok/s é pouco para agente de código**.
+
+## O modelo, em números que decidem a conta
+
+O alvo é o Qwen3.8-Flash-Next, e o card oficial separa o que o título junta:
+
+- **Parâmetros:** 125B com **6B ativados**, mais **51B** da tabela n-gram e **4B** de MTP — os 180B são a soma.
+- **Arquitetura:** 48 camadas, **512 experts** cada, **10 roteados + 1 compartilhado** por token.
+- **Experts:** 90%+ dos pesos, **121 GB em FP8** na conta do post.
+
+**Parâmetros totais e compute por token são coisas diferentes** — é essa distância que torna o streaming viável. Por API você paga o ativo; na sua máquina, precisa dos 180B disponíveis de algum jeito.
+
+![Router escolhe 10 de 512 experts por camada, 8 já estão no cache e 2 são lidos do SSD](https://huggingface.co/datasets/huggingface/documentation-images/resolve/main/blog/moe-expert-streaming/expert-streaming.svg)
+
+*Figura: uma camada, um token. Quem não está no cache vira leitura de disco.*
+
+## O que cada engine faz
+
+Três perguntas separam solução boa de ruim: **onde os experts vivem** (VRAM, RAM ou disco), **onde roda o matmul** (na CPU só ativações cruzam o PCIe; na GPU são os **pesos**) e **o que se move por token**.
+
+- **llama.cpp:** mapeia o GGUF e põe os experts na CPU (`--cpu-moe`, `--n-cpu-moe N`, `-ot "exps=CPU"` ou `--fit on`). Como são **calculados** na CPU, só ativações cruzam o PCIe — ótimo quando cabem na RAM; quando não, o page cache thrasha. O cache na GPU (`--moe-cache-mib`) fragmenta o grafo (2 splits por token viram 50) e perde ~10% mesmo com tudo cabendo.
+- **vLLM:** `--cpu-offload-gb N` fixa N GB em RAM e os kernels leem dali. Nada é cacheado — expert quente cruza o PCIe a cada token, e não há camada de disco. O default inclui as densas, lidas em todo token; `--cpu-offload-params experts` limita aos experts.
+- **Transformers + Accelerate:** `device_map="auto"` copia módulo por módulo antes do forward. Num MoE o módulo é o **banco inteiro da camada**: todo token copia todos os experts para usar 8 ou 10. No Mac, CPU e GPU dividem a memória — "offload para CPU" não libera nada.
+
+## A medição que separa promessa de número
+
+Qwen3.6-35B-A3B, uma A10G de 24 GB, decodificação em tok/s:
+
+- **Strata, Q8_0:** 82 a 88
+- **llama.cpp, Q8_0, `--fit on`:** 63 a 64
+- **llama.cpp, BF16, `--fit on`:** 35 a 36
+- **vLLM, FP8, `--cpu-offload-params experts`:** 20,1
+- **vLLM, FP8, experts + `--enforce-eager`:** 14,7
+- **vLLM, FP8, default (com densas):** 9,7
+- **vLLM, BF16, experts:** 7,3 — **vLLM, BF16, default:** 3,3
+- **Transformers + Accelerate:** 0,16
+
+Offload só dos experts **dobra** o vLLM: 9,7 para 20,1 em FP8, 3,3 para 7,3 em BF16. Não é o volume offloadado, é o que você deixa de mover por token. O Accelerate fez 0,16 tok/s contra 82 a 88 do Strata — e o problema não era o disco.
+
+## Por que o laço em Python perde 3,4x
+
+Primeiro no OLMoE-1B-7B, que cabe na memória: experts no disco, cache LRU e um laço rodando **um expert por vez**. Com tudo em cache, 10,1 tok/s contra ~32 do vanilla. O I/O não era o gargalo; o laço era.
+
+O vanilla usa `grouped_mm`, que roda todos os experts de uma camada **num único kernel**. A correção foi transformar o cache num **pool de slots**: um tensor pré-alocado compartilhado por todas as camadas, mais uma tabela de id de expert para slot. Remapeados, os ids viram um banco comum e o `grouped_mm` roda sem alteração — sem matmul customizado. **34,6 contra 38,1 tok/s.**
+
+## O resultado no Mac de 32 GB
+
+A conversão tem três caminhos: experts em **3 bits** (49 GB no disco, 12 GiB de cache), densas em 8 bits (~5,4 GB, +0,2% de perplexidade) e a tabela n-gram lida linha a linha do disco. O card do repositório traz outros tamanhos (9,2 GB de densas em BF16, 48 GB de n-gram em FP8): precisões e etapas diferentes, é ordem de grandeza.
+
+Depois de carregar, **~18 GiB**; com prompt de 6K, **25,4 GiB** de pico: feche o navegador ou o macOS faz swap.
+
+- **Decodificação, 200 tokens:** 13,9 contra 14,8 do Strata (1,06x)
+- **Prefill, 4K:** 228 contra 220 — o Transformers passou na frente
+- **Depois de documento de 6K:** 12,4 contra 13,7 (1,1x)
+
+O que sobra é **round trip de host: ~10 ms por token**, dos quais ~1 ms é acordar da sincronização. O Strata enfileira o token inteiro e a GPU espera num evento do Metal por camada — o PyTorch não expõe isso.
+
+## O que isso não resolve
+
+O `experts_offload` entrou como opção do `from_pretrained` no PR 50717, e a API ainda está em discussão. O `vllm-metal` não roda esse modelo em 32 GB porque só streama experts: as tabelas n-gram ficam inteiras em memória. E nenhuma política de cache bateu o LRU por muito — o que ajudou foram ajustes pequenos, como commit de GPU a cada bloco (+10%) e pesos GGUF do Strata (densas de 5,4 para 3,9 GB por token).
+
+## Minha opinião
+
+Esse post vale pelo método, não pelo resultado. Todo mundo olha "180B" e pensa em H100; o autor pergunta **quantos bytes atravessam o barramento por token**. Essa conta derruba qualquer arquitetura — e é a que você deveria fazer antes de comprar GPU para servir modelo esparso.
+
+Duas regras. **Se os experts cabem na RAM, o llama.cpp ganha** e o disco sai da conversa. **Streaming de SSD é modo sobrevivência, não produção**: 14 tok/s estuda a arquitetura, não sustenta um agente que faz 50 chamadas por tarefa.
+
+E o salto de 3,4x não veio de kernel mágico, veio de **manter o `grouped_mm`**. Reaproveitar a primitiva que já existe separa um experimento que ensina de um fork esquecido.
+
+## FAQ
+
+### Dá para rodar um MoE de 180B numa GPU de 24 GB?
+Sim: mantenha só os experts quentes em VRAM e streame o resto da RAM ou do SSD. O post rodou um MoE de 35B numa A10G de 24 GB e chegou a 82 a 88 tok/s com o Strata. O limite vira a banda do disco, não a VRAM.
+
+### Expert streaming serve para agente de código?
+Hoje, não. O autor mediu 13,9 tok/s no Mac e disse que é insuficiente para o jeito dele trabalhar. Um agente faz dezenas de chamadas por tarefa, e cada token custa cerca de 10 ms de round trip de host.
+
+## O que revisar depois
+
+**Estável:** as três perguntas de decisão, total versus ativo, por que o `grouped_mm` exige banco contíguo e a conta de bytes por expert. **Atualizável:** os tok/s (dependem da versão do Strata, do Transformers e dos kernels), as flags do vLLM e do llama.cpp, o status do PR 50717 e os tamanhos no repositório de conversão.
+
+Se o seu MoE cabe na memória, comece pelo [que são modelos esparsos e por que 78B cabem em 1 GPU](/blog/mixture-of-experts-o-que-sao-modelos-esparsos-e-por-que-78b-cabem-em-1-gpu) e decida a precisão em [4-bit, 8-bit, GPTQ e AWQ](/blog/quantizacao-de-llm-como-escolher-4-bit-8-bit-gptq-e-awq).
+
+## Fontes
+
+- [Fonte: Hugging Face Blog — 180B Parameters, 32GB of RAM: Pushing MoE Inference to the Limit with Transformers](https://huggingface.co/blog/moe-expert-streaming)
+- [Fonte: Hugging Face — card oficial do Qwen3.8-Flash-Next](https://huggingface.co/Qwen/Qwen3.8-Flash-Next)
+- [Fonte: Hugging Face — repositório de conversão para expert streaming](https://huggingface.co/tarekziade/Qwen3.8-Flash-Next-expert-streaming)
+- [Fonte: GitHub — transformers PR 50717 (opção experts_offload)](https://github.com/huggingface/transformers/pull/50717)
+- [Fonte: Hugging Face Spaces — benchmarks e detalhes do experimento](https://huggingface.co/spaces/tarekziade/moe-expert-streaming)
