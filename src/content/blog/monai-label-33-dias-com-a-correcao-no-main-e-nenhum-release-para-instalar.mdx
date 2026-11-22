@@ -1,0 +1,124 @@
+---
+title: "MONAI Label: 33 dias com a correção no main e nenhum release para instalar"
+date: "2026-11-22"
+description: "CVE-2026-133968: o MONAI Label passou 33 dias com a correção no main e sem release instalável. O que mudou no 0.8.6 e como checar o seu servidor."
+excerpt: "A correção do path traversal crítico do MONAI Label entrou no main em 19 de outubro e só virou wheel em 22 de novembro. O que fazer se você roda 0.8.5."
+author: "Hernando Candido"
+tags: [Segurança, CVE, MONAI Label, Path Traversal, Open Source, Python, Patch Management, Engenharia de IA]
+readingTime: 7
+sponsored: false
+premium: false
+---
+
+**Resposta curta:** o **MONAI Label** passou **33 dias** com a correção de um path traversal crítico dentro do `main` e **nenhum release instalável**. A falha virou o **CVE-2026-133968**, com **CVSS 3.1 de 9,8**.
+
+O fix foi mesclado no PR #1915 em **19 de outubro de 2026**; a wheel só chegou ao PyPI em **22 de novembro, 01:27 UTC**. Se você instala por `pip` ou pela imagem Docker, nesse intervalo não existia nada para instalar.
+
+O caso não é sobre um projeto descuidado. É sobre três coisas que costumam ser tratadas como uma só: **correção mesclada, correção publicada e correção instalada**.
+
+## A linha do tempo, com as datas que importam
+
+Segundo a Amazon, agentes de IA dos atacantes acharam e exploraram essa falha em **cerca de 11 minutos**, com um único objetivo dado pelo operador: obter shell no servidor. A campanha durou por volta de **48 horas a partir de 8 de setembro de 2026**, contra universidades no Leste Asiático fora da China continental.
+
+A empresa diz avaliar "nexo com a China" com confiança moderada. Chegou ao servidor Cairn do operador em **10 de setembro**, rodando sem autenticação, e leu os prompts usados para dirigir os agentes.
+
+Os marcos do lado do projeto:
+
+- **12 de outubro:** PR #1915 aberto, com testes novos de confinamento de caminho.
+- **19 de outubro, 13:37 UTC:** PR #1915 mesclado no `main`.
+- **18 de novembro, 15:45 UTC:** advisory crítico publicado no GitHub, com a frase "será incluído no próximo release".
+- **20 de novembro, 18:31 UTC:** CVE-2026-133968 publicado, com **9,8 no CVSS 3.1** — a nota é do registro do CVE; o advisory do GitHub não publica nota nenhuma.
+- **21 de novembro, 22:56 UTC:** PR #1942 aberto, fechando um segundo caminho de escrita.
+- **22 de novembro, 00:29 UTC:** #1942 mesclado.
+- **22 de novembro, 01:27 UTC:** wheel 0.8.6 no PyPI.
+
+A distância entre merge e wheel foi de **33 dias e meio**. Entre o advisory e o release, **3,4 dias**. A wheel anterior, a 0.8.5, estava no PyPI desde **25 de novembro de 2024** — quase dois anos antes.
+
+## O que a falha fazia de fato
+
+O `PUT /datastore/image` aceitava um parâmetro `image` controlado por quem chamava e usava esse valor como nome da imagem, sem validar. O `LocalDatastore.add_image()` colava a extensão, juntava o resultado ao diretório de imagens do datastore e escrevia o arquivo com `shutil.copy()`.
+
+Ninguém conferia se o caminho resolvido continuava dentro do datastore. Um valor como `../../../tmp/x` gravava o conteúdo enviado em qualquer lugar que o processo pudesse escrever. O `save_label()`, que atende o `PUT /datastore/label`, montava o destino do mesmo jeito, a partir do ID da imagem e da tag do label.
+
+Escrita arbitrária de arquivo é o tipo de falha que parece menor e não é: dá para sobrescrever código da aplicação, adicionar uma chave em `.ssh/authorized_keys` ou entrar numa cron. Ou derrubar o serviço sobrescrevendo arquivo de configuração.
+
+O que a correção faz é exatamente o que qualquer rota de upload deveria fazer desde o começo: resolver o destino, incluindo o diretório da tag, e recusar tudo que caia fora das pastas de imagens e labels do datastore. No endpoint, o ID da imagem passa a ser só o basename, e valor vazio ou começando com ponto é recusado com **HTTP 400**.
+
+Um detalhe que separa patch feito com cuidado de patch feito com pressa: o `commonpath` levanta exceção quando os caminhos estão em unidades diferentes no Windows. A correção trata esse caso como rejeição, com o mesmo erro, em vez de deixar o servidor quebrar com 500.
+
+## Por que "corrigido" não chegava até você
+
+Aqui está o ponto que vale para qualquer projeto aberto que você hospeda.
+
+O commit no `main` protege quem builda da fonte. Não protege quem instala do PyPI, nem quem puxa a imagem Docker. E é por aí que o deploy acontece: `pip install monailabel` e `docker pull projectmonai/monailabel`.
+
+E o próprio registro do aviso mostra o buraco: o campo de versões corrigidas da advisory **está vazio até agora** — o advisory foi publicado antes do release e não foi atualizado depois dele. A data de atualização é igual à de publicação. Quem confia nesse campo conclui que não existe correção.
+
+A regra prática: **olhe os releases, não o campo da advisory.** A wheel no PyPI e a tag do Docker são as duas únicas coisas que provam que a correção chegou a um artefato instalável.
+
+## O default que transformava falha em urgência
+
+A autenticação vem desligada (`MONAI_LABEL_AUTH_ENABLE=False`). Com esse default, qualquer cliente de rede que alcançasse o servidor conseguia explorar as duas falhas. E mesmo com autenticação ligada, o papel `ANNOTATOR` já era suficiente.
+
+Isso muda o cálculo defensivo. Ligar autenticação reduz o alcance, mas não transforma o servidor em seguro — o papel mais baixo do sistema continua valendo como acesso. Segurança aqui é a combinação: rede fechada, autenticação ligada e processo rodando sem privilégio, com escrita limitada ao datastore.
+
+## O segundo buraco, que quase ninguém citou
+
+O release 0.8.6 corrige uma segunda falha de path traversal, no upload de sessão. O `PUT /session/?uncompress=true` extraía o tar enviado com `shutil.unpack_archive()`, que grava os nomes dos membros como vieram — comportamento de Python anterior ao 3.14. O resultado é o zip-slip clássico: membro com `..` escreve fora da pasta de destino.
+
+O conserto vai na direção certa e é bem documentado: cada membro é resolvido contra o diretório de extração antes de qualquer escrita, links e arquivos especiais são rejeitados, e o filtro `data` do `tarfile` é aplicado onde o interpretador tem. Sessão que chega corrompida, truncada ou não suportada agora devolve **HTTP 400** em vez de 500, e o arquivo recebido é removido.
+
+## Patch não é upgrade
+
+O 0.8.6 passa a exigir **Python 3.11 ou mais novo** — o suporte a 3.9 e 3.10 foi removido. A imagem Docker passou para Ubuntu 24.04 com Python 3.12, e `python` e `monailabel` agora vêm de `/opt/venv`.
+
+Na prática: quem roda a 0.8.5 num ambiente com Python 3.9 ou 3.10 não tem um patch para instalar. Tem uma migração. "Atualize" e "faça upgrade de runtime" são instruções operacionais diferentes, e trocar uma pela outra deixa o time parado achando que fez o dever de casa.
+
+## Como checar seu servidor hoje
+
+- Confirme a versão instalada com `pip show monailabel` e a tag da imagem com `docker images projectmonai/monailabel`. Qualquer coisa até 0.8.5 é afetada.
+- Se o servidor estava exposto a rede não confiável, procure alterações inesperadas em arquivos da aplicação **antes** de voltar o serviço ao ar. Ligar autenticação agora não desfaz uma intrusão que já aconteceu.
+- Não consegue subir para 0.8.6 agora? Feche a rede, ligue autenticação e não dê `ANNOTATOR` para usuário não confiável, e rode o processo sem privilégio com escrita restrita ao datastore. É o que o próprio advisory recomenda como paliativo.
+
+## Minha opinião
+
+O que me incomoda nesse caso não é o bug. Path traversal em rota de upload é o erro mais previsível que existe, e a correção é curta.
+
+O que incomoda é o relógio. Um agente achou e usou a falha em 11 minutos; o mantenedor precisou de 7 dias do PR aberto ao merge, e o pacote precisou de 33 dias do merge ao `pip`. A descoberta virou máquina. A distribuição continua humana, com fila, com build quebrado, com release que sai quando dá.
+
+Também não é justo jogar isso só no colo de quem mantém projeto aberto de graça. O 0.8.6 saiu com dois path traversals, uma wheel nova, troca de base de imagem e remoção de duas versões de Python — isso é release grande, não hotfix. E o problema real é que ninguém que **consome** o projeto tem uma rotina para distinguir "existe commit" de "existe wheel". Enquanto isso for opinião, o próximo CVE repete a história.
+
+Se o seu time hospeda qualquer aplicação de IA de código aberto, a pergunta que precisa estar no runbook é uma só: **como descubro, em cinco minutos, se a correção que saiu ontem chegou ao artefato que eu rodo?** Se a resposta não existe, o patch do fornecedor não vai te salvar.
+
+## Takeaways
+
+- **Merge não é release.** O fix do MONAI Label ficou 33 dias no `main`; nesse intervalo, o seu cluster não tinha nada para instalar.
+- **Não confie no campo de versões corrigidas da advisory.** O CVE-2026-133968 tem 9,8 no CVSS 3.1, e o único lugar que prova correção disponível é o artefato: PyPI e tag Docker.
+- **Ler o release inteiro rende mais que ler o aviso.** O 0.8.6 fechou dois path traversals, subiu o piso para Python 3.11 e mudou a base da imagem — o que transforma instalação em migração.
+
+## FAQ
+
+### O que é o CVE-2026-133968?
+É um path traversal crítico no MONAI Label, corrigido na 0.8.6. Os endpoints de upload do datastore montavam o destino com dados do cliente sem confiná-lo ao datastore, permitindo gravar arquivo em qualquer local liberado ao processo e chegar a execução de código. Afeta até a 0.8.5.
+
+### A versão 0.8.6 corrige as duas falhas?
+Sim. O 0.8.6 traz o fix do path traversal do datastore (PR #1915) e o do upload de sessão (PR #1942), além de exigir Python 3.11 ou superior. O release se descreve como security release e recomenda que todos os deploys de servidor atualizem.
+
+### Preciso atualizar se o servidor nunca ficou exposto à internet?
+O advisory trata os paliativos como suficientes enquanto você não atualiza: rede fechada, autenticação ligada, sem `ANNOTATOR` para usuário não confiável e processo sem privilégio com escrita limitada ao datastore. Atualizar continua sendo o alvo, porque o fix é o único que fecha a falha na raiz.
+
+## O que revisar depois
+
+**Estável:** a diferença entre merge, release e instalação; o motivo de escrita arbitrária virar execução de código; a leitura de `commonpath` como confinamento; a lição de que autenticação ligada não neutraliza o papel mais baixo. **Atualizável:** a versão corrigida (se houver 0.8.7), a data do release 0.8.6, o piso de Python e a base da imagem Docker, a nota do NVD para o CVE (a de 9,8 neste texto é a do registro do CVE, não do NVD) e o campo de versões corrigidas da advisory, que segue vazio.
+
+Se o que te preocupa é o lado do agente que ataca, veja os [sete relógios usados para medir defesa](/blog/breakout-time-acabou-sete-relogios-para-medir-defesa-contra-agente-de-ia). E se o assunto é o que um agente pode escrever na sua máquina, o caso da [allowlist que guarda o comando inteiro](/blog/allowlist-do-claude-code-guarda-o-comando-inteiro-1-122-arquivos-vazaram) é o complemento direto.
+
+## Fontes
+
+- [Fonte: GitHub — advisory GHSA-qc22-rmgc-vg94 (MONAI Label)](https://github.com/Project-MONAI/MONAILabel/security/advisories/GHSA-qc22-rmgc-vg94)
+- [Fonte: cve.org — CVE-2026-133968](https://www.cve.org/CVERecord?id=CVE-2026-133968)
+- [Fonte: GitHub — PR 1915, fix: confine datastore write paths](https://github.com/Project-MONAI/MONAILabel/pull/1915)
+- [Fonte: GitHub — PR 1942, fix: confine session archive extraction](https://github.com/Project-MONAI/MONAILabel/pull/1942)
+- [Fonte: GitHub — release 0.8.6 do MONAI Label](https://github.com/Project-MONAI/MONAILabel/releases/tag/0.8.6)
+- [Fonte: PyPI — monailabel](https://pypi.org/project/monailabel/)
+- [Fonte: VentureBeat — Amazon diz que agentes de IA dos atacantes exploraram zero-day em 11 minutos](https://venturebeat.com/security/amazon-says-attackers-ai-agents-found-and-exploited-a-zero-day-in-11-minutes-but-no-patched-release-is-available)
