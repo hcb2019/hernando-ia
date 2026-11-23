@@ -1,0 +1,142 @@
+---
+title: "Verificação formal de kernel de GPU: o que 149 instâncias provaram em Lean"
+date: "2026-11-23"
+description: "TensorLean provou 83 de 149 instâncias de kernel em Lean e achou 38 bugs que os testes não pegaram. O que a prova cobre e onde ela para."
+excerpt: "149 instâncias de kernel verificadas no PTX, 83 provadas corretas e 38 bugs em FlashAttention e DeepGEMM. Por que teste não pega isso e o que dá pra fazer sem a ferramenta."
+author: "Hernando Candido"
+tags: [Verificação Formal, GPU, Kernels, Lean, FlashAttention, DeepGEMM, CUDA, PTX, Confiabilidade, Engenharia de IA, GEO]
+readingTime: 9
+sponsored: false
+premium: false
+---
+
+**Resposta curta:** teste não prova que um kernel está certo. Prova que ele acertou nos casos que você escolheu. Em **20 de novembro de 2026**, um time da Columbia e da CertiK publicou o **TensorLean**, um framework que lê o **PTX** — o assembly que a GPU executa de verdade — e prova em **Lean 4** que ele calcula o que deveria, em qualquer configuração. Foram **149 instâncias** de kernel verificadas, **83 provadas corretas** e **38 bugs** encontrados em código de produção, de **FlashAttention-2 a -4** e do **DeepGEMM**.
+
+Um desses bugs nunca apareceu em **17.760 execuções** da suíte de testes do próprio kernel.
+
+Isso resume o problema. A suíte é boa. O bug está numa combinação de forma, máscara e escalonamento de threads que ninguém testou — e que a prova cobre porque ela não amostra, ela quantifica.
+
+## O que foi verificado, em números
+
+Os números são da página oficial do projeto, publicada em 20/11/2026:
+
+- **Escopo:** 149 instâncias de kernel no PTX, de **72 kernels** e **9 operações**, somando 151.285 linhas de código-fonte.
+- **Provas:** 83 instâncias provadas corretas; as outras 66 falharam num objetivo de prova causado por bug no código.
+- **Bugs:** 38 bugs distintos. Uma instância pode compartilhar o mesmo bug, por isso os números não fecham em soma direta.
+- **FlashAttention:** as 37 kernels da família 2, 3 e 4 especificadas, 102 instâncias compiladas verificadas, **56 aprovadas** nas quatro propriedades e **46 com falha**.
+- **Bugs inéditos no FlashAttention:** **23 desconhecidos** antes do trabalho, todos reportados aos mantenedores.
+- **Onde eles moram:** **19 dos 23** só aparecem em configurações específicas — combinações de comprimento de sequência, head dim e máscara que a suíte nunca rodou junta.
+- **Custo da especificação:** 10.278 linhas de spec para 151.285 linhas de código, quase **15:1**.
+- **Custo da prova:** mediana de **10 minutos** por instância numa máquina de 16 núcleos. A maior, o forward do FlashAttention-3 em Hopper, tem **31.402 objetivos de prova** e leva **50 minutos**.
+- **Custo humano:** 298 asserções escritas à mão para cobrir FlashAttention-2 a -4 e DeepGEMM, nos pontos onde o solucionador não chega sozinho.
+
+Como régua, o artigo cita o seL4: 8.700 linhas de C custaram 2,5 pessoas-ano para escrever e **20 pessoas-ano** para provar. Aqui, são minutos de máquina por instância.
+
+## Por que a suíte de testes não pega isso
+
+Três motivos, e nenhum deles é negligência de quem escreveu o kernel.
+
+**Primeiro: você testa as configurações que imaginou.** A maioria dos verificadores anteriores — incluindo trabalhos de equivalência de kernels de 2026 — desenrola o laço e prova **uma configuração concreta por vez**. Isso cobre exatamente aquilo que já estava no teste. Dos 23 bugs do FlashAttention, 19 vivem justamente fora dessas configurações.
+
+**Segundo: bug de concorrência depende de interleaving.** O caso do FlashAttention-4 é emblemático. No kernel `compute_block_sparsity`, cada warp escreve flags num `reduction_buffer`, e o warp 0 lê essas flags depois de uma barreira. O buffer é reaproveitado a cada bloco de chaves, e **não existe barreira depois da leitura do warp 0** — então um warp pode sobrescrever as flags do bloco seguinte antes de o warp 0 ler, e um bloco com chaves não mascaradas é classificado como vazio. O forward **pula essas chaves**.
+
+O relato no issue #3195 do repositório é honesto sobre o que foi e o que não foi observado. A corrida depende de timing; **não foi vista na main**. O que o time fez foi injetar um atraso no warp 0 antes das leituras: com o atraso, o forward diverge do esperado em até **0,58** e **424 testes** de `test_block_sparsity.py` falham. Na main, a suíte passa com 4.883 testes.
+
+Leia essa sequência com calma, porque é o argumento inteiro: um código que passa em todos os testes pode ter a falha e simplesmente não a exercitar. A prova não acha o interleaving por sorte — ela mostra que **nenhum** interleaving produz aquele estado.
+
+**Terceiro: "certo" é uma definição, não um sentimento.** O teste compara com uma referência, e a referência também pode estar errada. O próprio artigo abre citando o paper de **Jonathan T. Barron, Dan Gnanapragasam e Michael Tschannen** (arXiv:2610.31642, submetido em 22 de outubro de 2026), que documenta **dois bugs numéricos** em softmax e cross-entropy padrão — um deles arredonda o gradiente do logit-alvo para zero quando ele domina os outros. O gabarito dos seus testes pode ser o que está errado.
+
+## Como a prova funciona, sem matemágica
+
+Vale entender três mecanismos, porque eles mudam como você olha para o seu próprio kernel.
+
+**Concorrência vira execução sequencial.** Em vez de enumerar interleavings, o TensorLean monta o **grafo happens-before** do kernel — nós são execuções de operações por threads, arestas são ordens que a ISA do PTX garante. Em cima desse grafo ele prova duas coisas: ausência de corrida de dados e **terminação**. A terminação não é detalhe: um kernel que trava satisfaz qualquer especificação, vacuamente. Com as duas provadas, a memória final é a memória inicial atualizada pelos últimos escritores de cada endereço.
+
+**Invariantes de laço saem de graça quando o laço é de semiring.** Sintetizar invariante de laço é indecidível no caso geral, então verificadores costumam pedir isso na mão. O argumento aqui é que laço de kernel quase sempre tem iteração por tile, atualização acumulativa e fluxo de controle independente dos dados — o que faz cada valor carregado seguir uma recorrência sobre um semiring. O exemplo canônico é o online softmax do FlashAttention, com o máximo corrente em (max, +) e a soma e a saída em (+, x). A prova sai por indução numa única consulta ao solucionador.
+
+**Erro numérico é decomposto, não engolido.** Comparar direto o resultado em ponto flutuante com a especificação em reais não escala, porque ponto flutuante quebra associatividade. A saída é separar o erro em duas parcelas: prova-se que o kernel tem **zero erro algébrico** (avaliado em semântica de reais) e depois se limita o **erro de arredondamento** propagando cada operação em tempo linear. Pela desigualdade triangular, a soma das duas cabe na tolerância. É essa decomposição que permite dizer "correto dentro de ε" em vez de "parece igual".
+
+Note o que essa definição de correção **não** menciona: especialização de warp, sincronização, ordem de execução. A especificação é extensional — ela fala do estado da memória antes e depois, em toda execução possível. Por isso a mesma spec vale para kernels em FP32, BF16 e FP8.
+
+## As oito famílias de bug que apareceram
+
+O artigo classifica o que encontrou, e a taxonomia é útil como checklist de revisão:
+
+- **Implementação errada do algoritmo:** fórmula, condição ou caso especial faltando.
+- **Bug numérico:** erro acima da tolerância, overflow, NaN, wrap de inteiro.
+- **Memória não inicializada:** shared memory lida antes de escrita, saída não escrita.
+- **Erro de acesso à memória:** layout de tensor errado ou falta de checagem de limite.
+- **Corrida de dados:** dois acessos ao mesmo endereço, ao menos um de escrita, sem barreira que os ordene.
+- **Deadlock:** espera circular, ou wait sem arrive correspondente, típico de divergência de barreira.
+- **Comportamento indefinido:** divisão por zero, overflow de inteiro assinado, mbarrier inicializada duas vezes.
+- **Miscompilação:** fonte correto compilado errado pelo NVCC, Triton ou CuTe DSL. Como a prova é sobre o PTX, esse caso entra na conta.
+
+Na Figura 8 do projeto, **erros de acesso à memória (19)** e **bugs numéricos (13)** dominam, e toda categoria tem pelo menos um caso. Traduzindo para o seu dia: se você tem tempo para olhar uma coisa só no seu kernel, olhe layout de memória.
+
+## O que a ferramenta não cobre
+
+Aqui é onde a maioria dos resumos para, e é a parte que decide se você pode confiar no resultado.
+
+**A base de confiança é grande.** O TensorLean confia na ISA do PTX (versão 9.4) e no `ptxas`; confia no próprio modelo de arredondamento das tensor cores, que **a ISA não especifica**; confia na sua especificação, no parser de PTX de 1,8 mil linhas, no kernel do Lean e nos solucionadores cvc5 e Z3. Prova formal não elimina confiança, ela reorganiza onde ela fica.
+
+**O escopo exclui kernel com amostragem.** A spec descreve saídas como função determinística das entradas, então dropout e top-p não entram. E as ordens de acquire/release do modelo de memória relaxado ainda não são modeladas — o que deixa de fora kernels que sincronizam por flag atômica, incluindo comunicação multi-GPU como NCCL e DeepEP.
+
+**A ferramenta é incompleta.** Ela é sound: se prova, está provado. Mas pode **falhar em provar um kernel correto**, por restrição de entrada faltando na spec, limite de arredondamento conservador ou timeout do solucionador. Um "não provou" não é um "está errado".
+
+**E ainda não está disponível.** Em 20/11/2026 o paper e o código aberto estavam anunciados como "em breve". O repositório existe, mas o material prometido — semântica do PTX, specs e provas — ainda não tinha saído na data do anúncio. Até sair, você não pode reproduzir nenhum desses 83 números.
+
+## O que dá para fazer na segunda-feira
+
+Você não vai instalar TensorLean hoje. Mas três das lições entram no seu CI sem depender de Lean.
+
+**Teste combinações, não o caso redondo.** Se o seu kernel aceita head dim variável, máscara causal, KV em páginas e split de KV, o teste precisa cruzar esses eixos — não escolher um valor bonito de cada. Lembre que 19 dos 23 bugs do FlashAttention só aparecem em configuração específica.
+
+**Compare com referência em precisão maior, não com a implementação "oficial".** Se a referência é a implementação vetorizada do mesmo raciocínio, o bug compartilhado passa nos dois lados. O caso do softmax mostra que até a biblioteca padrão pode estar errada.
+
+**Asserte a tolerância, e teste o determinismo.** Rode o mesmo kernel duas vezes com a mesma entrada e compare bit a bit; resultado que muda sem mudar a entrada é sinal de corrida não ordenada. Foi esse tipo de falha que 17.760 execuções não pegaram.
+
+Se quiser o outro lado da moeda — medir **desempenho** de kernel em vez de correção —, o método é outro, e já escrevi sobre o teto que a memória impõe no [caso do FP8 no MI355X](/blog/fp8-nao-dobra-a-atencao-o-que-limita-o-kernel-no-amd-mi355x-e-como-medir). E Lean provando **matemática**, e não código de máquina, é outro problema: ali o que falta é a fidelidade da tradução, como discuti em [prova formal não é prova](/blog/prova-formal-nao-e-prova-como-verificar-matematica-feita-por-ia).
+
+## Minha opinião
+
+Eu acho que esse artigo importa menos pelo Lean e mais pelo que ele expõe sobre a nossa confiança em teste.
+
+Todo mundo que escreveu kernel já viveu isso: a suíte verde, o resultado estranho em produção horas depois, e a caçada que termina num caso de borda que ninguém montou. A indústria respondeu com mais teste, mais cobertura, mais GPU-hora. O TensorLean mostra que existe um teto nessa abordagem, e o teto é lógico, não de orçamento.
+
+Não significa jogar teste fora. A prova custa 10 minutos por instância numa máquina de 16 núcleos e ainda depende de você escrever a spec certa — e spec errada prova a coisa errada com selo de garantia. O que muda é a divisão de trabalho: teste para pegar o que você suspeita, prova para o que você não consegue enumerar.
+
+Se você mantém kernel em produção e ninguém no time sabe dizer qual é a especificação dele em uma frase, esse é o bug mais caro do seu stack hoje.
+
+## Takeaways
+
+- **Teste amostra, prova quantifica.** 38 bugs em kernel usado por vLLM, SGLang e PyTorch passaram por suítes completas porque moravam em configurações e interleavings não exercitados.
+- **O bug do FlashAttention-4 não apareceu em 17.760 execuções** e foi demonstrado com um atraso injetado no warp 0: a corrida é real e o custo de encontrá-la por teste é indefinido.
+- **A prova tem fronteira declarada:** ela confia no `ptxas`, no modelo de arredondamento das tensor cores e na sua spec, e não cobre dropout, top-p, NCCL nem DeepEP. "Não provou" não é "está errado".
+- **Antes de sonhar com Lean, cruze eixos de configuração no teste** e compare contra referência em precisão maior. É barato e pega a maior parte da categoria que dominou os bugs: acesso à memória e erro numérico.
+
+## FAQ
+
+### Verificação formal de kernel substitui os testes de kernel?
+Não. A prova cobre o que o teste não consegue enumerar — toda configuração e todo escalonamento —, mas depende de uma especificação correta e tem escopo limitado. Teste continua sendo o caminho para comportamento amostral, como dropout e top-p, e para kernels que sincronizam por flag atômica.
+
+### O TensorLean já pode ser usado em produção?
+Ainda não. Na data do anúncio, 20 de novembro de 2026, o paper e o código aberto estavam prometidos para breve e o material com a semântica do PTX, as especificações e as provas não tinha sido publicado. Sem isso, os resultados não são reproduzíveis por terceiros.
+
+### Por que 66 instâncias falharam se só 38 bugs foram encontrados?
+Porque instância e bug não são a mesma unidade. Uma mesma falha de layout de memória pode derrubar várias instâncias de kernel do mesmo arquivo, e cada instância é uma compilação distinta. O 38 conta bugs distintos reportados; o 66 conta instâncias cujo objetivo de prova falhou.
+
+### Qual a diferença entre provar um kernel e provar uma demonstração matemática?
+Na matemática, o risco está na tradução do argumento em linguagem natural para o formal. No kernel, a especificação é curta e mecânica — o difícil é a concorrência e o arredondamento. São problemas de verificação com naturezas diferentes, e uma boa ferramenta para um não serve para o outro.
+
+## O que revisar depois
+
+**Estável:** a distinção entre teste e prova, a decomposição do erro em algébrico e arredondamento, as oito famílias de bug e a regra de que "não provou" não é "está errado".
+
+**Atualizável:** os números 149/83/38 e as limitações, que mudam quando o paper e o código saírem e quando a ferramenta começar a modelar acquire/release. Vale revisar também se algum dos 23 bugs do FlashAttention virou release corrigido, CVE ou nota de segurança.
+
+## Fontes
+
+- [TensorLean: Formal Verification of Production GPU Kernels (página oficial do projeto, 20/11/2026)](https://tensorlean.ai/)
+- [Repositório TensorLean no GitHub](https://github.com/TensorLean/TensorLean)
+- [Issue #3195 do FlashAttention: corrida de dados em reduction_buffer](https://github.com/Dao-AILab/flash-attention/issues/3195)
+- [Barron, Gnanapragasam e Tschannen: A Fix for Softmax and Cross-Entropy (arXiv:2610.31642)](https://arxiv.org/abs/2610.31642)
