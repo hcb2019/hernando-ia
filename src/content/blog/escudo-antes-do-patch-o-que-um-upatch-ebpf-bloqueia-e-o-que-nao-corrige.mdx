@@ -1,0 +1,119 @@
+---
+title: "Escudo antes do patch: o que um upatch eBPF bloqueia e o que não corrige"
+date: "2026-11-24"
+description: "Shirudo bloqueia a exploração de uma CVE no Linux em execução, sem reiniciar. O que o upatch eBPF cobre, onde ele não chega e como o TPM prova que carregou."
+excerpt: "OpenAI e Cisco abriram o Shirudo: escudos eBPF assinados que fecham o caminho da exploração enquanto o patch não chega. O que ele bloqueia, o que não corrige e como auditar."
+author: "Hernando Candido"
+tags: [Segurança, eBPF, Mitigação de CVE, Linux, Shirudo, Patch Management, TPM, Java4Shell, Confiabilidade, Engenharia de IA, GEO]
+readingTime: 8
+sponsored: false
+premium: false
+---
+
+**Resposta curta:** entre a CVE sair e o patch estar instalado em todos os servidores passam dias ou semanas. Em **23 de novembro de 2026**, OpenAI e Cisco abriram o **Shirudo**, um runtime que carrega programas eBPF assinados no kernel em execução para **fechar o caminho da exploração** sem reiniciar nada. O detalhe que muda a decisão: escudo não é correção, e sem evidência assinada você não sabe se ele está lá.
+
+![Figura 1 da documentação do Shirudo: o host do operador constrói, assina e envia ao registro OCI; o alvo puxa, o kernel confere a assinatura e roda o loader, o TPM estende o registro e assina a evidência, que o operador verifica](https://raw.githubusercontent.com/shirudo-dev/shirudo/main/Documentation/images/start-how-it-works.svg)
+
+## O que foi lançado
+
+O Shirudo vem do time da Isovalent, que fez o Cilium e o Tetragon, e é uma reescrita do Tetragon pensada para agentes: em vez de limitar o agente a uma linguagem de política feita para humanos, deixa o agente escrever **código**, que é onde modelo é bom.
+
+A ideia central é trocar o binômio patch completo mais reinício por **mitigações pequenas e assinadas** entregues ao kernel ou ao workload em execução. São três tipos: bloquear o caminho que a falha precisa, substituir o código vulnerável por código corrigido ou adicionar a visibilidade para detectar o ataque. Guarde a terceira, porque é a mais subestimada.
+
+## O caso que dá a escala: Java4Shell
+
+O teste publicado usa a **CVE-2026-114938**, divulgada em **17 de novembro de 2026**. É uma escrita fora dos limites (CWE-122) no **intrinsic Base64 do OpenJDK em x86-64**, na rotina assembly que usa **AVX-512 VBMI**.
+
+O gatilho é constrangedor: 64 caracteres A seguidos de um sinal de igual, 128 A em builds antigas do OpenJDK 17. O decodificador calcula um comprimento negativo e escreve 64 bytes, 62 deles além de um buffer de 50.
+
+As notas do mesmo CVE contam duas histórias. No **CVSS 3.1**, a Oracle (CNA) e o NVD dão **8,1**, vetor AV:N/AC:H, e o NVD registra que é difícil de explorar. No **CVSS 4.0**, a Calif, que descobriu a falha, pontua **9,2 crítico**, e a CISA emitiu alerta no mesmo dia pedindo patch imediato. Mesma falha, réguas diferentes: cite a versão do CVSS junto da nota.
+
+Por que a pressa se o NVD diz que é difícil? Porque **Base64 está em todo lugar**: autenticação, upload, mensagem de rede. A Calif demonstrou execução remota pré-autenticação em Keycloak, Jira, Confluence, Artifactory e Jenkins, e pós-autenticação em Kafka, Elasticsearch e Solr. Não existe exploit universal, mas o alcance é largo.
+
+Versão também não é um número só. O NVD lista como afetados o Oracle JDK **17.0.21.0.3, 21.0.13.0.3 e 25.0.5.0.3**; o Red Hat marca como primeiras builds sem a falha a **17.0.21.1, 21.0.13.1 e 25.0.5.1**. Numeração diferente para a mesma correção: confira a sua distribuição, não o número do Oracle.
+
+## O que é um upatch, na prática
+
+O artefato é o **upatch**: um programa BPF em C, às vezes poucas linhas, que recusa a chamada que o patch fecharia. Ele lê estruturas do kernel via **CO-RE**, então os offsets de campo se ajustam ao layout do alvo na hora do load.
+
+Ele não pode trocar o corpo de uma função. Pode recusar a chamada **antes** dela rodar, em hook de LSM, em função com prefixo `security_`, na entrada de syscall ou em função marcada para injeção de erro. Também observa e filtra em `fentry`, kprobe, uprobe, XDP e cgroup.
+
+Um objeto BPF não dá para assinar como está: o libbpf reescreve bytes no load, então o que o kernel checaria não é o que o operador compilou. A solução é assinar um **loader**, um programa `BPF_PROG_TYPE_SYSCALL` que faz o load de dentro do kernel, com os payloads nos dados.
+
+O pacote `.bee` vai para um registro **OCI** e o alvo puxa sozinho, sem daemon permanente em nenhum dos lados. O registro não é confiável: pode reter ou repetir, mas não consegue forjar algo que passe na checagem de assinatura.
+
+## Nem todo escudo é eBPF
+
+No exemplo do Java4Shell, o escudo não foi BPF. Foi **bytecode Java**, um agente que injeta validação na entrada Base64 e foi anexado a um **Elasticsearch 9.5.5** já em execução, em teste de laboratório em 18/11/2026. O log mostra a recusa com `length=65`, que é exatamente o gatilho.
+
+Isso importa porque a falha está no código nativo gerado pelo JIT, que nenhum hook de kernel enxerga com precisão. Falha no kernel pede escudo no kernel; falha no runtime da linguagem pede bytecode. O ponto de intervenção é parte do trabalho.
+
+E explica a tensão no anúncio: "substituir o código vulnerável" vale no bytecode, onde o agente troca a validação. No kernel, o upatch recusa a chamada antes dela rodar — ele não troca o corpo da função.
+
+## Escudo não é livepatch
+
+- **Livepatch** substitui a função por código nativo via ftrace, com modelo de consistência e shadow variables. Carrega a correção em si, mas é código de kernel nativo: não passa por verificador, vale para um build específico e quem pode carregar é decidido por assinatura de módulo e lockdown. Não mede o patch no TPM.
+- **Upatch** não substitui corpo de função. Em troca, o verificador checa cada programa, o CO-RE deixa o mesmo artefato rodar em mais de um build de kernel, e cada load e unload é medido.
+
+Os dois convivem: o upatch bloqueia o caminho vulnerável até o livepatch ou o kernel corrigido entrar, e uma diretiva assinada de unload remove o escudo depois. Se você já opera kpatch, o Shirudo não troca o seu pipeline, ele cobre o intervalo em que a correção ainda não existe.
+
+O custo dessa cobertura é alto: o alvo precisa de kernel **bpf-next com a ABI de signed loader**, uma série de patches que o projeto carrega e **TPM 2.0**. O README diz que não há modo de compatibilidade nem fallback para kernel antigo, e o projeto é **pré-release**. Se você não compila kernel, hoje o caminho é a VM com TPM de software.
+
+## Como provar que o escudo está carregado
+
+Toda mudança no conjunto de upatches é medida num registro próprio do **TPM**, ancorado no **PCR 9**. O comando `shirudo attest` devolve evidência que o operador verifica offline, sem confiar no relato da máquina.
+
+A cadeia: chave de assinatura só no operador, certificados enrolados e selados no keyring `.bpf`, loader verificado, registro estendido a cada mudança. Um registro que retenha ou repita pacotes não produz evidência válida.
+
+A documentação é honesta sobre o limite, e essa frase deveria estar em todo runbook: o Shirudo estabelece **proveniência, não correção**. Ele prova que aquele código assinado rodou; não prova que cobre todos os caminhos da falha.
+
+## Enquanto o patch não chega
+
+A CISA deu o plano B no alerta de 17/11: validar e restringir Base64 na fronteira da aplicação, impor limite de tamanho de entrada e reduzir o acesso não autenticado. É mitigação de configuração e cobre menos.
+
+A ordem que eu usaria: patch instalável primeiro; livepatch se você já opera a stack; escudo quando o patch não existe, não instala ou não alcança todos os alvos; controle de entrada quando nada disso está disponível. E conte os bloqueios: é a única evidência de que alguém está tentando.
+
+## Minha opinião
+
+A parte boa do Shirudo não é o eBPF, que existe há mais de uma década. É o recorte de confiança: assinatura, keyring selado e atestação de hardware para uma mudança temporária, que qualquer um pode reverter.
+
+O que me incomoda é a distância entre a promessa e a instalação. Exigir kernel bpf-next com patches é o oposto de proteger o que já está rodando, e a maior parte da frota vulnerável está em distro estável, sem TPM exposto e sem ninguém para recompilar kernel.
+
+Então o valor real aqui é **especificação**, não produto. O threat model aberto, a separação entre proveniência e correção e a comparação explícita com livepatch são o que faltava para discutir mitigação em runtime sem misticismo.
+
+## Takeaways
+
+- **Escudo não é patch.** Ele fecha um caminho de exploração até a correção entrar; se o caminho muda, a cobertura muda com ele.
+- **Assinatura e atestação são a metade durável:** saber o que está carregado, com evidência de hardware, é o que transforma mitigação temporária em controle auditável.
+- **O ponto de intervenção decide o escudo:** kernel para falha no kernel, bytecode para falha no runtime.
+- **Nota de CVE não é prazo.** 8,1 no CVSS 3.1 e alerta da CISA no mesmo dia convivem quando a superfície está em toda requisição.
+
+## Perguntas frequentes
+
+### Um escudo eBPF substitui a atualização do sistema?
+Não. Ele bloqueia o comportamento que a falha explora, sem reiniciar, e serve para o intervalo entre a divulgação e o patch. A correção completa continua sendo atualizar o componente.
+
+### Shirudo roda em kernel de distribuição estável?
+Hoje não. O alvo precisa de kernel bpf-next com a ABI de signed loader, patches específicos e TPM 2.0, e a documentação afirma não haver modo de compatibilidade.
+
+### Dá para usar a mesma ideia sem o Shirudo?
+Sim, com peças que você já tem. O BPF LSM nega operações em runtime e o livepatch substitui funções com código nativo. A diferença do Shirudo é a cadeia de assinatura e a medição em TPM.
+
+## O que revisar depois
+
+**Estável:** a distinção entre mitigar e corrigir; a diferença entre livepatch e upatch; a ideia de proveniência sem correção.
+
+**Atualizável:** as versões corrigidas do Java4Shell e o status de exploração; as arquiteturas testadas; os requisitos de kernel, que devem cair quando a ABI chegar ao upstream; a nota CVSS 4.0 e a saída do pré-release.
+
+## Fontes
+
+- [OpenAI e Cisco apresentam o Shirudo (OpenAI, 23/11/2026)](https://openai.com/index/introducing-shirudo/)
+- [Cisco e OpenAI apresentam o Shirudo (Isovalent, 23/11/2026)](https://isovalent.com/blog/post/cisco-openai-shirudo/)
+- [Repositório Shirudo no GitHub, com README e licenças](https://github.com/shirudo-dev/shirudo)
+- [Como o Shirudo funciona: o ciclo de vida de um upatch](https://docs.shirudo.dev/start/how-it-works.html)
+- [How shirudo compares: livepatch, IMA, IPE, BPF LSM e BPF assinado](https://docs.shirudo.dev/concepts/comparisons.html)
+- [Modelo de ameaças do Shirudo, com riscos residuais](https://docs.shirudo.dev/security/threat-model.html)
+- [Requisitos de sistema, arquiteturas e patches de kernel](https://docs.shirudo.dev/operate/plan/system-requirements.html)
+- [CISA: vulnerabilidade crítica no Java exige patch imediato (17/11/2026)](https://www.cisa.gov/news-events/alerts/2026/11/17/critical-java-vulnerability-requires-immediate-patching)
+- [Java4Shell: análise técnica do Calif, com o gatilho e as notas CVSS](https://calif.io/java4shell)
+- [NVD: CVE-2026-114938](https://nvd.nist.gov/vuln/detail/CVE-2026-114938)
