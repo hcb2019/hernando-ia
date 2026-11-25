@@ -1,0 +1,120 @@
+---
+title: "Revisão de código na era dos agentes: o revisor não pode ser quem escreveu"
+date: "2026-11-25"
+description: "45% dizem que revisão é o maior gargalo e 47% deixam a IA revisar o código da IA. O que o relatório de 377 engenheiros mediu e como triar."
+excerpt: "O AI Code Review Report 2026 mediu onde o gargalo parou: na revisão. Os números, por que o mesmo agente não fecha a conta e como triar por raio de impacto."
+author: "Hernando Candido"
+tags: [Revisão de Código, Agentes de IA, Code Review, Governança de Engenharia, Métricas de Engenharia, CodeRabbit, LeadDev, Engenharia de IA, GEO]
+readingTime: 6
+sponsored: false
+premium: false
+---
+
+**Resposta curta:** numa pesquisa com **377 engenheiros e líderes de engenharia**, **45%** disseram que a capacidade de revisão é o maior gargalo da entrega, **26%** afirmaram entender por completo o código de IA que revisam e **47%** admitiram que a organização usa agentes de IA para revisar o código que agentes de IA escreveram. O detalhe que fecha a conta: só **14%** têm um padrão definido e aplicado de forma consistente para revisar código gerado por IA.
+
+![Arte de capa do AI Code Review Report 2026, do LeadDev em parceria com o CodeRabbit](https://res.cloudinary.com/leaddev/image/upload/f_auto/q_auto/dpr_auto/c_limit,w_2560,h_1440/next/2026/11/code-report-greens-13-2560-swirl75-smooth2.jpg)
+
+A revisão virou o último portão do processo. Portão que ninguém entende não filtra nada.
+
+## O que o relatório mediu
+
+O **AI Code Review Report 2026** é do LeadDev, feito em parceria com o **CodeRabbit**, empresa que vende revisão de código com IA. São **377 respondentes** nos EUA e na Europa, **325** com questionário completo.
+
+Duas ressalvas: é **percepção declarada**, não medição de defeito em produção; e **quem patrocinou vende o produto avaliado**. Não invalida os dados — muda o peso que você dá a eles.
+
+## O gargalo mudou de lugar
+
+Antes, o gargalo era escrever. Agora, segundo a pesquisa, é aprovar.
+
+- **Metade** dos respondentes diz que o número de pull requests por desenvolvedor subiu **pelo menos 25%** desde a adoção de ferramentas de código com IA.
+- **67%** dizem que os PRs também ficaram **maiores**.
+- **45%** apontam a capacidade de revisão como o maior freio da entrega.
+- **38%** dizem que o ciclo de revisão **ficou mais lento**; **25%**, que ficou mais rápido.
+
+A leitura correta não é que as ferramentas pioraram a revisão. É que o volume mudou de lugar: mais código, em blocos maiores, no mesmo número de revisores. Harjot Gill, CEO do CodeRabbit, resumiu ao VentureBeat: existia um portão **antes** do código, na priorização do backlog, porque tempo de engenharia era caro. Esse portão sumiu. Sobrou a revisão.
+
+## Revisar sem entender é revisar no escuro
+
+- **58%** entendem a **intenção** da mudança, mas não cada detalhe.
+- **11%** basicamente conferem se o código **roda e passa nos testes**.
+- **18%** dizem que os revisores têm contexto para avaliar **impacto arquitetural e raio de impacto** de forma recorrente.
+- **68%** dizem que os revisores **não sabem consistentemente** quais mudanças exigem escrutínio maior.
+- **82%** dizem que os desenvolvedores ainda revisam à mão a maior parte ou todo o código de IA antes do merge.
+
+A contradição do ano está aí. Quase todo mundo revisa à mão, mas menos de um quinto tem contexto para julgar o que a mudança quebra. Revisão sem contexto vira aprovação com carimbo.
+
+## Por que o mesmo agente não fecha a conta
+
+Os **47%** que deixam agentes revisarem o código dos próprios agentes não estão fazendo nada absurdo. Estão fazendo o que o orçamento permite. Só que esse arranjo tem um teto conhecido.
+
+O paper **Large Language Models Cannot Self-Correct Reasoning Yet** (Huang e outros, ICLR 2024) testou a autocorreção intrínseca, em que o modelo revisa a própria resposta **sem feedback externo**. Em tarefas de raciocínio, os modelos estudados não se autocorrigiram de forma confiável — e em vários casos o desempenho **piorou** depois da autocorreção.
+
+O mecanismo é simples: revisar exige informação que a primeira passada não tinha. Se o revisor é o mesmo modelo, com o mesmo contexto e as mesmas evidências, ele tende a repetir o julgamento que produziu o erro. Não é falta de inteligência. É falta de informação nova.
+
+O que adiciona informação de verdade:
+
+- **Contexto separado.** Revisor que participou da conversa valida o que já foi combinado — o problema é o mesmo, como [no caso do revisor com contexto zero](/blog/revisar-especificacao-com-ia-por-que-o-revisor-precisa-de-contexto-zero).
+- **Evidência executável.** Teste que falha no diff, tipo que não compila, dependência que quebra. É o que o [catching test](/blog/testes-gerados-por-ia-que-falham-de-proposito-o-guia-do-catching-test-no-ci) explora: em vez de opinião, prova de que a mudança alterou comportamento.
+- **Contexto de arquitetura.** Quem sabe o que depende daquele módulo.
+
+Paul Nashawaty, analista da Efficiently Connected, foi direto ao VentureBeat: IA pode ajudar a revisar, mas ele não confiaria no mesmo agente que gerou o código como validador final. E **74%** dizem que sempre ou quase sempre uma pessoa confere o que a ferramenta apontou — a maioria já desconfia do carimbo automático.
+
+## Como triar quando o volume cresce
+
+Se você não pode revisar tudo com profundidade, precisa decidir **o que** revisa com profundidade. A regra que Gill recomenda: ordenar por **modo de falha e raio de impacto**, independentemente de quem escreveu o código.
+
+Quatro categorias vão para quem é dono da área, mesmo em diff pequeno:
+
+- **Lógica de pagamento, cobrança e razão contábil.** Erro aqui é dinheiro errado e reconciliação quebrada.
+- **Regras de autorização e autenticação.** Erro aqui é acesso indevido, não bug de tela.
+- **Schema e migração de banco.** Erro aqui é dado corrompido e rollback caro.
+- **Contrato de API compartilhado.** Erro aqui quebra cliente que você não controla.
+
+O resto segue caminho mais leve: revisão automática independente, testes, análise estática e revisão humana por amostragem. O próprio CodeRabbit, segundo o CEO, deixa boa parte das mudanças de baixo risco sair **sem revisão humana** e monitora os defeitos que cada engenheiro introduz — prática de fornecedor com produto no mercado, não recomendação neutra.
+
+## O que medir
+
+Aqui está o dado mais desconfortável: **24%** não acompanham **nenhuma** métrica de revisão, **30%** acompanham consumo de token e apenas **22%** acompanham defeitos que escaparam para produção.
+
+As equipes medem o custo do agente, não o resultado da revisão. Token é fácil de medir e não diz nada sobre qualidade.
+
+A responsabilidade também está difusa. No cenário em que um agente escreve, outro revisa e um sistema faz o merge, **48%** dizem que o responsável é **quem pediu a mudança** e **14%** apontam **quem aprovou**.
+
+A proposta que eu faria — e aqui é minha, não do relatório — é medir quatro coisas: **defeitos escapados** por 100 PRs, separados por área; **taxa de revert** por semana; **latência de revisão no p75**, não na média, porque a cauda é onde o PR apodrece; e **percentual de PRs classificados** por risco antes da revisão. Se o último número é baixo, os outros três não valem.
+
+## Minha opinião
+
+Nada disso é novidade de 2026. A novidade é a escala: o volume que a IA colocou na fila é maior do que o processo foi desenhado para absorver.
+
+Eu não acho que o problema seja a IA revisar. Acho que o problema é **contar** com isso como se fosse controle. Revisor automático é filtro barato, útil para pegar o óbvio e liberar o humano para o que exige contexto. Ele não substitui o segundo par de olhos, porque não existe segundo par quando o mesmo modelo olha duas vezes.
+
+O que me incomoda na pesquisa não é o 47%. É o 24%. Time que não mede defeito escapado não tem como saber se a revisão funciona, e a IA só acelera a descoberta disso em produção.
+
+## Takeaways
+
+- **O gargalo saiu da escrita e foi para a revisão:** metade diz que os PRs por dev subiram 25% ou mais, e 45% apontam a revisão como o maior freio.
+- **Revisar sem contexto não é revisar:** 26% entendem por completo o código que aprovam e 68% não sabem quais mudanças exigem mais escrutínio.
+- **Mesmo agente não é revisor:** autocorreção sem evidência externa não é confiável; o que muda o resultado é informação nova, não uma segunda opinião do mesmo modelo.
+- **Meça defeito escapado, não token:** só 22% acompanham defeitos que chegaram em produção, contra 30% que acompanham consumo do agente.
+
+## Perguntas frequentes
+
+### O mesmo agente de IA pode revisar o código que ele escreveu?
+Pode como primeira passada, não como validador final. Sem contexto, evidência ou ferramenta diferentes, o modelo tende a repetir o julgamento que gerou o erro. O paper do ICLR 2024 mostra que a autocorreção intrínseca não é confiável em raciocínio e às vezes piora o resultado.
+
+### Quantas pessoas responderam ao AI Code Review Report 2026?
+Foram 377 engenheiros e líderes de engenharia dos Estados Unidos e da Europa, com 325 questionários completos. O patrocínio é do CodeRabbit, que vende revisão de código com IA.
+
+### Qual métrica substitui o volume de pull requests?
+Defeitos que escaparam para produção por 100 PRs, taxa de revert e latência de revisão no p75. Volume e consumo de token medem atividade, não resultado.
+
+## O que revisar depois
+
+- **Estável:** a separação entre autor e revisor, a triagem por modo de falha e as quatro métricas. Vem de princípio de controle, não de produto.
+- **Atualizável:** os percentuais, de uma amostra de 377 pessoas em 2026, e as práticas internas do CodeRabbit.
+
+## Fontes
+
+- [The AI Code Review Report 2026 — LeadDev](https://leaddev.com/the-ai-code-review-report-2026)
+- [Nearly half of surveyed engineers say the AI agents that write their code also review it — VentureBeat](https://venturebeat.com/technology/nearly-half-of-surveyed-engineers-and-leaders-say-the-ai-agents-that-write-their-code-also-review-it)
+- [Large Language Models Cannot Self-Correct Reasoning Yet — arXiv 2310.01798 (ICLR 2024)](https://arxiv.org/abs/2310.01798)
