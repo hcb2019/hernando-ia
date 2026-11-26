@@ -1,0 +1,112 @@
+---
+title: "Parsing de documento: 0,10 ponto, uma passada a mais e o que medir no seu PDF"
+date: "2026-11-26"
+description: "O Nemotron 3.5 Parse tem 0,63B de parâmetros e lidera o ParseBench por 0,10 ponto, pagando uma passada a mais. O que medir antes de trocar o parser do seu RAG."
+excerpt: "Liderar o ParseBench custa 27% de vazão e vale 0,10 ponto de margem. O que a NVIDIA abriu junto com o modelo e como adaptar o parser ao seu documento."
+author: "Hernando Candido"
+tags: [Document Parsing, OCR, RAG, Nemotron, NVIDIA, Modelos Abertos, RLVR, Inferência, Engenharia de IA, GEO]
+readingTime: 6
+sponsored: false
+premium: false
+---
+
+**Resposta curta:** o **Nemotron 3.5 Parse** tem **0,631 bilhão de parâmetros**, lê imagem de página e devolve texto em ordem de leitura, classes semânticas e caixas delimitadoras. Ele lidera o ParseBench com **75,20** — mas só no modo de **três passadas**, com **0,10 ponto** de margem sobre o LightOnOCR-3-4B. Na passada única, os mesmos pesos marcam **72,74**, abaixo do concorrente.
+
+![Saída do Nemotron 3.5 Parse numa página sintética: texto, tabela e caixas delimitadoras sobrepostas ao documento](https://huggingface.co/nvidia/Nemotron-3.5-Parse/resolve/main/assets/parse-demo.png)
+
+O detalhe está na distância entre as linhas da tabela.
+
+## O que o modelo entrega
+
+Entra uma imagem RGB de página; sai uma serialização de tokens de classe e coordenada que o pós-processamento vira documento.
+
+- **Ordem de leitura**, classes como título, parágrafo, tabela e gráfico, e caixa de cada bloco.
+- **Tabela e gráfico viram registro estruturado**, exportável em HTML, CSV, JSON hierárquico ou LaTeX.
+- **Arquitetura:** encoder **C-RADIOv4-SO400M**, adaptador de convolução 1D e decoder **mBART de 10 camadas**, que lê a sequência visual como prefixo causal.
+- **Licença OpenMDW 1.1**, uso comercial permitido.
+- **Multilíngue:** 163 entradas de idioma/escrita, medidas em página sintética com F1 que ignora a ordem dos caracteres.
+
+## O primeiro lugar depende de quantas passadas você paga
+
+O ParseBench do release tem **2.078 páginas**, e a mesma família de pesos ocupa três posições. O preço aparece na vazão medida em uma H200:
+
+- **Uma passada:** **72,74** de score e **18,57 páginas/s**.
+- **Duas passadas:** **74,92** e **14,60 páginas/s** — refina os recortes que a própria página previu.
+- **Três passadas:** **75,20** e **13,49 páginas/s** — soma uma detecção independente e refina a união das regiões.
+
+O modo completo ganha **2,46 ponto** sobre a passada única por **27% menos vazão**. É ele que cruza o **75,10 do LightOnOCR-3-4B**, um modelo de 4B parâmetros que mede **2,76 páginas/s**. A liderança vale nesse recorte, por um décimo, na comparação que a própria NVIDIA reporta: score de parser é número com modo de execução anexado.
+
+## Onde ele para: a tabela que atravessa duas páginas
+
+O card é explícito: o helper **não infere continuação de tabela entre páginas nem ordem de leitura do documento inteiro**. Cada resultado é uma página.
+
+É o problema de quem indexa contrato, balanço ou laudo. A tabela que começa na página 7 e termina na 8 vira duas: a segunda chega sem cabeçalho, a primeira sem total.
+
+Resolve-se no pipeline: detectar tabela cortada na borda inferior, casar colunas com a página seguinte e fundir antes do chunk. Custo de contexto é outra história — é o que o [OCR de documento longo](/blog/ocr-de-documento-longo-como-ler-300-paginas-sem-estourar-a-gpu) ataca por atenção esparsa. Aqui, a página é a unidade.
+
+## Como foi treinado: gabarito sintético e recompensa verificável
+
+Duas fases. Primeiro **SFT**, para prever o alvo estruturado em texto, layout, tabela, gráfico e documento multilíngue. Depois **RLVR com GRPO**, com recompensa que checa a extração amostrada.
+
+A recompensa não exige sequência exata: pontua valores corretos, estrutura utilizável e conclusão sem repetição, porque página difícil tem mais de uma representação válida.
+
+Nos checkpoints de desenvolvimento:
+
+- Saídas com repetição caem de **126 para 29 páginas** (**77% menos**).
+- As que batem no limite de **9.000 tokens** caem de **185 para 35**.
+- O score sobe de **66,24 para 71,38**, com **+5,18** em tabela e **+4,15** em gráfico.
+
+São checkpoints de desenvolvimento, separados do modelo publicado. Servem para entender o mecanismo, não para prever o seu resultado.
+
+## Como adaptar ao seu documento
+
+Com o modelo vieram três conjuntos abertos: **Synthetic Charts V1** (**9,98 milhões** de exemplos), **Synthetic Tables V1** (**1 milhão**) e **OCR Synthetic Multilingual v2** (**7,9 milhões**). A receita: gerar pares imagem/rótulo do seu documento, rodar SFT no **NeMo Automodel**, gerar candidatos com **vLLM** e reforçar com GRPO no **NeMo RL**.
+
+No exemplo do material, uma ficha odontológica, o modelo base lê os números dos dentes e perde a tabela de procedimentos. O pass@1 amostrado sobe de **0,00%** para **95,85%** no SFT e **96,58%** no RLVR, em **256 fichas sintéticas** reservadas.
+
+O que transfere não é o número, é a ordem: **o verificador é o produto**. Sem checador de extração, RLVR não tem sinal — e o caminho passa a ser pós-processamento determinístico.
+
+## Inferência: onde os 7,62× aparecem e onde somem
+
+O release traz um draft opcional, o **DFlash2**, com **89,3 milhões de parâmetros**. Propõe até **32 tokens** à frente, o alvo verifica em bloco, e a média aceita é de **~14**, ou **15 tokens de progresso** por passo.
+
+Na medição em uma H200, BF16: **7,62×** de vazão na concorrência 1 e **1,52×** na 512 contra o mesmo modelo sem especulação. Em 512, são **13,48 páginas/s** sem especulação e **20,44** com DFlash2, contra **2,98** do Parse 2.0.
+
+O multiplicador cai porque o batch já ocupa a GPU; o ganho grande está em uma página por vez. E é benchmark de engine direto, independente dos tempos HTTP por passada: comparar esse pages/s com o 13,49 da tabela acima é comparar duas medições diferentes.
+
+## Minha opinião
+
+A parte mais útil do release não é o modelo. É a tabela de três linhas.
+
+Ela mostra que "qual parser é melhor" não existe sem "com quantas passadas e a qual vazão". Leaderboard escolhe o modo mais caro.
+
+Na minha visão, o ganho real é outro: **0,63B** com gabarito sintético aberto e receita de RLVR publicada tira o ajuste fino de documento do território de quem tem laboratório. Você gera os pares, escreve o verificador e treina.
+
+O que eu não faria é tratar o número de idioma como atestado: página sintética limpa é o cenário fácil; scan com carimbo torto é outro jogo.
+
+## Takeaways
+
+- **Liderança é condicional ao modo:** 75,20 só com três passadas; na passada única são 72,74, abaixo do LightOnOCR-3-4B com 75,10.
+- **Qualidade custa vazão:** +2,46 ponto por 27% menos páginas por segundo — decida por página, não por score.
+- **Página não é documento:** o parser não continua tabela entre páginas nem monta ordem global; fundir é trabalho do pipeline.
+- **Verificador antes de treino:** SFT e RLVR só funcionam com checador do alvo; sem ele, o caminho é pós-processamento.
+
+## Perguntas frequentes
+
+### O Nemotron 3.5 Parse lê tabela que continua na página seguinte?
+Não. O card diz que o helper não infere continuação de tabela entre páginas nem ordem de leitura do documento inteiro, e cada resultado é uma página. A fusão fica no seu pipeline.
+### Quantas passadas usar no parsing de documento?
+Depende do orçamento: uma passada dá 72,74 de score e 18,57 páginas/s; duas, 74,92 e 14,60; três, 75,20 e 13,49. Comece pela única e suba só nas páginas com tabela ou gráfico denso.
+### Posso usar o Nemotron 3.5 Parse comercialmente?
+Sim. A licença é a OpenMDW 1.1, que permite uso comercial, e o tokenizer segue MIT com atribuição. O hardware de referência do card é H100 ou H200 em BF16, com Linux.
+
+## O que revisar depois
+
+- **Estável:** o orçamento de passadas, a limitação de tabela entre páginas, a ideia de que o verificador define o que o RLVR ensina e a diferença entre benchmark de engine e medição HTTP.
+- **Atualizável:** ranking e vazão do ParseBench, tamanho dos conjuntos sintéticos e status do DFlash2.
+
+## Fontes
+
+- [Building on Nemotron 3.5 Parse: Open Data, Fine-Tuning, and Faster Inference — Hugging Face / NVIDIA](https://huggingface.co/blog/nvidia/building-on-nemotron-35-parse-open-data-fine-tunin)
+- [Nemotron 3.5 Parse — model card (licença, ParseBench, DFlash2, limitações)](https://huggingface.co/nvidia/Nemotron-3.5-Parse)
+- [Synthetic Charts V1 — dataset aberto usado no treino](https://huggingface.co/datasets/nvidia/Synthetic-Charts-V1)
