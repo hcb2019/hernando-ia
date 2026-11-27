@@ -1,0 +1,123 @@
+---
+title: "Benchmark de llama.cpp: 12 tok/s no gráfico e 3 tok/s na conversa"
+date: "2026-11-27"
+description: "No Qwen3.8-27B Q4 da Radeon 8060S, o TG128 marca 12,4 tok/s a profundidade zero e cai para 2,99 a 65k sem Flash Attention. O que PP512 e TG128 medem."
+excerpt: "PP512 e TG128 não são a mesma coisa, e o número de capa do benchmark é o melhor caso: sem Flash Attention, a geração cai 76% até 65 mil tokens."
+author: "Hernando Candido"
+tags: [Inferência Local, llama.cpp, Benchmarks, AMD, Flash Attention, KV Cache, MoE, Engenharia de IA]
+readingTime: 7
+sponsored: false
+premium: false
+---
+
+**Resposta curta:** no mesmo modelo, o teste de prompt processa 512 tokens a **364,23 tok/s** e o de geração produz 128 tokens a **12,38 tok/s**. São **29 vezes** de diferença, porque um é limitado por compute e o outro por banda de memória. E o 12,38 é o melhor caso: na série de contexto, o mesmo modelo entrega **2,99 tok/s** a 65.536 tokens sem Flash Attention, contra **10,40** com ela ligada.
+
+Os dados vêm do [dashboard de benchmark do llama.cpp para AMD](https://huggingface.co/spaces/ggml-org/llamacpp-amd-bench), publicado em 26/11/2026, e dos arquivos abertos que alimentam os gráficos.
+
+## O que o dashboard mede
+
+São dois testes separados, os dois em tokens por segundo:
+
+- **PP512**: processa 512 tokens de entrada, sem gerar nada.
+- **TG128**: gera 128 tokens, sem contexto pré-existente. Os dois começam em profundidade zero.
+
+O valor é a média (`avg_ts`) de **10 repetições**, com Flash Attention ligada e desligada. O bruto está em JSONL, um arquivo por build, hardware, modelo e quantização.
+
+E o número não inclui **tokenização nem amostragem**, como o README do `llama-bench` diz. Tok/s aqui é vazão do modelo, não latência percebida.
+
+## Por que a geração é 29 vezes mais lenta
+
+O PP512 é uma multiplicação de matrizes sobre 512 tokens de uma vez: o gargalo é compute. A geração produz **um token por passo** e, num modelo denso, cada passo lê todos os pesos. O gargalo vira banda de memória.
+
+A divisão é a mesma do post sobre [balanceamento de carga](/blog/balanceamento-de-carga-para-llm-entre-replicas-por-que-round-robin-quebra): prefill é compute, decode é memória.
+
+A prova está na mesma tabela, mudando só a quantização do 27B na gfx1151 (build b11574):
+
+- **BF16**: 54,65 GB, **3,83 tok/s** de geração e **384,59 tok/s** de prompt.
+- **Q8_0**: 29,04 GB, **7,62** e **344,53**.
+- **Q4_K_M**: 16,45 GB, **12,38** e **364,23**.
+
+O arquivo BF16 é **3,32 vezes** maior que o Q4_K_M, e a geração é **3,23 vezes** mais lenta. O PP512 quase não muda: cai 5%.
+
+A conta que fecha: 16,45 GB por token a 12,38 tok/s dão **204 GB/s** efetivos; no BF16, 54,65 GB a 3,83 tok/s dão **209 GB/s**. A conta é minha, com os dois números que o próprio arquivo publica: tamanho e vazão.
+
+## Mesmo arquivo, 3,6 vezes mais vazão: o MoE
+
+- **Qwen3.8-27B Q4_K_M**, denso, 16,45 GB: **12,38 tok/s**.
+- **gemma-4-26B-A4B Q4_K_M**, MoE, 16,93 GB: **44,62 tok/s**.
+
+O MoE é **3,6 vezes** mais rápido com um arquivo 3% maior. Ele não lê todos os pesos por token: o roteador escolhe alguns experts e o resto fica parado.
+
+Isso derruba a regra de "tok/s proporcional ao tamanho do arquivo". Em MoE, contam os **bytes realmente lidos por token**. O caso extremo é o [expert streaming](/blog/180b-em-32-gb-como-o-expert-streaming-roda-um-moe-maior-que-a-memoria), onde o MoE é maior que a memória.
+
+## O número de profundidade zero não sobrevive ao contexto
+
+Gerando com o mesmo 27B em Q4_K_M conforme o contexto cresce, nos registros do build b11574:
+
+- Sem Flash Attention: **12,59** tok/s a 512 tokens, **10,63** a 8 mil, **8,24** a 16 mil, **4,92** a 32 mil e **2,99** a 65.536. Queda de **76%**.
+- Com Flash Attention: **12,80**, **12,43**, **12,10**, **11,48** e **10,40**. Queda de **19%**.
+
+A causa é o KV cache: quanto mais tokens já entraram, mais memória a atenção varre a cada novo token, e sem a flag a matriz de escores é materializada.
+
+O benchmark com profundidade zero corta exatamente essa parte. Ele mede o token número 129 de uma conversa que nunca existiu.
+
+## Flash Attention não é de graça
+
+Na profundidade zero, ligar a flag muda quase nada: o TG128 do 27B vai de 12,38 para **12,47** tok/s, e o PP512 cai de 364,23 para **360,76**.
+
+A 65 mil tokens, a diferença é de **3,5 vezes**: 10,40 contra 2,99. Em outra placa o sinal muda: na Radeon AI Pro R9700S (gfx1201), o PP512 do gpt-oss-20b sobe **10,7%** com a flag ligada, de 1.590,23 para 1.759,94.
+
+Ou seja, a flag `-fa` depende do modelo, do backend e da profundidade que você testou.
+
+## Como reproduzir no seu hardware
+
+O equivalente em `llama-bench`: `llama-bench -hf unsloth/Qwen3.8-27B-GGUF:Q4_K_M -p 512 -n 0 -r 10 -fa 0,1 -o jsonl` mede o prompt; `-p 0 -n 128 -d 0` mede a geração; e `-d 512-65536` com o multiplicador 2 no fim faz a varredura, dobrando a profundidade a cada ponto.
+
+Os padrões da ferramenta são `-r 5`, `-b 2048` e `-ub 512`; o repositório usa `-r 10`. Sem igualar as repetições, os números não conversam.
+
+No JSONL, `avg_ts` é a média, `stddev_ts` a dispersão e `model_size` o tamanho do arquivo; confira o build antes de comparar.
+
+## O histórico de build é a parte que envelhece
+
+Mesmo modelo, mesma quantização, mesma máquina, builds diferentes. Qwen3.5-0.8B Q4_K_M no gfx1151:
+
+- PP512: **9.048,66** tok/s no build b10612, **7.928,80** no b11370 e **8.957,21** no b11574.
+- TG128: **207,78**, **203,61** e **199,63** tok/s.
+
+O prompt processing caiu **12,4%** e voltou **13,0%** em duas trocas de build, enquanto a geração quase não se moveu. Fixar um tok/s sem fixar o build é medir outra coisa seis semanas depois.
+
+## Minha opinião
+
+Benchmark de inferência local só vale se você souber responder três perguntas: **em que profundidade**, **com qual Flash Attention** e **em qual build**. O dashboard da AMD publica as três, e é por isso que ele serve.
+
+O 29x entre PP512 e TG128 explica por que "X tok/s" sem o nome do teste é marketing. Para quem roda local no Brasil, numa máquina de 16 GB: 27B denso em Q4 a 12 tok/s serve para resumir lote, classificar e gerar de madrugada. Não serve para agente de código com 40 mil tokens de contexto. E o MoE a 45 tok/s é a diferença entre um experimento e uma ferramenta que você abre todo dia.
+
+## Takeaways
+
+- **PP512 e TG128 medem regimes diferentes**: compute contra banda de memória. A razão de 29x no mesmo modelo não é bug.
+- **Quantização muda a geração na proporção do arquivo**: 3,32x menos bytes, 3,23x mais tok/s em modelo denso.
+- **MoE quebra a regra do tamanho**: mesma faixa de arquivo, 3,6x de vazão, porque só parte dos pesos é lida por token.
+- **Profundidade zero é o melhor caso**: sem Flash Attention, a geração do 27B cai 76% até 65k.
+
+## Perguntas frequentes
+
+### Posso usar o TG128 como expectativa de velocidade no chat?
+Só no começo da conversa. Com 8 mil tokens de contexto, o mesmo 27B já entrega 10,63 tok/s sem Flash Attention; a 65 mil, 2,99. O TG128 é teto, não média.
+
+### Flash Attention sempre acelera a inferência?
+Não. Na profundidade zero ela empata ou fica atrás: 12,47 contra 12,38 tok/s na geração do 27B. A vantagem aparece com contexto longo, quando evita materializar a matriz de atenção.
+
+## O que revisar depois
+
+- **Estável:** a distinção entre PP e TG, a relação entre bytes por token e vazão em modelo denso, o efeito do KV cache e o fato de o benchmark excluir amostragem.
+- **Atualizável:** os números de tok/s, a comparação entre builds e os modelos do catálogo.
+- **Como revisar:** refaça a varredura de contexto no build atual. Passando de 10% de diferença, o número antigo não vale.
+
+## Fontes
+
+- [Hugging Face: llama.cpp benchmark dashboard for AMD Ryzen and Radeon](https://huggingface.co/blog/ggml-org/llamacpp-amd-bench)
+- [Dashboard llama.cpp x AMD](https://huggingface.co/spaces/ggml-org/llamacpp-amd-bench)
+- [llama-bench: README e flags](https://github.com/ggml-org/llama.cpp/tree/master/tools/llama-bench)
+- [Workflow de benchmark gfx1151](https://github.com/ggml-org/llama-install.sh/blob/master/.github/workflows/bench-gfx1151.yml)
+- [Bucket com os resultados brutos em JSONL](https://huggingface.co/buckets/ggml-org/install.sh-benches-data)
+- [Registro usado: b11574, gfx1151, Qwen3.8-27B, Q4_K_M](https://huggingface.co/buckets/ggml-org/install.sh-benches-data/resolve/b11574/gfx1151/Qwen3.8-27B/Q4_K_M.jsonl)
