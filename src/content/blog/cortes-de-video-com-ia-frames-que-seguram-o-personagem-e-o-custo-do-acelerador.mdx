@@ -1,0 +1,107 @@
+---
+title: "Cortes de vídeo com IA: frames que seguram o personagem e o custo do acelerador"
+date: "2026-11-28"
+description: "O personagem de um vídeo se mantém entre cortes porque cada plano começa ou termina em frames de outro, não pelo prompt. O acelerador cobra em paralelismo."
+excerpt: "Num filme de quatro planos no Trainium3, a consistência veio de frames emprestados entre planos, não de prompt."
+author: "Hernando Candido"
+tags: [Vídeo Generativo, LTX-2.5, Trainium, Paralelismo, Diffusers, Engenharia de IA, Produção de Vídeo]
+readingTime: 7
+sponsored: false
+premium: false
+---
+
+**Resposta curta:** o personagem não se mantém entre planos porque o prompt repete a descrição, mas porque cada plano **começa ou termina em frames de outro plano**. Num experimento com o LTX-2.5 no Trainium3, dez segundos em 2048×1024 com som saíram em **22 a 23 segundos** usando **32 dos 64 NeuronCores** — e cada plano para no limite de **20 segundos** do modelo.
+
+Um filme de quatro planos parece problema de prompt. Não é: é problema de encaixe.
+
+![Diagrama da cadeia de planos do filme da foca: dream fica sozinho, nap termina nos 9 primeiros frames de iceberg e shake começa nos últimos 25 frames de iceberg](https://huggingface.co/datasets/huggingface/documentation-images/resolve/main/blog/video-trainium3/shot-chain-diagram.svg)
+
+*Imagem: a cadeia de planos do filme da foca. O plano iceberg, que é o clímax, é feito primeiro.*
+
+## O experimento
+
+David Corvoysier passou um mês com uma máquina Trainium3 (trn3.48xlarge, 64 NeuronCores) e, nos últimos cinco dias, decidiu gerar vídeo nela com o LTX-2.5 — o [post de lançamento](/blog/o-ltx-25-pode-gerar-um-vdeo-de-ia-de-10-segundos-a-partir-de-uma-imagem-em-apena) cobre o que o modelo entrega.
+
+A entrada é um JSON de planos, cada um com nome, prompt, seed e as chaves de encaixe; o código está em `dacorvo/video-generation`, com **82 GB** de pesos num repositório fechado.
+
+A receita é destilada: **8 passos**, upscale dos latentes em **×2** e **3 passos finais**, contra **30 passos** no default não destilado — e a doc confirma a etapa 2 em `num_inference_steps=3`.
+
+## Por que o prompt não segura o personagem
+
+O LTX-2.5 responde melhor a prompt longo: cada plano leva um parágrafo sobre estilo, sujeito, movimento, câmera, luz e som. Só que prompt não amarra sujeito entre planos — nas palavras do autor, prompts sozinhos não seguram o sujeito de um plano para o outro. O que amarra é o frame:
+
+- **Começar dos últimos frames de outro plano:** o sujeito volta depois do corte.
+- **Começar do último segundo de outro plano:** além do sujeito, o movimento continua, com a velocidade que vinha.
+- **Terminar nos primeiros frames de um plano posterior:** esse plano vira a chave, e é gerado antes.
+
+Falha concreta: numa versão inicial, um plano levava a raposa da floresta para o lago, e o modelo resolveu com um cross-dissolve para outra raposa. Plano que muda de lugar não sobrevive. E são **quatro takes por plano**: o mesmo prompt deu chifres engraçados no bode em 3 de 4.
+
+## No Trainium, quem manda é o tamanho do grafo
+
+Fora da caixa, o transformer não cabe num NeuronCore e o diffusers não tem plano para dividi-lo. A primeira versão que rodou gastou **5 minutos e 20 segundos** num clipe de 10 segundos a 960×544, em 4 cores — e os cores computaram por só **45 segundos** disso.
+
+Cinco dias depois, a 2048×1024, o mesmo clipe levava 22 a 23 segundos. Três mudanças explicam o salto:
+
+- **Paralelismo de tensor (TP) é imposição de memória.** O transformer não cabe num core, então cada camada é dividida. Dois cores estouravam memória a 960×544 — daí o default TP=4 do repositório.
+- **Paralelismo de sequência (SP) é o que usa a máquina.** A 2048×1024 o grafo em 4 vias não carrega; dividindo também os tokens de vídeo em 8, o passo roda em **TP-4 × SP-8 = 32 cores**, a **3,0 segundos por passo**.
+- **O host era o gargalo maior.** A fase de host caiu de cerca de **280 s para 8 s**, enquanto o tempo nos cores caiu de 45 s para 15 s — a quatro vezes mais pixels.
+
+![Layout dos 32 NeuronCores que fazem um clipe: o clipe dividido em 8 trechos de tempo, um por chip, por paralelismo de sequência, e cada core guardando uma faixa da tabela de pesos de cada camada, por paralelismo de tensor](https://huggingface.co/datasets/huggingface/documentation-images/resolve/main/blog/video-trainium3/parallelism-layout.svg)
+
+*Imagem: TP-4 × SP-8. Cada core guarda um quarto dos pesos e um oitavo dos tokens.*
+
+No host, os maiores ganhos:
+
+- Decodificar o vídeo nos cores: **357 s para 1,6 s**.
+- Pipeline só no rank 0, argumentos aos outros: prompt de **205 s para 7,5 s**.
+- Empacotar os parâmetros em buffers de 1 GiB: memória por core de **22,96 GiB para 10,2 GiB**.
+
+Do lado do device, a atenção só tem kernel rápido com sequência múltipla de 128 tokens: a 1024×512, com `NEURON_LOGICAL_NC_CONFIG=2`, o passo caiu de **4,3 s para 3,0 s**. É a armadilha do [kernel que limita a atenção no MI355X](/blog/fp8-nao-dobra-a-atencao-o-que-limita-o-kernel-no-amd-mi355x-e-como-medir): o formato do passo decide se o caminho rápido existe.
+
+E o bug virou número: como um grafo só, o transformer devolvia NaN num dos tamanhos; com `compile_repeated_blocks`, o tracing caiu de **388 s para 18 s**.
+
+## O que a fonte não promete
+
+- **Cada plano faz o seu som.** O filme nivela o volume de fundo, mas o áudio não continua de um plano para o outro.
+- **O plano dura no máximo 20 segundos**, o limite do modelo.
+- **Não há número de CUDA para comparar.** A referência é a API paga da LTX, que anuncia 23,7 s para 10 s a 1080p. A conta de pixels é minha: 2,10 milhões contra 2,07 milhões. Não é a mesma máquina nem o mesmo pipeline.
+
+Num segundo uso, vira base de world model de robótica: do primeiro segundo de um clipe real do humanóide GR1-T2, inventa os cinco seguintes. Pediram para o carro acelerar e ele manteve a velocidade — o prompt não sobrepõe o que o primeiro segundo já implica, e um frame só não revela velocidade.
+
+## Minha opinião
+
+O que interessa não é o tempo.
+
+É que o gargalo saiu do modelo: ele faz o plano, e o trabalho é decidir a ordem, emprestar frames e descobrir que o host perde 280 segundos por clipe.
+
+Quem tratar geração de vídeo como pedir e esperar gasta acelerador refazendo o que faltou planejar. Quatro takes é o orçamento real, não o take que você gostou.
+
+## Takeaways
+
+- **Consistência mora no frame:** plano que começa ou termina em frames de outro mantém sujeito e movimento.
+- **A ordem de produção é engenharia:** gere o plano-chave e encaixe os vizinhos nele.
+- **TP é caber, SP é usar:** tensor parallelism resolve memória; sequence parallelism põe 32 cores num clipe.
+- **Meça o host antes de culpar o acelerador:** 280 s contra 45 s de compute na primeira versão.
+
+## Perguntas frequentes
+
+### Dá para manter o personagem sem gerar em cadeia?
+Parcialmente. Prompt longo estabiliza o plano, mas não amarra o sujeito entre cortes. A alternativa documentada é começar de uma imagem, como um frame de storyboard, que a condition pipeline trata como primeiro frame.
+
+### Preciso de 64 NeuronCores para reproduzir?
+Não para o filme: o repositório traz TP e SP configuráveis, e o modo `--cpu` roda tudo em CPU. O que pesa é memória, porque o transformer não cabe num acelerador só.
+
+## O que revisar depois
+
+- **Estável:** consistência por frames emprestados; ordem de produção do clímax para trás; TP ditado pela memória; SP ditado pelo tamanho do grafo.
+- **Atualizável:** todos os tempos, as versões do torch-neuronx e do diffusers, e o estado dos PRs abertos.
+- **Como revisar:** quando o PR que junta tensor e context parallelism num só ParallelConfig entrar, refaça a medição; queda acima de 20% exige atualização.
+
+## Fontes
+
+- [Fonte: Hugging Face Blog — Taking Trainium3 to the Track: Generating Videos with LTX-2.5](https://huggingface.co/blog/video-trainium3)
+- [Fonte: repositório dacorvo/video-generation, README e generate.py](https://github.com/dacorvo/video-generation)
+- [Fonte: documentação do diffusers — pipelines LTX-2](https://huggingface.co/docs/diffusers/main/en/api/pipelines/ltx2)
+- [Fonte: diffusers — PR 14725, tensor e context parallelism num ParallelConfig](https://github.com/huggingface/diffusers/pull/14725)
+- [Fonte: diffusers — PR 15420, posicionamento de componentes em pipelines divididas](https://github.com/huggingface/diffusers/pull/15420)
+- [Fonte: bucket público com os filmes e os JSON de planos](https://huggingface.co/buckets/dacorvo/video-generation)
